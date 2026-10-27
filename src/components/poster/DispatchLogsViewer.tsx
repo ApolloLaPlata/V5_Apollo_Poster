@@ -10,14 +10,17 @@
  * - Tabela de Logs de Auditoria de Despacho com Data/Hora, Plataforma, Message ID e HTTP Status (Etapa 093)
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { History, Trash2 } from "lucide-react";
 import { ChannelDistributionChart } from "./ChannelDistributionChart";
 import { AuditLogsTable } from "./AuditLogsTable";
+import { LogPayloadDrawer } from "./LogPayloadDrawer";
+import { DispatchLogEntry } from "@/types/poster";
 
 export function DispatchLogsViewer() {
   const { logs, clearLogs } = usePosterStore();
+  const [selectedLog, setSelectedLog] = useState<DispatchLogEntry | null>(null);
 
   return (
     <div className="space-y-6">
@@ -50,8 +53,11 @@ export function DispatchLogsViewer() {
       {/* Gráfico Visual de Distribuição de Posts por Canal (Etapa 092) */}
       <ChannelDistributionChart />
 
-      {/* Tabela de Logs de Auditoria de Despacho (Etapa 093) */}
-      <AuditLogsTable logs={logs} />
+      {/* Tabela de Logs de Auditoria de Despacho (Etapa 093 & 094) */}
+      <AuditLogsTable logs={logs} onSelectLog={(log) => setSelectedLog(log)} />
+
+      {/* Drawer / Modal de Inspecionar Payload Completo de Log (Etapa 094) */}
+      <LogPayloadDrawer log={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
 }
