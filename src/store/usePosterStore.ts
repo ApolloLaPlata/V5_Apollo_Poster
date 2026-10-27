@@ -92,6 +92,7 @@ interface PosterStoreState {
   logs: DispatchLogEntry[];
   addLog: (log: Omit<DispatchLogEntry, "id" | "timestamp">) => void;
   clearLogs: () => void;
+  setLogs: (logs: DispatchLogEntry[]) => void;
 
   // Métricas
   getAnalytics: () => DispatchAnalyticsSummary;
@@ -492,6 +493,7 @@ export const usePosterStore = create<PosterStoreState>()(
           ]
         })),
       clearLogs: () => set({ logs: [] }),
+      setLogs: (logs) => set({ logs }),
 
       getAnalytics: () => {
         const state = get();

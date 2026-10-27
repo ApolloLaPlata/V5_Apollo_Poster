@@ -18,11 +18,13 @@ import { AuditLogsTable } from "./AuditLogsTable";
 import { LogPayloadDrawer } from "./LogPayloadDrawer";
 import { AuditExportButtons } from "./AuditExportButtons";
 import { LatencyMetricsCard } from "./LatencyMetricsCard";
+import { ClearLogsModal } from "./ClearLogsModal";
 import { DispatchLogEntry } from "@/types/poster";
 
 export function DispatchLogsViewer() {
-  const { logs, clearLogs } = usePosterStore();
+  const { logs, setLogs } = usePosterStore();
   const [selectedLog, setSelectedLog] = useState<DispatchLogEntry | null>(null);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -45,8 +47,9 @@ export function DispatchLogsViewer() {
               {/* Botão de Exportar Logs (Etapa 096) */}
               <AuditExportButtons logs={logs} totalCount={logs.length} />
 
+              {/* Botão de Limpar Logs com Modal de Confirmação de Segurança (Etapa 098) */}
               <button
-                onClick={clearLogs}
+                onClick={() => setIsClearModalOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-medium transition"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -68,6 +71,14 @@ export function DispatchLogsViewer() {
 
       {/* Drawer / Modal de Inspecionar Payload Completo de Log (Etapa 094) */}
       <LogPayloadDrawer log={selectedLog} onClose={() => setSelectedLog(null)} />
+
+      {/* Modal de Limpeza Segura de Logs Antigos (Etapa 098) */}
+      <ClearLogsModal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        logs={logs}
+        onConfirmPrune={(remainingLogs) => setLogs(remainingLogs)}
+      />
     </div>
   );
 }
