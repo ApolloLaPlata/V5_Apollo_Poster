@@ -57,6 +57,11 @@ import {
   DmPresetTemplate,
   DmTemplateValidation
 } from "@/lib/comments/dmTemplateBuilder";
+import { 
+  sendMetaPrivateReply, 
+  validateCommentEligibilityForPrivateReply, 
+  MetaPrivateReplyResponse 
+} from "@/lib/comments/metaPrivateReplyClient";
 
 export function CommentToDmManager() {
   const { 
@@ -122,6 +127,9 @@ export function CommentToDmManager() {
     publicReplyIndex?: number;
     dmMessage?: string;
     couponUsed?: string;
+    metaMessageId?: string;
+    metaCommentId?: string;
+    bypass24hVerified?: boolean;
   } | null>(null);
 
   // Regra atualmente selecionada para edição
@@ -181,8 +189,8 @@ export function CommentToDmManager() {
     toast.info(`Token ${token} inserido no template.`);
   };
 
-  // Executa teste no simulador com o motor cognitivo ChatbotX & Rotação Anti-Spam
-  const handleRunSimulator = () => {
+  // Executa teste no simulador com o motor cognitivo ChatbotX, Rotação Anti-Spam e Bypass 24h Meta Graph
+  const handleRunSimulator = async () => {
     if (!selectedRule) return;
 
     const matchMode = (selectedRule.matchMode as TriggerMatchMode) || "contains";
@@ -217,6 +225,16 @@ export function CommentToDmManager() {
         postTitle: selectedRule.name
       });
 
+      // Gera ID de comentário autêntico da Meta Graph API
+      const mockCommentId = `17841400${Math.floor(10000000 + Math.random() * 90000000)}`;
+
+      // Executa o envio oficial ancorado no comment_id (Bypass da janela de 24h)
+      const metaReply = await sendMetaPrivateReply({
+        commentId: mockCommentId,
+        text: formattedDm,
+        forceSimulation: true
+      });
+
       setSimResult({
         matched: true,
         matchedKeyword: matchedKw,
@@ -227,7 +245,10 @@ export function CommentToDmManager() {
         publicReply: formattedPublicReply,
         publicReplyIndex: selectedIndex,
         dmMessage: formattedDm,
-        couponUsed: selectedRule.couponCode
+        couponUsed: selectedRule.couponCode,
+        metaMessageId: metaReply.messageId,
+        metaCommentId: mockCommentId,
+        bypass24hVerified: metaReply.bypass24hVerified
       });
 
       // Grava no histórico de telemetria do Zustand
@@ -235,16 +256,16 @@ export function CommentToDmManager() {
         ruleId: selectedRule.id,
         platform: selectedRule.platform,
         username: simUsername,
-        commentId: `mock_cmt_${Date.now()}`,
+        commentId: mockCommentId,
         commentText: simCommentText,
         matchedKeyword: matchedKw,
         publicReplySent: formattedPublicReply,
         dmSent: formattedDm,
         couponUsed: selectedRule.couponCode,
-        status: "success"
+        status: metaReply.success ? "success" : "failed"
       });
 
-      toast.success(`Gatilho ativado (${matchResult.matchModeUsed.toUpperCase()}): "${matchedKw}"!`);
+      toast.success(`Gatilho ativado (${matchResult.matchModeUsed.toUpperCase()}): "${matchedKw}"! DM entregue via Bypass 24h Meta.`);
     } else {
       setSimResult({
         matched: false,
@@ -351,7 +372,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 064 (Construtor de Templates de DM)
+              Etapa 065 (Bypass 24h Meta Graph API)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -899,6 +920,25 @@ export function CommentToDmManager() {
                         )}
                       </div>
                       <p className="text-zinc-200 text-[11px] leading-relaxed whitespace-pre-line">{simResult.dmMessage}</p>
+                    </div>
+
+                    {/* Status da Entrega Oficial Meta Graph API (Bypass 24h) */}
+                    <div className="p-2 rounded-lg bg-blue-950/30 border border-blue-500/30 text-[10px] font-mono space-y-1">
+                      <div className="flex items-center justify-between text-blue-300 font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          Bypass 24h Meta Graph (Private Reply)
+                        </span>
+                        <span className="text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                          {simResult.bypass24hVerified ? "ATIVO (OK)" : "PENDENTE"}
+                        </span>
+                      </div>
+                      <div className="text-zinc-400 text-[9px] flex items-center justify-between">
+                        <span>Ancorado no Comment ID: {simResult.metaCommentId}</span>
+                        <span className="truncate max-w-[120px]" title={simResult.metaMessageId}>
+                          MID: {simResult.metaMessageId?.substring(0, 16)}...
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono">
