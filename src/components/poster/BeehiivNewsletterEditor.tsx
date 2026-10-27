@@ -49,6 +49,7 @@ import {
   Folder,
   Users,
   Plus,
+  Table as TableIcon,
   X
 } from "lucide-react";
 import { MultimodalDispatchPayload } from "@/types/poster";
@@ -141,6 +142,13 @@ Não estamos mais falando apenas de chats de conversação. Estamos falando de e
 ### O que isso significa na prática?
 Quando você une um motor de escrita inteligente a uma esteira de despacho automatizada, você ganha velocidade de mídia de grandes portais com uma equipe enxuta.
 
+### Comparativo de Eficiência Onicanal:
+| Pilar Operacional | Método Tradicional | Ecossistema V5 Poster |
+| :--- | :---: | ---: |
+| Redação & E-mail | 3 a 5 horas | 8 minutos |
+| Indexação AutoBlog | Manual / CMS | Instantâneo (REST API) |
+| Disparo Grupos VIP | Copia e cola | Transmissão com 1 Clique |
+
 Nos vemos na próxima transmissão!`,
   emailOptions: {
     enabled: true,
@@ -215,6 +223,70 @@ function formatInline(text: string): React.ReactNode {
   });
 }
 
+function renderTableElement(tableLines: string[], keyIndex: number) {
+  if (tableLines.length === 0) return null;
+
+  const extractCells = (row: string) => {
+    return row
+      .split("|")
+      .map(c => c.trim())
+      .filter((_, idx, arr) => idx !== 0 && idx !== arr.length - 1);
+  };
+
+  const headerCells = extractCells(tableLines[0]);
+  let alignments: ("left" | "center" | "right")[] = headerCells.map(() => "left");
+  let dataStartIndex = 1;
+
+  if (tableLines.length > 1 && /^\|?(\s*:?-+:?\s*\|?)+$/.test(tableLines[1])) {
+    const sepCells = extractCells(tableLines[1]);
+    alignments = sepCells.map(cell => {
+      if (cell.startsWith(":") && cell.endsWith(":")) return "center";
+      if (cell.endsWith(":")) return "right";
+      return "left";
+    });
+    dataStartIndex = 2;
+  }
+
+  return (
+    <div key={keyIndex} className="overflow-x-auto my-6 rounded-xl border border-zinc-800 bg-zinc-950/80 shadow-lg">
+      <table className="w-full text-left border-collapse text-xs">
+        <thead>
+          <tr className="bg-zinc-900 border-b-2 border-amber-500/40 text-amber-300 font-bold uppercase tracking-wider font-mono">
+            {headerCells.map((h, idx) => (
+              <th 
+                key={idx} 
+                className={`px-4 py-3 ${alignments[idx] === "center" ? "text-center" : alignments[idx] === "right" ? "text-right" : "text-left"}`}
+              >
+                {formatInline(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-800/60 font-sans">
+          {tableLines.slice(dataStartIndex).map((row, rIdx) => {
+            const cells = extractCells(row);
+            return (
+              <tr 
+                key={rIdx} 
+                className={`transition ${rIdx % 2 === 0 ? "bg-zinc-950/40" : "bg-zinc-900/20"} hover:bg-zinc-800/40`}
+              >
+                {cells.map((cell, cIdx) => (
+                  <td 
+                    key={cIdx} 
+                    className={`px-4 py-2.5 text-zinc-300 ${alignments[cIdx] === "center" ? "text-center" : alignments[cIdx] === "right" ? "text-right" : "text-left"}`}
+                  >
+                    {formatInline(cell)}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function renderMarkdownToHtml(markdown: string) {
   const lines = markdown.split("\n");
   const elements: React.ReactNode[] = [];
@@ -225,6 +297,17 @@ function renderMarkdownToHtml(markdown: string) {
 
     if (!line) {
       elements.push(<div key={`sp-${i}`} className="h-4" />);
+      continue;
+    }
+
+    // Suporte a Tabelas Markdown: | col1 | col2 |
+    if (line.startsWith("|") && line.endsWith("|") && line.includes("|")) {
+      const tableLines: string[] = [line];
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|") && lines[i + 1].trim().endsWith("|")) {
+        i++;
+        tableLines.push(lines[i].trim());
+      }
+      elements.push(renderTableElement(tableLines, i));
       continue;
     }
 
@@ -1197,6 +1280,14 @@ export function BeehiivNewsletterEditor() {
                     title="Inserir Imagem no Artigo (![ALT](url))"
                   >
                     <ImageIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat("| Métrica / Canal | Status | Impacto |\n| :--- | :---: | ---: |\n| E-mail Newsletter | Ativo | +42% Abertura |\n| AutoBlog SEO | Indexado | +180% Tráfego |\n| VIP Communities | Disparado | +65% CTR |", "")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 rounded transition"
+                    title="Inserir Tabela Responsiva Markdown (| Col1 | Col2 |)"
+                  >
+                    <TableIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
 

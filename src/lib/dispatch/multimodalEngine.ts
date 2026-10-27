@@ -14,6 +14,80 @@ export function slugify(text: string): string {
 }
 
 /**
+ * Converte blocos de tabela Markdown (| col1 | col2 |) para tabelas HTML com estilos inline
+ * 100% compatíveis com Outlook Desktop, Gmail App e Apple Mail.
+ */
+export function parseMarkdownTableToEmailHtml(tableLines: string[]): string {
+  if (tableLines.length === 0) return "";
+
+  const extractCells = (row: string) => {
+    return row
+      .split("|")
+      .map(c => c.trim())
+      .filter((_, idx, arr) => idx !== 0 && idx !== arr.length - 1);
+  };
+
+  const headerCells = extractCells(tableLines[0]);
+  let alignments: ("left" | "center" | "right")[] = headerCells.map(() => "left");
+  let dataStartIndex = 1;
+
+  if (tableLines.length > 1 && /^\|?(\s*:?-+:?\s*\|?)+$/.test(tableLines[1])) {
+    const sepCells = extractCells(tableLines[1]);
+    alignments = sepCells.map(cell => {
+      if (cell.startsWith(":") && cell.endsWith(":")) return "center";
+      if (cell.endsWith(":")) return "right";
+      return "left";
+    });
+    dataStartIndex = 2;
+  }
+
+  const formatTableCell = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(/`(.*?)`/g, '<code style="background-color: #f1f5f9; color: #b45309; padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 11px;">$1</code>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: #d97706; text-decoration: underline;">$1</a>');
+  };
+
+  const theadHtml = `
+    <thead>
+      <tr style="background-color: #0f172a;">
+        ${headerCells.map((h, idx) => {
+          const align = alignments[idx] || "left";
+          return `<th style="padding: 12px 14px; text-align: ${align}; color: #ffffff; font-weight: 700; font-size: 13px; border-bottom: 2px solid #f59e0b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatTableCell(h)}</th>`;
+        }).join("\n        ")}
+      </tr>
+    </thead>`;
+
+  const rowsHtml: string[] = [];
+  for (let r = dataStartIndex; r < tableLines.length; r++) {
+    const cells = extractCells(tableLines[r]);
+    const bgColor = (r - dataStartIndex) % 2 === 0 ? "#ffffff" : "#f8fafc";
+    const rowHtml = `
+      <tr style="background-color: ${bgColor};">
+        ${cells.map((cell, idx) => {
+          const align = alignments[idx] || "left";
+          return `<td style="padding: 10px 14px; text-align: ${align}; color: #334155; font-size: 13px; border-bottom: 1px solid #e2e8f0; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatTableCell(cell)}</td>`;
+        }).join("\n        ")}
+      </tr>`;
+    rowsHtml.push(rowHtml);
+  }
+
+  const tbodyHtml = `
+    <tbody>
+      ${rowsHtml.join("\n      ")}
+    </tbody>`;
+
+  return `
+    <div style="overflow-x: auto; margin: 24px 0;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        ${theadHtml}
+        ${tbodyHtml}
+      </table>
+    </div>`;
+}
+
+/**
  * Compila Markdown simples para HTML inline seguro para clientes de e-mail (Gmail, Outlook, Apple Mail)
  */
 export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
@@ -32,9 +106,22 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
     );
   }
 
-  for (const rawLine of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
     const line = rawLine.trim();
     if (!line) {
+      continue;
+    }
+
+    // Suporte a Tabelas Markdown com estilos inline para clientes de e-mail (Outlook/Gmail)
+    if (line.startsWith("|") && line.endsWith("|") && line.includes("|")) {
+      const tableLines: string[] = [line];
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|") && lines[i + 1].trim().endsWith("|")) {
+        i++;
+        tableLines.push(lines[i].trim());
+      }
+      const tableHtml = parseMarkdownTableToEmailHtml(tableLines);
+      htmlBodyLines.push(tableHtml);
       continue;
     }
 
