@@ -48,6 +48,15 @@ import {
   ContentNiche,
   AntiSpamHealthCheck 
 } from "@/lib/comments/publicReplyRotator";
+import { 
+  compileDmMessage, 
+  validateDmTemplate, 
+  SUPPORTED_DM_PLACEHOLDERS, 
+  DM_PRESET_TEMPLATES, 
+  META_DM_MAX_CHARS,
+  DmPresetTemplate,
+  DmTemplateValidation
+} from "@/lib/comments/dmTemplateBuilder";
 
 export function CommentToDmManager() {
   const { 
@@ -80,6 +89,7 @@ export function CommentToDmManager() {
     publicReplyVariants: string[];
     dmMessageTemplate: string;
     ctaUrl: string;
+    couponCode?: string;
     isActive: boolean;
   }>({
     name: "",
@@ -94,6 +104,7 @@ export function CommentToDmManager() {
     ],
     dmMessageTemplate: "Olá {{nome}}! Aqui está o link oficial que você pediu nos comentários: {{ctaUrl}}",
     ctaUrl: "https://v5autoblog.com/artigo/agentes-autonomos?utm_source=ig_comment_dm&utm_medium=direct_message",
+    couponCode: "PROMO10",
     isActive: true
   });
 
@@ -110,6 +121,7 @@ export function CommentToDmManager() {
     publicReply?: string;
     publicReplyIndex?: number;
     dmMessage?: string;
+    couponUsed?: string;
   } | null>(null);
 
   // Regra atualmente selecionada para edição
@@ -132,6 +144,12 @@ export function CommentToDmManager() {
     return validateAntiSpamDiversity(selectedRule.publicReplyVariants);
   }, [selectedRule]);
 
+  // Validação de Conformidade do Template de Direct Message (DM)
+  const dmValidation = useMemo<DmTemplateValidation | null>(() => {
+    if (!selectedRule) return null;
+    return validateDmTemplate(selectedRule.dmMessageTemplate);
+  }, [selectedRule]);
+
   // Aplica pacote de 5 variações pré-construídas por nicho
   const handleApplyNichePack = (niche: ContentNiche) => {
     if (!selectedRule) return;
@@ -141,6 +159,26 @@ export function CommentToDmManager() {
       publicReplyVariants: [...pack.variants]
     });
     toast.success(`Pacote anti-spam "${pack.title}" aplicado com 5 variações!`);
+  };
+
+  // Aplica um dos templates de DM pré-configurados de alta conversão
+  const handleApplyDmPreset = (preset: DmPresetTemplate) => {
+    if (!selectedRule) return;
+    updateCommentRule(selectedRule.id, {
+      dmMessageTemplate: preset.template,
+      couponCode: preset.defaultCoupon || selectedRule.couponCode || "PROMO10"
+    });
+    toast.success(`Template de DM "${preset.name}" aplicado com sucesso!`);
+  };
+
+  // Injeção de Placeholder de DM com 1 clique
+  const handleInsertPlaceholder = (token: string) => {
+    if (!selectedRule) return;
+    const current = selectedRule.dmMessageTemplate;
+    updateCommentRule(selectedRule.id, {
+      dmMessageTemplate: `${current} ${token}`
+    });
+    toast.info(`Token ${token} inserido no template.`);
   };
 
   // Executa teste no simulador com o motor cognitivo ChatbotX & Rotação Anti-Spam
@@ -170,11 +208,14 @@ export function CommentToDmManager() {
         name: cleanUsername
       });
 
-      // Preenche os placeholders da DM
-      const formattedDm = selectedRule.dmMessageTemplate
-        .replace(/{{nome}}/gi, cleanUsername)
-        .replace(/{{ctaUrl}}/gi, selectedRule.ctaUrl)
-        .replace(/{{postTitle}}/gi, selectedRule.name);
+      // Compila a mensagem de DM com suporte a todos os placeholders dinâmicos
+      const formattedDm = compileDmMessage(selectedRule.dmMessageTemplate, {
+        name: cleanUsername,
+        username: simUsername,
+        ctaUrl: selectedRule.ctaUrl,
+        couponCode: selectedRule.couponCode,
+        postTitle: selectedRule.name
+      });
 
       setSimResult({
         matched: true,
@@ -185,7 +226,8 @@ export function CommentToDmManager() {
         normalizedComment: matchResult.normalizedComment,
         publicReply: formattedPublicReply,
         publicReplyIndex: selectedIndex,
-        dmMessage: formattedDm
+        dmMessage: formattedDm,
+        couponUsed: selectedRule.couponCode
       });
 
       // Grava no histórico de telemetria do Zustand
@@ -198,6 +240,7 @@ export function CommentToDmManager() {
         matchedKeyword: matchedKw,
         publicReplySent: formattedPublicReply,
         dmSent: formattedDm,
+        couponUsed: selectedRule.couponCode,
         status: "success"
       });
 
@@ -232,6 +275,7 @@ export function CommentToDmManager() {
       publicReplyVariants: newRuleForm.publicReplyVariants,
       dmMessageTemplate: newRuleForm.dmMessageTemplate,
       ctaUrl: newRuleForm.ctaUrl,
+      couponCode: newRuleForm.couponCode,
       isActive: newRuleForm.isActive
     });
 
@@ -289,6 +333,7 @@ export function CommentToDmManager() {
       publicReplyVariants: [...rule.publicReplyVariants],
       dmMessageTemplate: rule.dmMessageTemplate,
       ctaUrl: rule.ctaUrl,
+      couponCode: rule.couponCode,
       isActive: false
     });
     toast.success(`Regra duplicada com sucesso!`);
@@ -306,7 +351,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 063 (Respostas Rotativas Anti-Spam)
+              Etapa 064 (Construtor de Templates de DM)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -655,37 +700,114 @@ export function CommentToDmManager() {
                   </div>
                 </div>
 
-                {/* Template de Mensagem Direta (DM Privada) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-mono text-zinc-400">
-                      Template de Direct Message (DM Privada):
-                    </label>
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
-                      <span>Tags:</span>
-                      <code className="text-blue-400">&#123;&#123;nome&#125;&#125;</code>
-                      <code className="text-amber-400">&#123;&#123;ctaUrl&#125;&#125;</code>
+                {/* Construtor de Template de Direct Message (DM Privada) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] font-mono text-zinc-400">
+                        Template de Direct Message (DM Privada):
+                      </label>
+                      {dmValidation && (
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                          dmValidation.charCount > META_DM_MAX_CHARS
+                            ? "bg-rose-950/40 text-rose-300 border-rose-500/30"
+                            : dmValidation.hasCtaUrl
+                            ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/30"
+                            : "bg-amber-950/40 text-amber-300 border-amber-500/30"
+                        }`}>
+                          {dmValidation.charCount} / {META_DM_MAX_CHARS}c
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-mono">Instagram Direct</span>
+                  </div>
+
+                  {/* Chips Clicáveis de Placeholders Dinâmicos */}
+                  <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-zinc-950/60 border border-zinc-800">
+                    <span className="text-[10px] text-zinc-400 font-mono mr-1">Inserir:</span>
+                    {SUPPORTED_DM_PLACEHOLDERS.map((ph) => (
+                      <button
+                        key={ph.token}
+                        type="button"
+                        onClick={() => handleInsertPlaceholder(ph.token)}
+                        className="px-2 py-0.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-[10px] font-mono text-blue-300 hover:text-white transition flex items-center gap-1"
+                        title={ph.description}
+                      >
+                        <code>{ph.token}</code>
+                        <span className="text-[9px] text-zinc-500">({ph.label})</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Sugestões de Templates de DM em 1 Clique */}
+                  <div className="p-2.5 rounded-xl bg-zinc-950/40 border border-zinc-800/80 space-y-1">
+                    <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      Templates Prontos de Alta Conversão (1 Clique):
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {DM_PRESET_TEMPLATES.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleApplyDmPreset(preset)}
+                          className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] text-zinc-300 transition text-left truncate"
+                          title={preset.description}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Alertas do Validador de DM */}
+                  {dmValidation && dmValidation.warnings.length > 0 && (
+                    <div className="p-2 rounded-lg bg-amber-950/25 border border-amber-500/20 text-[10px] text-amber-300 space-y-0.5">
+                      {dmValidation.warnings.map((w, idx) => (
+                        <div key={idx} className="flex items-start gap-1.5">
+                          <AlertCircle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                          <span>{w}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Campo Textarea do Template */}
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={selectedRule.dmMessageTemplate}
                     onChange={(e) => updateCommentRule(selectedRule.id, { dmMessageTemplate: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 resize-none font-mono leading-relaxed"
+                    placeholder="Digite o template da mensagem direta..."
                   />
                 </div>
 
-                {/* URL de Destino Rastreada com UTM */}
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                    URL de Destino com UTM Rastreada:
-                  </label>
-                  <input
-                    type="url"
-                    value={selectedRule.ctaUrl}
-                    onChange={(e) => updateCommentRule(selectedRule.id, { ctaUrl: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-blue-500 font-mono"
-                  />
+                {/* Grid: URL de Destino e Cupom de Desconto */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                  <div className="md:col-span-8">
+                    <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                      URL de Destino com UTM (Placeholder &#123;&#123;ctaUrl&#125;&#125;):
+                    </label>
+                    <input
+                      type="url"
+                      value={selectedRule.ctaUrl}
+                      onChange={(e) => updateCommentRule(selectedRule.id, { ctaUrl: e.target.value })}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="md:col-span-4">
+                    <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                      Cupom (Placeholder &#123;&#123;cupom&#125;&#125;):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: PROMO10"
+                      value={selectedRule.couponCode || ""}
+                      onChange={(e) => updateCommentRule(selectedRule.id, { couponCode: e.target.value })}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-emerald-400 focus:outline-none focus:border-blue-500 font-mono uppercase"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -766,10 +888,17 @@ export function CommentToDmManager() {
                     </div>
 
                     <div className="p-2.5 rounded-lg bg-blue-950/40 border border-blue-500/30 text-xs space-y-1">
-                      <span className="text-[10px] font-mono uppercase text-blue-400 font-bold block">
-                        2. Direct Message (DM Privada):
-                      </span>
-                      <p className="text-zinc-200 text-[11px] leading-relaxed">{simResult.dmMessage}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono uppercase text-blue-400 font-bold block">
+                          2. Direct Message (DM Privada):
+                        </span>
+                        {simResult.couponUsed && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                            Cupom: {simResult.couponUsed}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-zinc-200 text-[11px] leading-relaxed whitespace-pre-line">{simResult.dmMessage}</p>
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono">
@@ -904,25 +1033,40 @@ export function CommentToDmManager() {
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                  URL de Destino (com UTM):
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={newRuleForm.ctaUrl}
-                  onChange={(e) => setNewRuleForm({ ...newRuleForm, ctaUrl: e.target.value })}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-amber-400 font-mono focus:outline-none"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                    URL de Destino (com UTM):
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={newRuleForm.ctaUrl}
+                    onChange={(e) => setNewRuleForm({ ...newRuleForm, ctaUrl: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-amber-400 font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                    Cupom de Desconto (opcional):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: PROMO10"
+                    value={newRuleForm.couponCode || ""}
+                    onChange={(e) => setNewRuleForm({ ...newRuleForm, couponCode: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-emerald-400 font-mono uppercase focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                  Template da DM Privada:
+                  Template da DM Privada (Tags: &#123;&#123;nome&#125;&#125;, &#123;&#123;ctaUrl&#125;&#125;, &#123;&#123;cupom&#125;&#125;):
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   required
                   value={newRuleForm.dmMessageTemplate}
                   onChange={(e) => setNewRuleForm({ ...newRuleForm, dmMessageTemplate: e.target.value })}

@@ -107,6 +107,7 @@ export interface CommentRule {
   publicReplyVariants: string[];
   dmMessageTemplate: string;
   ctaUrl: string;
+  couponCode?: string;
   isActive: boolean;
   totalTriggered: number;
   lastTriggeredAt?: string;
@@ -122,6 +123,7 @@ export interface CommentTriggerEvent {
   matchedKeyword: string;
   publicReplySent: string;
   dmSent: string;
+  couponUsed?: string;
   timestamp: string;
   status: 'success' | 'throttled' | 'failed';
 }
