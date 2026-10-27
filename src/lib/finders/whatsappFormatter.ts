@@ -20,6 +20,7 @@ export interface WhatsAppFormatOptions {
   includeDisclaimer?: boolean;
   useMonospaceCoupon?: boolean;
   customCallToAction?: string;
+  customAffiliateUrl?: string;
   footerTag?: string;
 }
 
@@ -125,8 +126,9 @@ export function compileWhatsAppMessage(
   }
 
   // 7. Link Isolado com Call to Action (Garante o preview de cartão no WhatsApp)
+  const targetUrl = options.customAffiliateUrl || deal.trackedWhatsAppUrl || deal.shortUrl || deal.affiliateUrl;
   lines.push(`\n🛒 *${customCallToAction}*`);
-  lines.push(`${deal.affiliateUrl.trim()}`);
+  lines.push(`${targetUrl.trim()}`);
 
   // 8. Alerta de Expiração de Estoque
   if (includeDisclaimer) {

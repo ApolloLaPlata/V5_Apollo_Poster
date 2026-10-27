@@ -18,6 +18,7 @@ export interface TelegramFormatOptions {
   includeStoreBadge?: boolean;
   includeDisclaimer?: boolean;
   customCallToAction?: string;
+  customAffiliateUrl?: string;
   footerTag?: string;
 }
 
@@ -113,7 +114,8 @@ export function compileTelegramHtmlMessage(
   }
 
   // 6. Link de Afiliado com Call to Action
-  lines.push(`\n🛒 <a href="${escapeTelegramHtml(deal.affiliateUrl)}"><b>👉 ${escapeTelegramHtml(customCallToAction)}</b></a>`);
+  const targetUrl = options.customAffiliateUrl || deal.trackedTelegramUrl || deal.shortUrl || deal.affiliateUrl;
+  lines.push(`\n🛒 <a href="${escapeTelegramHtml(targetUrl)}"><b>👉 ${escapeTelegramHtml(customCallToAction)}</b></a>`);
 
   // 7. Alerta de Expiração e Tag de Grupo VIP
   if (includeDisclaimer) {
@@ -177,7 +179,8 @@ export function compileTelegramMarkdownMessage(
   }
 
   // Link
-  lines.push(`\n🛒 [👉 ${escapeTelegramMarkdownV2(customCallToAction)}](${deal.affiliateUrl})`);
+  const targetUrl = options.customAffiliateUrl || deal.trackedTelegramUrl || deal.shortUrl || deal.affiliateUrl;
+  lines.push(`\n🛒 [👉 ${escapeTelegramMarkdownV2(customCallToAction)}](${targetUrl})`);
 
   if (includeDisclaimer) {
     lines.push(`\n⚠️ _Preço e estoque sujeitos a alteração a qualquer momento\\._`);

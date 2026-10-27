@@ -35,7 +35,8 @@ import {
   X,
   Copy,
   Eye,
-  Users
+  Users,
+  Link2
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { GroupBroadcastDeal } from "@/types/poster";
@@ -70,6 +71,12 @@ import {
   groupChannelsByPlatform, 
   validateChannelSelection 
 } from "@/lib/finders/channelManager";
+import {
+  generateDualPlatformLinks,
+  shortenAffiliateLink,
+  DEFAULT_SHORTENER_DOMAIN,
+  PlatformShortLink
+} from "@/lib/finders/affiliateLinkShortener";
 import { toast } from "@/lib/toast/useToast";
 
 export function OfferGroupDispatcher() {
@@ -124,6 +131,18 @@ export function OfferGroupDispatcher() {
   const selectedReachStats = useMemo(() => {
     return calculateAudienceReach(newDealForm.targetChannelIds);
   }, [newDealForm.targetChannelIds]);
+
+  // Geração e preview de link encurtado com UTMs em tempo real (Etapa 076)
+  const previewShortLinks = useMemo(() => {
+    if (!newDealForm.affiliateUrl || !newDealForm.affiliateUrl.trim()) return null;
+    return generateDualPlatformLinks({
+      productName: newDealForm.productName || "Achadinho VIP",
+      store: newDealForm.store,
+      rawUrl: newDealForm.affiliateUrl.trim(),
+      couponCode: newDealForm.couponCode || undefined,
+      discountPercentage: fullSavings.discountPercentage
+    });
+  }, [newDealForm.affiliateUrl, newDealForm.productName, newDealForm.store, newDealForm.couponCode, fullSavings.discountPercentage]);
 
   // Canais agrupados por plataforma (Telegram vs WhatsApp)
   const groupedChannels = useMemo(() => {
@@ -256,6 +275,15 @@ export function OfferGroupDispatcher() {
       return;
     }
 
+    // Gera os links encurtados com injeção de parâmetros UTM dedicados (Etapa 076)
+    const generatedLinks = generateDualPlatformLinks({
+      productName: newDealForm.productName.trim(),
+      store: newDealForm.store,
+      rawUrl: newDealForm.affiliateUrl.trim(),
+      couponCode: newDealForm.couponCode.trim().toUpperCase() || undefined,
+      discountPercentage: savings.discountPercentage
+    });
+
     addDeal({
       productName: newDealForm.productName.trim(),
       store: newDealForm.store,
@@ -265,6 +293,10 @@ export function OfferGroupDispatcher() {
       savingsAmount: savings.savingsAmount,
       couponCode: newDealForm.couponCode.trim().toUpperCase() || undefined,
       affiliateUrl: newDealForm.affiliateUrl.trim(),
+      shortUrl: generatedLinks.generic.shortUrl,
+      shortCode: generatedLinks.generic.shortCode,
+      trackedTelegramUrl: generatedLinks.telegram.shortUrl,
+      trackedWhatsAppUrl: generatedLinks.whatsapp.shortUrl,
       targetChannels: newDealForm.targetChannels.length > 0 ? newDealForm.targetChannels : ["whatsapp", "telegram"],
       targetChannelIds: newDealForm.targetChannelIds,
       estimatedReach: selectedReachStats.totalMembers,
@@ -315,7 +347,7 @@ export function OfferGroupDispatcher() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Despachador de Ofertas & Grupos VIP</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Fase 8 • Etapa 075 (Seletor de Canais de Destino VIP)
+              Fase 8 • Etapa 076 (Encurtador de Link de Afiliado & Injeção de UTMs)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -495,6 +527,29 @@ export function OfferGroupDispatcher() {
                   </div>
                 </div>
 
+                {/* Link Encurtado com UTM V5 Poster (Etapa 076) */}
+                <div className="flex items-center justify-between text-[10px] font-mono bg-zinc-950/60 p-2 rounded-xl border border-zinc-800/80">
+                  <div className="flex items-center gap-1.5 text-zinc-400 truncate">
+                    <Link2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span className="text-zinc-500">Curto:</span>
+                    <span className="text-emerald-300 font-semibold truncate">
+                      {deal.shortUrl || `https://${DEFAULT_SHORTENER_DOMAIN}/d/${deal.shortCode || "link"}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const urlToCopy = deal.shortUrl || `https://${DEFAULT_SHORTENER_DOMAIN}/d/${deal.shortCode || "link"}`;
+                      navigator.clipboard?.writeText(urlToCopy);
+                      toast.success("Link encurtado com UTMs copiado!");
+                    }}
+                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition shrink-0 ml-1"
+                    title="Copiar Link Encurtado"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -609,6 +664,48 @@ export function OfferGroupDispatcher() {
                   className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-amber-400 focus:outline-none focus:border-emerald-500"
                 />
               </div>
+
+              {/* Preview do Link Encurtado & Injeção de UTMs V5 Poster (Etapa 076) */}
+              {previewShortLinks && (
+                <div className="p-3 rounded-xl bg-zinc-900/90 border border-emerald-500/30 space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5" />
+                      <span>Encurtador & Injetor de UTMs V5 Poster:</span>
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      Domínio: {DEFAULT_SHORTENER_DOMAIN}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-zinc-950 p-2 rounded-lg border border-zinc-800">
+                    <span className="text-emerald-300 font-mono text-[11px] truncate">
+                      {previewShortLinks.generic.shortUrl}
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono shrink-0 ml-1">
+                      Código: {previewShortLinks.generic.shortCode}
+                    </span>
+                  </div>
+
+                  {/* Badges de Parâmetros UTM Injetados */}
+                  <div className="flex flex-wrap gap-1.5 text-[9px] font-mono">
+                    <span className="px-1.5 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-500/30">
+                      TG: utm_source=telegram_vip
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                      WA: utm_source=whatsapp_vip
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      camp: {previewShortLinks.generic.utmParams.utm_campaign}
+                    </span>
+                    {previewShortLinks.generic.utmParams.utm_term && (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-500/30">
+                        term: {previewShortLinks.generic.utmParams.utm_term}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Seletor de Loja das 5 Oficiais */}
               <div>

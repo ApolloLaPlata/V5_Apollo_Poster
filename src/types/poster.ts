@@ -138,6 +138,10 @@ export interface GroupBroadcastDeal {
   savingsAmount?: number;
   couponCode?: string;
   affiliateUrl: string;
+  shortUrl?: string;
+  shortCode?: string;
+  trackedTelegramUrl?: string;
+  trackedWhatsAppUrl?: string;
   targetChannels: Array<'whatsapp' | 'telegram'>;
   targetChannelIds?: string[];
   estimatedReach?: number;
