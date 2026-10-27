@@ -129,10 +129,85 @@ export function getLogRemoteMessageId(log: DispatchLogEntry): string {
   }
 }
 
+export type StatusCategoryFilter =
+  | "all"
+  | "success"
+  | "all_errors"
+  | "client_errors_4xx"
+  | "server_errors_5xx"
+  | "rate_limit_429"
+  | "failed";
+
+export type HttpStatusClass = "2xx_success" | "4xx_client" | "5xx_server" | "429_rate_limit" | "unknown";
+
+/**
+ * Classifica um código HTTP em sua respectiva família operacional
+ */
+export function classifyHttpStatus(statusCode?: number, fallbackStatus?: string): HttpStatusClass {
+  const code = statusCode || (fallbackStatus === "success" ? 200 : 500);
+  if (code === 429) return "429_rate_limit";
+  if (code >= 200 && code < 300) return "2xx_success";
+  if (code >= 400 && code < 500) return "4xx_client";
+  if (code >= 500 && code < 600) return "5xx_server";
+  return "unknown";
+}
+
+export interface StatusCountsSummary {
+  total: number;
+  success2xx: number;
+  allErrors: number;
+  clientErrors4xx: number;
+  serverErrors5xx: number;
+  rateLimit429: number;
+  successRate: number;
+}
+
+/**
+ * Calcula a distribuição quantitativa por faixas de status HTTP para pills e indicadores
+ */
+export function getLogStatusCounts(logs: DispatchLogEntry[]): StatusCountsSummary {
+  let success2xx = 0;
+  let clientErrors4xx = 0;
+  let serverErrors5xx = 0;
+  let rateLimit429 = 0;
+
+  for (const log of logs) {
+    const classification = classifyHttpStatus(log.statusCode, log.status);
+    switch (classification) {
+      case "2xx_success":
+        success2xx++;
+        break;
+      case "429_rate_limit":
+        rateLimit429++;
+        break;
+      case "4xx_client":
+        clientErrors4xx++;
+        break;
+      case "5xx_server":
+        serverErrors5xx++;
+        break;
+    }
+  }
+
+  const allErrors = clientErrors4xx + serverErrors5xx + rateLimit429;
+  const total = logs.length;
+  const successRate = total > 0 ? Math.round((success2xx / total) * 100) : 100;
+
+  return {
+    total,
+    success2xx,
+    allErrors,
+    clientErrors4xx,
+    serverErrors5xx,
+    rateLimit429,
+    successRate
+  };
+}
+
 export interface FilterLogsOptions {
   searchQuery?: string;
   channelFilter?: string; // 'all' | SocialPlatform
-  statusFilter?: "all" | "success" | "failed";
+  statusFilter?: StatusCategoryFilter;
   sortOrder?: "desc" | "asc";
 }
 
@@ -159,9 +234,27 @@ export function filterAndSortLogs(
         return false;
       }
 
-      // Filtro por status
-      if (statusFilter !== "all" && log.status !== statusFilter) {
-        return false;
+      // Filtro granular por categoria de status HTTP
+      if (statusFilter && statusFilter !== "all") {
+        const classification = classifyHttpStatus(log.statusCode, log.status);
+        if (statusFilter === "success" && classification !== "2xx_success") {
+          return false;
+        }
+        if (statusFilter === "failed" && classification === "2xx_success") {
+          return false;
+        }
+        if (statusFilter === "all_errors" && classification === "2xx_success") {
+          return false;
+        }
+        if (statusFilter === "client_errors_4xx" && classification !== "4xx_client") {
+          return false;
+        }
+        if (statusFilter === "server_errors_5xx" && classification !== "5xx_server") {
+          return false;
+        }
+        if (statusFilter === "rate_limit_429" && classification !== "429_rate_limit") {
+          return false;
+        }
       }
 
       // Filtro de busca textual
