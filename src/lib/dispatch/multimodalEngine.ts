@@ -88,11 +88,38 @@ export function parseMarkdownTableToEmailHtml(tableLines: string[]): string {
 }
 
 /**
+ * Gera o bloco HTML invisível de Preheader com técnica anti-vazamento (Anti-Spill Padding Hack)
+ * Garante que clientes como Gmail, Apple Mail e Outlook exibam exatamente o texto de apoio
+ * sem vazar trechos do corpo do e-mail no snippet da caixa de entrada.
+ */
+export function generateInvisiblePreheader(previewText?: string, fallbackText?: string): string {
+  const rawText = previewText || fallbackText || "";
+  const cleanPreview = rawText
+    .replace(/<[^>]*>?/gm, "")
+    .replace(/[#*`_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Zero-width non-breaking space hack (Litmus / Email on Acid standard)
+  const paddingHack = "&zwnj;&nbsp;".repeat(45);
+
+  return `<!-- PREHEADER INVISÍVEL (Gmail, Apple Mail, Outlook) -->
+  <div style="display: none; font-size: 1px; color: #f3f4f6; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    ${cleanPreview}
+  </div>
+  <!-- PREHEADER ANTI-SPILL PADDING (Evita que o início do corpo vaze no snippet do inbox) -->
+  <div style="display: none; font-size: 1px; color: #f3f4f6; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    ${paddingHack}
+  </div>`;
+}
+
+/**
  * Compila Markdown simples para HTML inline seguro para clientes de e-mail (Gmail, Outlook, Apple Mail)
  */
 export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   const { title, contentMarkdown, emailOptions, slug } = payload;
   const utmSuffix = `utm_source=v5poster&utm_medium=email_newsletter&utm_campaign=${emailOptions.utmCampaign || slug}`;
+  const preheaderBlock = generateInvisiblePreheader(emailOptions.previewText, payload.summary);
 
   // Saneamento profundo e conversão segura para HTML inline
   const sanitizedMarkdown = sanitizeMarkdown(contentMarkdown);
@@ -184,10 +211,7 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   <title>${payload.emailOptions.subject || title}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <!-- Preheader invisivel para cliente de email -->
-  <div style="display: none; max-height: 0px; overflow: hidden;">
-    ${payload.emailOptions.previewText || ""}
-  </div>
+  ${preheaderBlock}
 
   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f4f6; padding: 32px 12px;">
     <tr>

@@ -1524,12 +1524,22 @@ export function BeehiivNewsletterEditor() {
                       <span className="text-zinc-500 font-semibold font-mono text-[11px]">Assunto: </span>
                       <strong className="text-white">{payload.emailOptions.subject || payload.title}</strong>
                     </div>
-                    {payload.emailOptions.previewText && (
-                      <div className="text-[11px] text-zinc-400 truncate font-mono">
-                        <span className="text-zinc-500 font-semibold">Preheader: </span>
-                        {payload.emailOptions.previewText}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] font-mono pt-1 border-t border-zinc-800/60">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-zinc-500 font-semibold">Preheader Invisível: </span>
+                        <span className="text-zinc-300 truncate">
+                          {payload.emailOptions.previewText || payload.summary || "Sem texto de apoio definido"}
+                        </span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-zinc-500">
+                          {(payload.emailOptions.previewText || payload.summary || "").length} carac.
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                          Anti-Spill Padding Ativo
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Responsive Email Frame */}
