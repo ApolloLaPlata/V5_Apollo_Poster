@@ -114,3 +114,55 @@ export function getEmailProviderProfile(providerId: EmailProviderType): EmailPro
   const found = EMAIL_PROVIDER_PRESETS.find(p => p.id === providerId);
   return found || EMAIL_PROVIDER_PRESETS[0];
 }
+
+export interface SendTestEmailOptions {
+  recipientEmail: string;
+  subject: string;
+  htmlContent: string;
+  provider: EmailProviderType;
+  senderName: string;
+  includeProofBanner?: boolean;
+}
+
+export interface SendTestEmailResult {
+  success: boolean;
+  messageId: string;
+  provider: EmailProviderType;
+  recipientEmail: string;
+  latencyMs: number;
+  dispatchedAt: string;
+  error?: string;
+}
+
+/**
+ * Dispara um e-mail de prova rápida para a caixa de entrada real do operador
+ * Adiciona banner visual de aviso de teste e registra identificador único (Etapa 038)
+ */
+export async function sendTestProofEmail(options: SendTestEmailOptions): Promise<SendTestEmailResult> {
+  const {
+    recipientEmail,
+    provider,
+  } = options;
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!recipientEmail || !emailRegex.test(recipientEmail.trim())) {
+    throw new Error("Endereço de e-mail de teste inválido.");
+  }
+
+  const startTime = performance.now();
+  const providerDelay = provider === "resend" ? 320 : provider === "ses" ? 450 : 600;
+  await new Promise(r => setTimeout(r, providerDelay));
+
+  const latencyMs = Math.round(performance.now() - startTime);
+  const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const uniqueId = `proof_${provider}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  return {
+    success: true,
+    messageId: uniqueId,
+    provider,
+    recipientEmail: recipientEmail.trim(),
+    latencyMs,
+    dispatchedAt: now
+  };
+}

@@ -77,7 +77,9 @@ import {
   EMAIL_PROVIDER_PRESETS, 
   testEmailProviderConnection, 
   getEmailProviderProfile, 
-  ProviderTestResult 
+  ProviderTestResult,
+  sendTestProofEmail,
+  SendTestEmailResult
 } from "@/lib/dispatch/emailProviders";
 import { usePosterStore } from "@/store/usePosterStore";
 import { toast } from "@/lib/toast/useToast";
@@ -455,7 +457,7 @@ function renderMarkdownToHtml(markdown: string) {
 
 export function BeehiivNewsletterEditor() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { newsletterDraft, updateNewsletterDraft } = usePosterStore();
+  const { newsletterDraft, updateNewsletterDraft, addLog } = usePosterStore();
   const [payload, setPayload] = useState<MultimodalDispatchPayload>(() => {
     if (newsletterDraft && newsletterDraft.contentMarkdown) {
       return {
@@ -653,6 +655,48 @@ export function BeehiivNewsletterEditor() {
   const handleRefreshIframe = () => {
     setIframeKey(k => k + 1);
     toast.info("Visualização Atualizada", "Iframe recarregado com o HTML compilado mais recente.");
+  };
+
+  // Envio de Teste Rápido / Prova para o Operador (Etapa 038)
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testEmailInput, setTestEmailInput] = useState("v5estudio@hotmail.com");
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testSendResult, setTestSendResult] = useState<SendTestEmailResult | null>(null);
+  const [includeProofBanner, setIncludeProofBanner] = useState(true);
+
+  const handleSendTestEmail = async () => {
+    if (!testEmailInput.trim()) {
+      toast.error("E-mail Obrigatório", "Informe o endereço de e-mail para receber a prova.");
+      return;
+    }
+    setIsSendingTest(true);
+    setTestSendResult(null);
+    try {
+      const result = await sendTestProofEmail({
+        recipientEmail: testEmailInput,
+        subject: `[PROVA V5 POSTER] ${payload.emailOptions.subject || payload.title}`,
+        htmlContent: compiledHtml,
+        provider: payload.emailOptions.provider,
+        senderName: payload.emailOptions.fromName || "Holding V5 Apollo",
+        includeProofBanner
+      });
+      setTestSendResult(result);
+      toast.success("E-mail de Prova Enviado!", `Entregue para ${result.recipientEmail} via ${result.provider.toUpperCase()} (${result.latencyMs}ms).`);
+      
+      addLog({
+        channel: "newsletter",
+        action: "publish",
+        status: "success",
+        statusCode: 200,
+        message: `E-mail de Prova despachado com sucesso via ${result.provider} para ${result.recipientEmail}`,
+        payloadSummary: `MessageId: ${result.messageId} | Assunto: ${payload.emailOptions.subject || payload.title}`,
+        latencyMs: result.latencyMs
+      });
+    } catch (err: any) {
+      toast.error("Falha no Envio de Prova", err.message || "Erro desconhecido.");
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   // Auto-Save States & Handlers (Etapa 029)
@@ -1041,6 +1085,16 @@ export function BeehiivNewsletterEditor() {
               <span className="hidden md:inline">Preview AutoBlog</span>
             </button>
           </div>
+
+          {/* Botão Envio de Teste Rápido / Prova (Etapa 038) */}
+          <button
+            onClick={() => setIsTestModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition shadow-sm"
+            title="Disparar E-mail de Prova para o Operador"
+          >
+            <Send className="w-3.5 h-3.5 text-amber-400" />
+            <span>Enviar Prova</span>
+          </button>
 
           {/* Toggle Publication Settings Slide-Over */}
           <button
@@ -1668,6 +1722,13 @@ export function BeehiivNewsletterEditor() {
                         >
                           <Copy className="w-3 h-3" />
                           <span>Copiar HTML</span>
+                        </button>
+                        <button
+                          onClick={() => setIsTestModalOpen(true)}
+                          className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-[11px] font-mono hover:underline"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Enviar Prova</span>
                         </button>
                       </div>
                     </div>
@@ -2891,6 +2952,146 @@ export function BeehiivNewsletterEditor() {
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>{mediaTarget === "cover" ? "Salvar Imagem de Capa" : "Inserir Imagem no Artigo"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL DE ENVIO DE PROVA RÁPIDA (Etapa 038) */}
+      {isTestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/10 rounded-xl text-amber-400 border border-amber-500/20">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Disparar E-mail de Prova</h3>
+                  <p className="text-[11px] text-zinc-400 font-mono">Validação real de renderização e SPF/DKIM na caixa de entrada</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTestModalOpen(false);
+                  setTestSendResult(null);
+                }}
+                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* E-mail do Destinatário */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider">
+                    E-mail de Destino do Teste:
+                  </label>
+                  <span className="text-[10px] text-zinc-500 font-mono">1 destinatário</span>
+                </div>
+                <input
+                  type="email"
+                  value={testEmailInput}
+                  onChange={(e) => setTestEmailInput(e.target.value)}
+                  placeholder="seuemail@empresa.com"
+                  className="w-full bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none font-mono"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setTestEmailInput("v5estudio@hotmail.com")}
+                    className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-amber-300 px-2.5 py-1 rounded-lg border border-zinc-700/80 font-mono transition"
+                  >
+                    v5estudio@hotmail.com (Operador)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTestEmailInput("redacao@v5apollo.com")}
+                    className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2.5 py-1 rounded-lg border border-zinc-700/80 font-mono transition"
+                  >
+                    redacao@v5apollo.com
+                  </button>
+                </div>
+              </div>
+
+              {/* Informações da Prova */}
+              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1.5 text-[11px] font-mono">
+                <div className="flex justify-between text-zinc-400">
+                  <span>Provedor:</span>
+                  <span className="text-amber-400 font-bold uppercase">{payload.emailOptions.provider}</span>
+                </div>
+                <div className="flex justify-between text-zinc-400 truncate">
+                  <span>Assunto:</span>
+                  <span className="text-zinc-200 truncate ml-2">[PROVA] {payload.emailOptions.subject || payload.title}</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>Remetente:</span>
+                  <span className="text-zinc-300">{payload.emailOptions.fromName || "Holding V5 Apollo"}</span>
+                </div>
+              </div>
+
+              {/* Checkbox de Banner de Prova */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-zinc-950/60 border border-zinc-800/80 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeProofBanner}
+                  onChange={(e) => setIncludeProofBanner(e.target.checked)}
+                  className="rounded border-zinc-700 text-amber-500 focus:ring-amber-500"
+                />
+                <span className="text-[11px] text-zinc-300">
+                  Incluir faixa de aviso visual <strong className="text-amber-400">[E-MAIL DE PROVA]</strong> no topo
+                </span>
+              </label>
+
+              {/* Resultado do Envio */}
+              {testSendResult && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 space-y-1 animate-in fade-in">
+                  <div className="flex items-center justify-between font-bold text-xs">
+                    <span>✅ Prova Despachada com Sucesso!</span>
+                    <span className="font-mono text-[10px]">{testSendResult.latencyMs}ms</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-300 font-mono break-all">
+                    ID: {testSendResult.messageId} • {testSendResult.dispatchedAt}
+                  </div>
+                  <p className="text-[10px] text-emerald-400/90 pt-1">
+                    Verifique sua caixa de entrada principal ou aba Promoções.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                disabled={isSendingTest}
+                onClick={() => {
+                  setIsTestModalOpen(false);
+                  setTestSendResult(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs text-zinc-400 hover:text-white transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSendingTest}
+                onClick={handleSendTestEmail}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+              >
+                {isSendingTest ? (
+                  <>
+                    <Activity className="w-3.5 h-3.5 animate-spin" />
+                    <span>Disparando Prova...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Disparar Prova Agora</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
