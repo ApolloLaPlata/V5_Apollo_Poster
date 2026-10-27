@@ -53,6 +53,12 @@ import {
   Server,
   Cloud,
   Activity,
+  Sun,
+  Moon,
+  Wifi,
+  Battery,
+  Archive,
+  Printer,
   X
 } from "lucide-react";
 import { MultimodalDispatchPayload, EmailProviderType } from "@/types/poster";
@@ -629,6 +635,24 @@ export function BeehiivNewsletterEditor() {
     } finally {
       setIsTestingProvider(false);
     }
+  };
+
+  // Visualizador Interativo Desktop 600px & Mobile 360px (Etapa 037)
+  const [emailCanvasTheme, setEmailCanvasTheme] = useState<"dark" | "light">("dark");
+  const [iframeKey, setIframeKey] = useState(0);
+
+  const handleOpenEmailInNewTab = () => {
+    if (typeof window !== "undefined") {
+      const blob = new Blob([compiledHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      toast.info("Nova Janela Aberta", "E-mail carregado em tela cheia para inspeção nativa.");
+    }
+  };
+
+  const handleRefreshIframe = () => {
+    setIframeKey(k => k + 1);
+    toast.info("Visualização Atualizada", "Iframe recarregado com o HTML compilado mais recente.");
   };
 
   // Auto-Save States & Handlers (Etapa 029)
@@ -1494,26 +1518,58 @@ export function BeehiivNewsletterEditor() {
                 </button>
               </div>
 
-              {/* Viewport Device Toggle */}
-              <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-[11px]">
-                <button
-                  onClick={() => setPreviewDevice("desktop")}
-                  className={`p-1 rounded transition ${
-                    previewDevice === "desktop" ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-white"
-                  }`}
-                  title="Visualização Desktop"
-                >
-                  <Monitor className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setPreviewDevice("mobile")}
-                  className={`p-1 rounded transition ${
-                    previewDevice === "mobile" ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-white"
-                  }`}
-                  title="Visualização Mobile (375px)"
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                </button>
+              {/* Controles do Visualizador Interativo Desktop 600px & Mobile 360px (Etapa 037) */}
+              <div className="flex items-center gap-1.5">
+                {/* Viewport Device Toggle Desktop (600px) vs Mobile (360px) */}
+                <div className="flex items-center gap-0.5 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-[11px]">
+                  <button
+                    onClick={() => setPreviewDevice("desktop")}
+                    className={`flex items-center gap-1 px-2 py-1 rounded transition text-[11px] font-mono ${
+                      previewDevice === "desktop" ? "bg-amber-500 text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                    }`}
+                    title="Simulação Desktop (Envelope de 600px Padrão)"
+                  >
+                    <Monitor className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Desktop (600px)</span>
+                  </button>
+                  <button
+                    onClick={() => setPreviewDevice("mobile")}
+                    className={`flex items-center gap-1 px-2 py-1 rounded transition text-[11px] font-mono ${
+                      previewDevice === "mobile" ? "bg-amber-500 text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                    }`}
+                    title="Simulação Smartphone Mobile (360px Viewport)"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Mobile (360px)</span>
+                  </button>
+                </div>
+
+                {/* Controles específicos de E-mail */}
+                {previewFormat === "email" && (
+                  <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
+                    <button
+                      onClick={() => setEmailCanvasTheme(t => t === "dark" ? "light" : "dark")}
+                      className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                      title={emailCanvasTheme === "dark" ? "Alternar para Fundo Claro" : "Alternar para Fundo Escuro"}
+                    >
+                      {emailCanvasTheme === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-blue-400" />}
+                    </button>
+                    <button
+                      onClick={handleRefreshIframe}
+                      className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                      title="Recarregar Preview (Refresh)"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={handleOpenEmailInNewTab}
+                      className="p-1 rounded text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 transition"
+                      title="Abrir em Nova Aba (Tela Cheia Nativa)"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1640,15 +1696,86 @@ export function BeehiivNewsletterEditor() {
                     </div>
                   </div>
 
-                  {/* Responsive Email Frame */}
-                  <div className="flex-1 flex justify-center bg-zinc-950 p-2 rounded-xl border border-zinc-800 overflow-hidden">
-                    <iframe
-                      srcDoc={compiledHtml}
-                      title="Email Preview"
-                      className={`h-full min-h-[520px] rounded-lg border border-zinc-700/60 bg-white shadow-xl transition-all ${
-                        previewDevice === "mobile" ? "w-[375px]" : "w-full max-w-[620px]"
-                      }`}
-                    />
+                  {/* Responsive Email Frame & Interactive Canvas (Etapa 037) */}
+                  <div className={`flex-1 flex justify-center p-4 rounded-xl border border-zinc-800 overflow-x-auto transition-colors ${
+                    emailCanvasTheme === "dark" ? "bg-zinc-950" : "bg-slate-200"
+                  }`}>
+                    {previewDevice === "desktop" ? (
+                      /* SIMULADOR DESKTOP (600px) */
+                      <div className="w-[600px] flex flex-col rounded-xl overflow-hidden shadow-2xl border border-zinc-700/80 bg-white">
+                        {/* Webmail Window Top Bar */}
+                        <div className="bg-zinc-900 px-4 py-2 flex items-center justify-between border-b border-zinc-800 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80 inline-block" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-green-500/80 inline-block" />
+                            <span className="ml-2 text-[10px] font-mono text-zinc-400">
+                              Webmail Desktop (Envelope de 600px)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-mono">
+                            <span className="flex items-center gap-1">
+                              <Archive className="w-3 h-3" />
+                              <span className="hidden sm:inline">Arquivar</span>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Printer className="w-3 h-3" />
+                              <span className="hidden sm:inline">Imprimir</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Iframe 600px Nativo */}
+                        <iframe
+                          key={`desktop-${iframeKey}`}
+                          srcDoc={compiledHtml}
+                          title="Email Preview Desktop 600px"
+                          className="w-[600px] h-full min-h-[580px] bg-white border-0"
+                        />
+                      </div>
+                    ) : (
+                      /* SIMULADOR SMARTPHONE MOBILE (360px) */
+                      <div className="w-[380px] rounded-[42px] border-[5px] border-zinc-700 bg-zinc-950 p-2.5 shadow-2xl flex flex-col items-center">
+                        {/* Dynamic Island */}
+                        <div className="w-28 h-4.5 bg-black rounded-full flex items-center justify-end px-2 my-1 shadow-inner">
+                          <div className="w-2 h-2 rounded-full bg-zinc-800" />
+                        </div>
+
+                        {/* Phone Status Bar */}
+                        <div className="w-full flex items-center justify-between px-4 py-1 text-[10px] text-zinc-300 font-mono">
+                          <span className="font-bold">09:41</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold">5G</span>
+                            <Wifi className="w-3 h-3" />
+                            <Battery className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+
+                        {/* Mobile Mail App Top Bar */}
+                        <div className="w-full bg-zinc-900/90 px-3 py-1.5 rounded-t-xl border-b border-zinc-800 flex items-center justify-between text-[11px] text-zinc-300">
+                          <div className="flex items-center gap-1 text-amber-400 font-mono text-[10px]">
+                            <span>&lt; Caixa de Entrada</span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 font-mono">
+                            360 × 740px
+                          </div>
+                        </div>
+
+                        {/* Iframe 360px Mobile */}
+                        <div className="w-[360px] overflow-hidden rounded-b-xl border-x border-b border-zinc-800 bg-white">
+                          <iframe
+                            key={`mobile-${iframeKey}`}
+                            srcDoc={compiledHtml}
+                            title="Email Preview Mobile 360px"
+                            className="w-[360px] h-full min-h-[560px] bg-white border-0"
+                          />
+                        </div>
+
+                        {/* Phone Home Indicator Bar */}
+                        <div className="w-32 h-1 bg-zinc-600 rounded-full mx-auto my-2" />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
