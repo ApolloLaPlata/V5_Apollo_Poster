@@ -18,6 +18,12 @@ import {
   QueueStats,
   SocialPlatform
 } from "@/types/poster";
+import {
+  transitionQueueItem,
+  TransitionOptions
+} from "./taskStateTransition";
+
+export * from "./taskStateTransition";
 
 export const PRIORITY_WEIGHTS: Record<QueueItemPriority, number> = {
   urgent: 4,
@@ -197,30 +203,21 @@ export function filterReadyToExecute(
 }
 
 /**
- * Atualiza o status de um item específico na fila de maneira imutável
+ * Atualiza o status de um item específico na fila de maneira imutável respeitando a FSM
  */
 export function updateItemStatus(
   queue: QueueItem[],
   id: string,
   newStatus: QueueItemStatus,
-  errorMessage?: string
+  errorMessage?: string,
+  options: TransitionOptions = {}
 ): QueueItem[] {
-  const now = new Date().toISOString();
-
   return queue.map((item) => {
     if (item.id !== id) return item;
-
-    const attempts = newStatus === "processing" ? item.attempts + 1 : item.attempts;
-    const completedAt = newStatus === "published" ? now : item.completedAt;
-
-    return {
-      ...item,
-      status: newStatus,
-      attempts,
-      updatedAt: now,
-      ...(errorMessage ? { errorMessage } : {}),
-      ...(completedAt ? { completedAt } : {})
-    };
+    return transitionQueueItem(item, newStatus, {
+      ...options,
+      errorMessage: errorMessage ?? options.errorMessage
+    });
   });
 }
 
