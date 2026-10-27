@@ -34,7 +34,7 @@ import { usePosterStore } from "@/store/usePosterStore";
 import { toast } from "@/lib/toast/useToast";
 import { ScheduledPost, SocialPlatform, PostStatus } from "@/types/poster";
 import { dispatchEventBus } from "@/lib/events/dispatchEvents";
-import { formatRelativeDate } from "@/lib/utils/formatters";
+import { formatRelativeDate, formatLocalDateTimeInput } from "@/lib/utils/formatters";
 import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { NewPostScheduleModal } from "@/components/poster/NewPostScheduleModal";
 
@@ -167,7 +167,7 @@ export function MasterCalendar() {
   const handleDuplicatePost = (post: ScheduledPost) => {
     const d = new Date(post.scheduledAt);
     d.setDate(d.getDate() + 1);
-    const newScheduledAt = d.toISOString().substring(0, 16);
+    const newScheduledAt = formatLocalDateTimeInput(d);
 
     addPost({
       title: `[Cópia] ${post.title}`,
@@ -186,7 +186,7 @@ export function MasterCalendar() {
   const handleRescheduleTomorrow = (post: ScheduledPost) => {
     const d = new Date(post.scheduledAt);
     d.setDate(d.getDate() + 1);
-    const newScheduledAt = d.toISOString().substring(0, 16);
+    const newScheduledAt = formatLocalDateTimeInput(d);
 
     reschedulePost(post.id, newScheduledAt);
     toast.info("Reagendado para Amanhã", `Disparo adiado para ${formatRelativeDate(newScheduledAt)}`, post.platforms[0]);
@@ -205,7 +205,7 @@ export function MasterCalendar() {
   const handleStartInlineReschedule = (post: ScheduledPost) => {
     setInlineReschedulePostId(post.id);
     const d = new Date(post.scheduledAt);
-    const formatted = d.toISOString().substring(0, 16);
+    const formatted = formatLocalDateTimeInput(d);
     setInlineDateValue(formatted);
   };
 
@@ -229,13 +229,13 @@ export function MasterCalendar() {
   const handleAddHoursInline = (hours: number) => {
     const current = inlineDateValue ? new Date(inlineDateValue) : new Date();
     current.setHours(current.getHours() + hours);
-    setInlineDateValue(current.toISOString().substring(0, 16));
+    setInlineDateValue(formatLocalDateTimeInput(current));
   };
 
   const handleSetPrimeTimeInline = (hour: number, minute: number = 0) => {
     const current = inlineDateValue ? new Date(inlineDateValue) : new Date();
     current.setHours(hour, minute, 0, 0);
-    setInlineDateValue(current.toISOString().substring(0, 16));
+    setInlineDateValue(formatLocalDateTimeInput(current));
   };
 
   const renderInlineRescheduleBox = (post: ScheduledPost) => {

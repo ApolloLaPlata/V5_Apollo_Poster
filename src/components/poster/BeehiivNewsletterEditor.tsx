@@ -3901,7 +3901,7 @@ export function BeehiivNewsletterEditor() {
                     {/* Resumo SEO com Extrator Automático (Etapa 046) */}
                     <div>
                       {(() => {
-                        const excerptQuality = evaluateExcerptQuality(payload.summary, payload.blogOptions.tags);
+                        const excerptQuality = evaluateExcerptQuality(payload.summary || "", payload.blogOptions?.tags || []);
                         return (
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between mb-1">

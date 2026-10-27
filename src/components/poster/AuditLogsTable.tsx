@@ -497,7 +497,7 @@ export function AuditLogsTable({ logs, onSelectLog }: AuditLogsTableProps) {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage <= 1}
+            disabled={currentPage <= 1 || paginated.totalCount === 0}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
@@ -505,12 +505,12 @@ export function AuditLogsTable({ logs, onSelectLog }: AuditLogsTableProps) {
           </button>
 
           <span className="px-2 py-1 text-zinc-300">
-            Página {currentPage} de {paginated.totalPages}
+            {paginated.totalCount === 0 ? "0 de 0" : `Página ${paginated.currentPage} de ${paginated.totalPages}`}
           </span>
 
           <button
             onClick={() => setCurrentPage((p) => Math.min(paginated.totalPages, p + 1))}
-            disabled={currentPage >= paginated.totalPages}
+            disabled={currentPage >= paginated.totalPages || paginated.totalCount === 0}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none transition"
           >
             <span>Próxima</span>

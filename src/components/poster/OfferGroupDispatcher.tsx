@@ -756,13 +756,13 @@ export function OfferGroupDispatcher() {
                 {/* Caixa de Preços & Economia */}
                 <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800/80 mb-3 space-y-1 font-mono">
                   <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                    <span className="line-through">De: R$ {deal.originalPrice.toFixed(2)}</span>
-                    <span className="text-emerald-400 font-semibold">Economize R$ {savings.toFixed(2)}</span>
+                    <span className="line-through">De: R$ {Number(deal.originalPrice || 0).toFixed(2)}</span>
+                    <span className="text-emerald-400 font-semibold">Economize R$ {Number(savings || 0).toFixed(2)}</span>
                   </div>
 
                   <div className="text-lg font-extrabold text-white flex items-baseline gap-1">
                     <span className="text-xs text-emerald-400">Por: R$</span>
-                    <span className="text-emerald-400">{deal.promoPrice.toFixed(2)}</span>
+                    <span className="text-emerald-400">{Number(deal.promoPrice || 0).toFixed(2)}</span>
                   </div>
 
                   {deal.couponCode && (
@@ -963,7 +963,7 @@ export function OfferGroupDispatcher() {
                 <DollarSign className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-xl font-bold text-amber-300 font-mono">
-                R$ {historyMetrics.totalSavingsGenerated.toFixed(2)}
+                R$ {Number(historyMetrics.totalSavingsGenerated || 0).toFixed(2)}
               </div>
               <p className="text-[10px] text-zinc-500 font-mono">Para seguidores VIP</p>
             </div>
@@ -1045,10 +1045,10 @@ export function OfferGroupDispatcher() {
 
                     <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-zinc-400 pt-0.5">
                       <span className="text-emerald-400 font-bold">
-                        Por R$ {entry.promoPrice.toFixed(2)} ({entry.discountPercentage}% OFF)
+                        Por R$ {Number(entry.promoPrice || 0).toFixed(2)} ({entry.discountPercentage || 0}% OFF)
                       </span>
                       <span className="text-zinc-500">
-                        Economia R$ {entry.savingsAmount.toFixed(2)}
+                        Economia R$ {Number(entry.savingsAmount || 0).toFixed(2)}
                       </span>
                       {entry.couponCode && (
                         <span className="text-amber-400 font-bold">

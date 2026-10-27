@@ -705,7 +705,9 @@ export function CommentToDmManager() {
                       type="button"
                       onClick={() => {
                         if (confirm(`Tem certeza que deseja excluir a regra "${selectedRule.name}"?`)) {
+                          const remaining = commentRules.filter((r) => r.id !== selectedRule.id);
                           deleteCommentRule(selectedRule.id);
+                          setSelectedRuleId(remaining[0]?.id || "");
                           toast.success("Regra removida.");
                         }
                       }}

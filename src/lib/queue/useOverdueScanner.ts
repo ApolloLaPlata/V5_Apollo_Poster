@@ -29,9 +29,14 @@ export function useOverdueScanner(options: UseOverdueScannerOptions = {}) {
   const posts = usePosterStore((s) => s.posts);
 
   const scannerRef = useRef<OverdueScanner | null>(null);
+  const onOverdueDetectedRef = useRef(onOverdueDetected);
   const [scannerState, setScannerState] = useState<ScannerState | null>(null);
   const [lastTickResult, setLastTickResult] = useState<TickResult | null>(null);
   const [countdownString, setCountdownString] = useState<string>("60s");
+
+  useEffect(() => {
+    onOverdueDetectedRef.current = onOverdueDetected;
+  }, [onOverdueDetected]);
 
   // Instancia e configura o scanner
   useEffect(() => {
@@ -49,9 +54,7 @@ export function useOverdueScanner(options: UseOverdueScannerOptions = {}) {
     });
 
     const unsubOverdue = scanner.onOverdueDetected((qItems, pItems, res) => {
-      if (onOverdueDetected) {
-        onOverdueDetected(qItems, pItems, res);
-      }
+      onOverdueDetectedRef.current?.(qItems, pItems, res);
     });
 
     if (enabled) {
@@ -73,7 +76,7 @@ export function useOverdueScanner(options: UseOverdueScannerOptions = {}) {
       unsubOverdue();
       scanner.stop();
     };
-  }, [enabled, intervalMs, onOverdueDetected]);
+  }, [enabled, intervalMs]);
 
   // Mantém data sources sincronizadas com as referências do store
   useEffect(() => {

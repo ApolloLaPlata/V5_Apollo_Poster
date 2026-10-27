@@ -13,7 +13,7 @@
 import { QueueItem, QueueItemStatus } from "@/types/poster";
 import { usePosterStore } from "@/store/usePosterStore";
 import { getSafeStorage, isBrowserEnvironment } from "./safeStorage";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export { getSafeStorage, isBrowserEnvironment };
 export const isBrowser = isBrowserEnvironment;
@@ -246,9 +246,14 @@ export function useCrossTabQueueSync(options: {
   onSyncReceived?: (payload: CrossTabSyncPayload) => void;
 } = {}) {
   const { enabled = true, onSyncReceived } = options;
+  const onSyncReceivedRef = useRef(onSyncReceived);
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
   const [syncCount, setSyncCount] = useState<number>(0);
   const [isSyncActive, setIsSyncActive] = useState<boolean>(true);
+
+  useEffect(() => {
+    onSyncReceivedRef.current = onSyncReceived;
+  }, [onSyncReceived]);
 
   useEffect(() => {
     if (!enabled || !isBrowser()) return;
@@ -299,15 +304,13 @@ export function useCrossTabQueueSync(options: {
           break;
       }
 
-      if (onSyncReceived) {
-        onSyncReceived(payload);
-      }
+      onSyncReceivedRef.current?.(payload);
     });
 
     return () => {
       cleanup();
     };
-  }, [enabled, onSyncReceived]);
+  }, [enabled]);
 
   return {
     isSyncActive,

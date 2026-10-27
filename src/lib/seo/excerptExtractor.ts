@@ -107,7 +107,8 @@ export function cleanMarkdownForExcerpt(markdown: string): string {
  * Avalia a qualidade do excerpt gerado segundo os critérios rigorosos da SERP do Google
  */
 export function evaluateExcerptQuality(excerpt: string, focusKeywords: string[] = []): ExcerptQualityScore {
-  const len = excerpt.trim().length;
+  const safeExcerpt = (excerpt || "").trim();
+  const len = safeExcerpt.length;
   // Estimativa de pixels médios por caractere (fonte Arial 13px do Google SERP ~5.8px por caractere)
   const pixelWidthEstimated = Math.round(len * 5.85);
 
@@ -134,7 +135,7 @@ export function evaluateExcerptQuality(excerpt: string, focusKeywords: string[] 
   }
 
   // Verifica se contém verbo ou gancho de ação
-  const lowerExcerpt = excerpt.toLowerCase();
+  const lowerExcerpt = safeExcerpt.toLowerCase();
   const containsActionHook = ACTION_VERBS.some(verb => lowerExcerpt.includes(verb));
   if (containsActionHook && score < 100) {
     score = Math.min(100, score + 8);
@@ -142,8 +143,9 @@ export function evaluateExcerptQuality(excerpt: string, focusKeywords: string[] 
 
   // Detecta palavras-chave do artigo presentes no excerpt
   const detectedKeywords: string[] = [];
-  for (const kw of focusKeywords) {
-    if (kw.trim() && lowerExcerpt.includes(kw.toLowerCase().trim())) {
+  const safeKeywords = Array.isArray(focusKeywords) ? focusKeywords : [];
+  for (const kw of safeKeywords) {
+    if (kw && kw.trim() && lowerExcerpt.includes(kw.toLowerCase().trim())) {
       detectedKeywords.push(kw.trim());
     }
   }
