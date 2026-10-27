@@ -49,17 +49,6 @@ import {
   SAMPLE_FINDERS_DEALS 
 } from "@/lib/finders/storeConnector";
 import { 
-  compileTelegramHtmlMessage, 
-  compileTelegramMarkdownMessage, 
-  validateTelegramMessageLength,
-  TELEGRAM_MAX_CAPTION_CHARS 
-} from "@/lib/finders/telegramFormatter";
-import { 
-  compileWhatsAppMessage, 
-  validateWhatsAppMessageLength, 
-  WHATSAPP_MAX_CAPTION_CHARS 
-} from "@/lib/finders/whatsappFormatter";
-import { 
   calculateFullSavings, 
   getDealUrgency, 
   FullSavingsResult 
@@ -77,6 +66,7 @@ import {
   DEFAULT_SHORTENER_DOMAIN,
   PlatformShortLink
 } from "@/lib/finders/affiliateLinkShortener";
+import { MessagePreviewSimulator } from "@/components/poster/MessagePreviewSimulator";
 import { toast } from "@/lib/toast/useToast";
 
 export function OfferGroupDispatcher() {
@@ -88,7 +78,6 @@ export function OfferGroupDispatcher() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [previewDeal, setPreviewDeal] = useState<GroupBroadcastDeal | null>(null);
   const [previewChannel, setPreviewChannel] = useState<"whatsapp" | "telegram">("whatsapp");
-  const [telegramFormatMode, setTelegramFormatMode] = useState<"html" | "markdown">("html");
 
   // Estado do Formulário de Criação de Oferta
   const [newDealForm, setNewDealForm] = useState<{
@@ -188,20 +177,6 @@ export function OfferGroupDispatcher() {
       targetChannels: [platform]
     }));
   };
-
-  // Mensagem compilada para o Telegram do deal selecionado
-  const compiledTelegramText = useMemo(() => {
-    if (!previewDeal) return "";
-    return telegramFormatMode === "html"
-      ? compileTelegramHtmlMessage(previewDeal)
-      : compileTelegramMarkdownMessage(previewDeal);
-  }, [previewDeal, telegramFormatMode]);
-
-  // Mensagem compilada para o WhatsApp do deal selecionado
-  const compiledWhatsAppText = useMemo(() => {
-    if (!previewDeal) return "";
-    return compileWhatsAppMessage(previewDeal);
-  }, [previewDeal]);
 
   // Filtra ofertas pela loja selecionada
   const filteredDeals = useMemo(() => {
@@ -347,7 +322,7 @@ export function OfferGroupDispatcher() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Despachador de Ofertas & Grupos VIP</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Fase 8 • Etapa 076 (Encurtador de Link de Afiliado & Injeção de UTMs)
+              Fase 8 • Etapa 077 (Simulador de Preview de Mensagens • Balão WhatsApp & Telegram)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -976,17 +951,14 @@ export function OfferGroupDispatcher() {
         </div>
       )}
 
-      {/* 5. MODAL DE PREVIEW E CÓPIA DE FORMATAÇÃO VIP (WHATSAPP & TELEGRAM) */}
+      {/* 5. MODAL DE PREVIEW E SIMULAÇÃO DE MENSAGENS VIP (ETAPA 077) */}
       {previewDeal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            {/* Header com Seletor de Canal */}
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl p-5 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200 my-auto">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-white flex items-center gap-1.5">
-                  <Flame className="w-5 h-5 text-emerald-400" />
-                  <span>Preview VIP:</span>
-                </span>
+                <Flame className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">Simulador de Preview Fidedigno VIP</h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-700">
                   {previewDeal.store}
                 </span>
@@ -994,111 +966,18 @@ export function OfferGroupDispatcher() {
               <button
                 type="button"
                 onClick={() => setPreviewDeal(null)}
-                className="text-zinc-400 hover:text-white transition"
+                className="text-zinc-400 hover:text-white transition p-1 rounded-lg hover:bg-zinc-800"
+                title="Fechar Preview"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Abas de Canais: WhatsApp vs Telegram */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs font-mono">
-                <button
-                  type="button"
-                  onClick={() => setPreviewChannel("whatsapp")}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition ${
-                    previewChannel === "whatsapp" 
-                      ? "bg-emerald-600 text-white font-bold shadow-md shadow-emerald-950/40" 
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp VIP</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPreviewChannel("telegram")}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition ${
-                    previewChannel === "telegram" 
-                      ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-950/40" 
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Telegram VIP</span>
-                </button>
-              </div>
-
-              {/* Sub-seletor no caso de Telegram (HTML vs Markdown) ou Contagem no WhatsApp */}
-              {previewChannel === "telegram" ? (
-                <div className="flex items-center bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-[10px] font-mono">
-                  <button
-                    type="button"
-                    onClick={() => setTelegramFormatMode("html")}
-                    className={`px-2 py-0.5 rounded ${telegramFormatMode === "html" ? "bg-zinc-800 text-white font-bold" : "text-zinc-400"}`}
-                  >
-                    HTML
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTelegramFormatMode("markdown")}
-                    className={`px-2 py-0.5 rounded ${telegramFormatMode === "markdown" ? "bg-zinc-800 text-white font-bold" : "text-zinc-400"}`}
-                  >
-                    MD
-                  </button>
-                </div>
-              ) : (
-                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  <span>Formatação Nativa WhatsApp</span>
-                </span>
-              )}
-            </div>
-
-            {/* Balão Visual do Canal Selecionado */}
-            {previewChannel === "whatsapp" ? (
-              <div className="p-4 rounded-xl bg-[#0b141a] border border-emerald-500/30 shadow-inner space-y-2">
-                <div className="p-3.5 rounded-2xl bg-[#005c4b]/30 border border-emerald-500/30 text-emerald-50 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
-                  {compiledWhatsAppText}
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1">
-                  <span>Padrão ~tachado~ e ```cupom``` ativo</span>
-                  <span className={compiledWhatsAppText.length <= WHATSAPP_MAX_CAPTION_CHARS ? "text-emerald-400" : "text-rose-400"}>
-                    {compiledWhatsAppText.length} / {WHATSAPP_MAX_CAPTION_CHARS}c
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl bg-gradient-to-b from-[#182533] to-[#0f1721] border border-blue-500/30 text-zinc-100 text-xs font-mono whitespace-pre-wrap leading-relaxed shadow-inner max-h-[300px] overflow-y-auto">
-                {compiledTelegramText}
-              </div>
-            )}
-
-            {/* Botões de Ação */}
-            <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
-              <span className="text-[10px] text-zinc-500 font-mono">
-                {previewChannel === "whatsapp" ? "Link isolado para Rich Card Preview" : "Tag <s> e <code> ativas"}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const textToCopy = previewChannel === "whatsapp" ? compiledWhatsAppText : compiledTelegramText;
-                    navigator.clipboard.writeText(textToCopy);
-                    toast.success(`Mensagem ${previewChannel === "whatsapp" ? "WhatsApp" : "Telegram"} copiada com sucesso!`);
-                  }}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-bold text-xs transition shadow-md ${
-                    previewChannel === "whatsapp"
-                      ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/50"
-                      : "bg-blue-600 hover:bg-blue-500 shadow-blue-950/50"
-                  }`}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copiar Mensagem ({previewChannel.toUpperCase()})</span>
-                </button>
-              </div>
-            </div>
+            <MessagePreviewSimulator
+              deal={previewDeal}
+              initialPlatform={previewChannel}
+              onClose={() => setPreviewDeal(null)}
+            />
           </div>
         </div>
       )}
