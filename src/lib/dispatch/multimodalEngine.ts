@@ -781,8 +781,8 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
   const featuredImageAlt = payload.coverImageAlt || payload.title;
 
   // Taxonomia Editorial Inteligente (Etapa 047)
-  let finalCategory = payload.blogOptions.category;
-  let finalTags = payload.blogOptions.tags || [];
+  let finalCategory = payload.blogOptions?.category;
+  let finalTags = payload.blogOptions?.tags || [];
   if (!finalCategory || finalTags.length === 0) {
     const taxonomy = analyzeContentTaxonomy(cleanMarkdown, payload.title);
     if (!finalCategory) {
@@ -802,7 +802,7 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
     canonicalUrl,
     coverImageUrl: featuredImageUrl,
     coverImageAlt: featuredImageAlt,
-    authorName: payload.blogOptions.author || "Apollo La Plata",
+    authorName: payload.blogOptions?.author || "Apollo La Plata",
     authorRole: "Editor Chefe & Arquiteto de Sistemas",
     category: finalCategory,
     tags: finalTags,
