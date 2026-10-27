@@ -204,6 +204,8 @@ export interface OpenGraphMetadata {
   og_type: 'article';
   og_image: string;
   og_image_alt: string;
+  og_image_width?: number;
+  og_image_height?: number;
   og_site_name: string;
   og_locale: string;
   article_published_time: string;
@@ -218,6 +220,7 @@ export interface TwitterCardMetadata {
   title: string;
   description: string;
   image: string;
+  image_alt?: string;
   creator: string;
   site: string;
 }

@@ -11,6 +11,11 @@ import {
 } from "@/types/poster";
 import { sanitizeMarkdown } from "@/lib/utils/markdownSanitizer";
 import { generateBlogPostingSchema } from "./schemaGenerator";
+import { 
+  generateOpenGraphMetadata, 
+  generateTwitterCardMetadata, 
+  renderOpenGraphHtmlMetaTags 
+} from "./openGraphGenerator";
 
 export function slugify(text: string): string {
   return text
@@ -792,32 +797,31 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
     articleType: "BlogPosting"
   });
 
-  // Open Graph Metadata
-  const openGraph: OpenGraphMetadata = {
-    og_title: `${payload.title} | V5 AutoBlog`,
-    og_description: excerpt,
-    og_url: canonicalUrl,
-    og_type: "article",
-    og_image: featuredImageUrl,
-    og_image_alt: featuredImageAlt,
-    og_site_name: "V5 AutoBlog",
-    og_locale: "pt_BR",
-    article_published_time: nowIso,
-    article_modified_time: nowIso,
-    article_author: payload.blogOptions.author || "Apollo La Plata",
-    article_section: payload.blogOptions.category || "Tecnologia",
-    article_tag: payload.blogOptions.tags
-  };
-
-  // Twitter Card Metadata
-  const twitterCard: TwitterCardMetadata = {
-    card: "summary_large_image",
+  // Open Graph Metadata (Etapa 043)
+  const openGraph = generateOpenGraphMetadata({
     title: payload.title,
     description: excerpt,
-    image: featuredImageUrl,
-    creator: "@v5apollo",
-    site: "@v5apollo"
-  };
+    canonicalUrl,
+    imageUrl: featuredImageUrl,
+    imageAlt: featuredImageAlt,
+    authorName: payload.blogOptions.author || "Apollo La Plata",
+    category: payload.blogOptions.category || "Tecnologia",
+    tags: payload.blogOptions.tags,
+    publishedAt: nowIso,
+    modifiedAt: nowIso,
+    siteName: "V5 AutoBlog"
+  });
+
+  // Twitter Card Metadata (Etapa 043)
+  const twitterCard = generateTwitterCardMetadata({
+    title: payload.title,
+    description: excerpt,
+    imageUrl: featuredImageUrl,
+    imageAlt: featuredImageAlt,
+    siteHandle: "@v5apollo",
+    creatorHandle: "@v5apollo",
+    cardType: "summary_large_image"
+  });
 
   // AI Search & AEO Readiness (Perplexity, ChatGPT, Gemini Citations)
   const keyTakeaways = extractKeyTakeaways(cleanMarkdown, payload.title);

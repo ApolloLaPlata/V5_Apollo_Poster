@@ -97,6 +97,10 @@ import {
   renderSchemaJsonLdScript, 
   validateSchemaCompleteness 
 } from "@/lib/dispatch/schemaGenerator";
+import { 
+  renderOpenGraphHtmlMetaTags, 
+  validateOpenGraphCompleteness 
+} from "@/lib/dispatch/openGraphGenerator";
 
 export const IMAGE_PRESETS = [
   {
@@ -2194,6 +2198,89 @@ export function BeehiivNewsletterEditor() {
                               <Layers className="w-3 h-3" />
                               <span>Copiar Breadcrumbs</span>
                             </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Open Graph Special Actions Bar & Social Preview (Etapa 043) */}
+                      {blogJsonTab === "og" && (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-zinc-900 border border-amber-500/30 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                              <span className="font-mono text-zinc-300 text-[11px]">
+                                Card Social: <strong className="text-cyan-400">1200×630px</strong> • WhatsApp, Twitter/X, LinkedIn & Meta
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const htmlTags = renderOpenGraphHtmlMetaTags(
+                                  compiledBlogJson.seo.open_graph, 
+                                  compiledBlogJson.seo.twitter_card
+                                );
+                                handleCopy(htmlTags, "Tags HTML Open Graph & Twitter");
+                              }}
+                              className="px-2.5 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono flex items-center gap-1 transition"
+                            >
+                              <Copy className="w-3 h-3" />
+                              <span>Copiar Meta Tags HTML</span>
+                            </button>
+                          </div>
+
+                          {/* Mini Card Preview Social */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Facebook / LinkedIn / WhatsApp Card */}
+                            <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 overflow-hidden shadow-lg">
+                              <div className="bg-zinc-850 px-3 py-1.5 border-b border-zinc-800 text-[10px] font-mono text-zinc-400 flex items-center justify-between">
+                                <span>Preview Facebook / WhatsApp / LinkedIn</span>
+                                <span className="text-cyan-400 font-bold">1.91:1 Ratio</span>
+                              </div>
+                              <div className="relative aspect-[1.91/1] bg-zinc-950 overflow-hidden">
+                                <img
+                                  src={compiledBlogJson.seo.open_graph.og_image}
+                                  alt={compiledBlogJson.seo.open_graph.og_image_alt}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="p-3 space-y-1">
+                                <span className="text-[10px] font-mono text-zinc-500 uppercase block">
+                                  {compiledBlogJson.seo.open_graph.og_site_name}
+                                </span>
+                                <div className="text-xs font-bold text-white line-clamp-1">
+                                  {compiledBlogJson.seo.open_graph.og_title}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 line-clamp-2">
+                                  {compiledBlogJson.seo.open_graph.og_description}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Twitter / X Large Image Card */}
+                            <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 overflow-hidden shadow-lg">
+                              <div className="bg-zinc-850 px-3 py-1.5 border-b border-zinc-800 text-[10px] font-mono text-zinc-400 flex items-center justify-between">
+                                <span>Preview Twitter / X (Large Card)</span>
+                                <span className="text-amber-400 font-bold">summary_large_image</span>
+                              </div>
+                              <div className="relative aspect-[1.91/1] bg-zinc-950 overflow-hidden">
+                                <img
+                                  src={compiledBlogJson.seo.twitter_card.image}
+                                  alt={compiledBlogJson.seo.twitter_card.title}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute bottom-2 left-2 bg-black/80 px-2 py-0.5 rounded text-[10px] font-mono text-white">
+                                  {compiledBlogJson.seo.twitter_card.site}
+                                </div>
+                              </div>
+                              <div className="p-3 space-y-1">
+                                <div className="text-xs font-bold text-white line-clamp-1">
+                                  {compiledBlogJson.seo.twitter_card.title}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 line-clamp-2">
+                                  {compiledBlogJson.seo.twitter_card.description}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
