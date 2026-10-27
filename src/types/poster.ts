@@ -436,6 +436,33 @@ export type QueueItemStatus = 'scheduled' | 'queued' | 'processing' | 'published
 
 export type QueueItemType = 'post' | 'deal' | 'comment_dm' | 'webhook';
 
+// ==========================================
+// FASE 9: DIAGNÓSTICO AMIGÁVEL DE ERROS (088)
+// ==========================================
+export type ErrorDiagnosticCategory =
+  | 'AUTH_TOKEN_EXPIRED'
+  | 'TIMEOUT_NETWORK'
+  | 'PAYLOAD_INVALID'
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'SERVER_OUTAGE_5XX'
+  | 'PERMISSION_DENIED'
+  | 'MEDIA_NOT_ACCESSIBLE'
+  | 'UNKNOWN_ERROR';
+
+export interface DispatchDiagnostic {
+  category: ErrorDiagnosticCategory;
+  platform: SocialPlatform;
+  statusCode: number;
+  rawErrorMessage: string;
+  userFriendlyTitle: string;
+  userFriendlyDescription: string;
+  suggestedAction: string;
+  isRecoverable: boolean;
+  suggestedRetryDelaySeconds?: number;
+  iconType: 'key' | 'clock' | 'file-text' | 'shield' | 'server' | 'image' | 'alert';
+  timestamp: string;
+}
+
 export interface QueueItem {
   id: string;
   entityId: string;
@@ -450,6 +477,7 @@ export interface QueueItem {
   lastAttemptAt?: string;
   nextAttemptAt?: string;
   errorMessage?: string;
+  diagnostic?: DispatchDiagnostic;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;

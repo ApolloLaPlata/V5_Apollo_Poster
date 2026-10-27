@@ -13,6 +13,7 @@
 import { QueueItem, SocialPlatform } from "@/types/poster";
 import { transitionQueueItem } from "./taskStateTransition";
 import { applyRetryToQueueItem, RetryDecision } from "./retryManager";
+import { diagnoseDispatchError, formatDiagnosticSummary } from "./dispatchDiagnostics";
 
 export const DEFAULT_BATCH_CONCURRENCY = 3;
 
@@ -209,19 +210,35 @@ export async function executeSingleTaskDispatch(
     return { result, updatedItem: publishedItem };
   }
 
-  // Ocorreu falha: aciona o motor de retry automático
+  // Ocorreu falha: aciona o motor de retry automático e gera diagnóstico amigável
   const { item: retriedOrFailedItem, decision } = applyRetryToQueueItem(
     processingItem,
     firstFailedErrorMessage || "Erro na entrega da plataforma",
     firstFailedStatusCode || 500
   );
 
+  const failedPlatform = (Object.keys(platformResponses).find(
+    (p) => !platformResponses[p].success
+  ) as SocialPlatform) || platformsToDispatch[0] || "autoblog";
+
+  const diagnostic = diagnoseDispatchError(
+    failedPlatform,
+    firstFailedStatusCode || 500,
+    firstFailedErrorMessage || "Erro na entrega da plataforma"
+  );
+
+  const enrichedItem: QueueItem = {
+    ...retriedOrFailedItem,
+    errorMessage: formatDiagnosticSummary(diagnostic),
+    diagnostic
+  };
+
   const result: TaskDispatchResult = {
     itemId: item.id,
     entityId: item.entityId,
     title: item.title,
-    finalStatus: retriedOrFailedItem.status as "queued" | "failed",
-    attempts: retriedOrFailedItem.attempts,
+    finalStatus: enrichedItem.status as "queued" | "failed",
+    attempts: enrichedItem.attempts,
     totalDurationMs,
     platforms: platformsToDispatch,
     platformResponses,
@@ -229,7 +246,7 @@ export async function executeSingleTaskDispatch(
     retryDecision: decision
   };
 
-  return { result, updatedItem: retriedOrFailedItem };
+  return { result, updatedItem: enrichedItem };
 }
 
 /**

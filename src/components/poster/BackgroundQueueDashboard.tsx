@@ -29,7 +29,11 @@ import {
   executeManualForcedDispatch,
   executeBatchManualForcedDispatch
 } from "@/lib/queue/manualDispatchHandler";
-import { QueueItem, QueueItemPriority, SocialPlatform } from "@/types/poster";
+import {
+  diagnoseDispatchError,
+  getCategoryBadgeStyle
+} from "@/lib/queue/dispatchDiagnostics";
+import { QueueItem, QueueItemPriority, SocialPlatform, DispatchDiagnostic } from "@/types/poster";
 import {
   Layers,
   Clock,
@@ -47,7 +51,11 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldCheck,
-  Server
+  Server,
+  Key,
+  FileWarning,
+  HelpCircle,
+  X
 } from "lucide-react";
 import { toast } from "@/lib/toast/useToast";
 
@@ -66,6 +74,7 @@ export function BackgroundQueueDashboard() {
   const [newPlatform, setNewPlatform] = useState<SocialPlatform>("autoblog");
   const [newPriority, setNewPriority] = useState<QueueItemPriority>("normal");
   const [newScheduledMinutes, setNewScheduledMinutes] = useState(15);
+  const [selectedDiagnosticItem, setSelectedDiagnosticItem] = useState<QueueItem | null>(null);
 
   // Hook do scanner contínuo de 60s
   const {
@@ -550,6 +559,18 @@ export function BackgroundQueueDashboard() {
                               </>
                             )}
                           </div>
+
+                          {isAwaitingRetry && item.errorMessage && (
+                            <button
+                              onClick={() => setSelectedDiagnosticItem(item)}
+                              className="mt-1.5 text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 font-mono transition text-left"
+                              title="Clique para ver o diagnóstico completo da falha"
+                            >
+                              <AlertCircle className="w-3 h-3 text-orange-400 shrink-0" />
+                              <span className="truncate max-w-[280px]">{item.errorMessage}</span>
+                              <span className="underline ml-1 font-bold">Ver Solução</span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -640,9 +661,18 @@ export function BackgroundQueueDashboard() {
                       </div>
 
                       {item.errorMessage && (
-                        <p className="text-[10px] text-red-400 bg-red-950/30 p-1.5 rounded border border-red-900/50 mt-1">
-                          {item.errorMessage}
-                        </p>
+                        <div className="mt-1 space-y-1">
+                          <p className="text-[10px] text-red-400 bg-red-950/30 p-1.5 rounded border border-red-900/50">
+                            {item.errorMessage}
+                          </p>
+                          <button
+                            onClick={() => setSelectedDiagnosticItem(item)}
+                            className="w-full flex items-center justify-center gap-1 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 font-semibold text-[10px] border border-red-500/20 transition"
+                          >
+                            <AlertCircle className="w-3 h-3 text-red-400" />
+                            <span>Diagnóstico & Solução</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -780,6 +810,134 @@ export function BackgroundQueueDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal de Diagnóstico de Falha e Soluções (Etapa 088) */}
+      {selectedDiagnosticItem && (() => {
+        const diag: DispatchDiagnostic =
+          selectedDiagnosticItem.diagnostic ||
+          diagnoseDispatchError(
+            selectedDiagnosticItem.platforms[0] || "autoblog",
+            500,
+            selectedDiagnosticItem.errorMessage
+          );
+        const style = getCategoryBadgeStyle(diag.category);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+              {/* Header do Modal */}
+              <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950/60">
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-xl ${style.badgeBg} ${style.border} border ${style.badgeText}`}>
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-zinc-100 flex items-center gap-2">
+                      Diagnóstico de Despacho
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase ${style.pillBg} ${style.badgeText} border ${style.border}`}>
+                        {diag.category}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      Análise inteligente da falha e recomendações de correção.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedDiagnosticItem(null)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                  title="Fechar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Corpo do Modal */}
+              <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+                {/* Título Amigável */}
+                <div className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-zinc-500 font-mono">
+                    Motivo da Falha
+                  </span>
+                  <h4 className="font-bold text-sm text-zinc-100">
+                    {diag.userFriendlyTitle}
+                  </h4>
+                  <p className="text-zinc-300 leading-relaxed pt-1">
+                    {diag.userFriendlyDescription}
+                  </p>
+                </div>
+
+                {/* Caixa Destacada: Como Resolver */}
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-400 text-xs uppercase tracking-wide">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Como Resolver (Ação Recomendada)</span>
+                  </div>
+                  <p className="text-zinc-200 leading-relaxed font-medium">
+                    {diag.suggestedAction}
+                  </p>
+                </div>
+
+                {/* Metadados da Requisição */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 uppercase font-mono block">Canal / Plataforma</span>
+                    <strong className="text-zinc-200 font-mono text-xs uppercase">
+                      {diag.platform}
+                    </strong>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 uppercase font-mono block">Status de Recuperação</span>
+                    <strong className={`font-mono text-xs ${diag.isRecoverable ? "text-emerald-400" : "text-amber-400"}`}>
+                      {diag.isRecoverable ? "Auto-Recuperável (Retry)" : "Ajuste Manual Necessário"}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Detalhe Técnico para Auditoria */}
+                <details className="p-3 rounded-xl bg-zinc-950/90 border border-zinc-800/80 text-[11px] font-mono group">
+                  <summary className="cursor-pointer text-zinc-400 hover:text-zinc-200 font-semibold flex items-center justify-between">
+                    <span>Exibir Detalhes Técnicos da API (HTTP {diag.statusCode})</span>
+                    <span className="text-xs group-open:rotate-90 transition-transform">▸</span>
+                  </summary>
+                  <div className="mt-2 pt-2 border-t border-zinc-800 text-zinc-400 space-y-1 break-all">
+                    <p><strong className="text-zinc-300">Código de Retorno:</strong> HTTP {diag.statusCode}</p>
+                    <p><strong className="text-zinc-300">Mensagem Remota:</strong> {diag.rawErrorMessage || "Sem mensagem complementar da API"}</p>
+                    <p><strong className="text-zinc-300">Carimbo UTC:</strong> {diag.timestamp}</p>
+                  </div>
+                </details>
+              </div>
+
+              {/* Footer com Ações */}
+              <div className="p-4 border-t border-zinc-800 bg-zinc-950/60 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDiagnosticItem(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium text-xs transition"
+                >
+                  Fechar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = selectedDiagnosticItem.id;
+                    const title = selectedDiagnosticItem.title;
+                    setSelectedDiagnosticItem(null);
+                    handleForceDispatchItem(id, title);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-md"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Reenviar Agora</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

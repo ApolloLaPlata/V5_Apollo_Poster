@@ -150,7 +150,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 085:** Simulador de Execução de Rede em Lote (Disparo em paralelo de posts vencidos com status individual).
 - [x] **Etapa 086:** Painel Visual de Fila de Background no Dashboard: Exibição de posts em processamento e próximos da fila.
 - [x] **Etapa 087:** Botão de Disparo Forçado Manual ("Executar Agora" para posts agendados sem esperar o horário).
-- [ ] **Etapa 088:** Tratamento de Erros e Mensagens Amigáveis de Diagnóstico (Falha de token, timeout, payload inválido).
+- [x] **Etapa 088:** Tratamento de Erros e Mensagens Amigáveis de Diagnóstico (Falha de token, timeout, payload inválido).
 - [ ] **Etapa 089:** Persistência da Fila no LocalStorage e sincronização entre abas com EventListener.
 - [ ] **Etapa 090:** Validação de Build Next.js 14 (`npm run build`) com Exit Code 0 e homologação da Fila de Background.
 
