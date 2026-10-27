@@ -17,6 +17,7 @@ import { ChannelDistributionChart } from "./ChannelDistributionChart";
 import { AuditLogsTable } from "./AuditLogsTable";
 import { LogPayloadDrawer } from "./LogPayloadDrawer";
 import { AuditExportButtons } from "./AuditExportButtons";
+import { LatencyMetricsCard } from "./LatencyMetricsCard";
 import { DispatchLogEntry } from "@/types/poster";
 
 export function DispatchLogsViewer() {
@@ -59,7 +60,10 @@ export function DispatchLogsViewer() {
       {/* Gráfico Visual de Distribuição de Posts por Canal (Etapa 092) */}
       <ChannelDistributionChart />
 
-      {/* Tabela de Logs de Auditoria de Despacho (Etapa 093 & 094) */}
+      {/* Indicador de Latência Média de Despacho e Tempo Total de Processamento (Etapa 097) */}
+      <LatencyMetricsCard logs={logs} />
+
+      {/* Tabela de Logs de Auditoria de Despacho (Etapa 093 & 094 & 095 & 096) */}
       <AuditLogsTable logs={logs} onSelectLog={(log) => setSelectedLog(log)} />
 
       {/* Drawer / Modal de Inspecionar Payload Completo de Log (Etapa 094) */}
