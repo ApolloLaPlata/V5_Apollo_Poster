@@ -9,6 +9,7 @@ import { CommentToDmManager } from "@/components/poster/CommentToDmManager";
 import { OfferGroupDispatcher } from "@/components/poster/OfferGroupDispatcher";
 import { BackgroundQueueDashboard } from "@/components/poster/BackgroundQueueDashboard";
 import { DispatchLogsViewer } from "@/components/poster/DispatchLogsViewer";
+import { ExecutiveTelemetryBanner } from "@/components/poster/ExecutiveTelemetryBanner";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { usePosterStore, PosterTab } from "@/store/usePosterStore";
 import { Calendar, Mail, MessageSquare, Flame, History, Layers } from "lucide-react";
@@ -145,6 +146,7 @@ export default function PosterPage() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
         <V5AppActivationBanner />
+        <ExecutiveTelemetryBanner />
 
         {activeTab === "calendar" && <MasterCalendar />}
         {activeTab === "newsletter" && <BeehiivNewsletterEditor />}
