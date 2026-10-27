@@ -134,7 +134,8 @@ export function calculateStringSimilarity(str1: string, str2: string): number {
  * Validador de Saúde Anti-Spam: analisa o conjunto de variações e emite recomendações
  */
 export function validateAntiSpamDiversity(variants: string[]): AntiSpamHealthCheck {
-  const cleanVariants = variants.map(v => v.trim()).filter(Boolean);
+  const safeVariants = Array.isArray(variants) ? variants : [];
+  const cleanVariants = safeVariants.map(v => (v || "").trim()).filter(Boolean);
   const count = cleanVariants.length;
   const warnings: string[] = [];
   const recommendations: string[] = [];
@@ -237,7 +238,8 @@ export function getNextPublicReply(
   ruleId: string = "default",
   strategy: RotationStrategy = "random_no_repeat"
 ): { reply: string; selectedIndex: number } {
-  const cleanVariants = variants.map(v => v.trim()).filter(Boolean);
+  const safeVariants = Array.isArray(variants) ? variants : [];
+  const cleanVariants = safeVariants.map(v => (v || "").trim()).filter(Boolean);
   if (cleanVariants.length === 0) {
     return { reply: "Te mandei no Direct! Dá uma olhada lá 👀", selectedIndex: -1 };
   }

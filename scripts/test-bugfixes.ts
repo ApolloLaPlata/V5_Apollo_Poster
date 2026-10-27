@@ -17,6 +17,8 @@ import { calculateFullSavings, getDealUrgency } from "../src/lib/finders/discoun
 import { paginateLogs } from "../src/lib/analytics/auditLogManager";
 import { serializeQueue, deserializeQueue } from "../src/lib/queue/crossTabQueueSync";
 import { matchCommentTrigger, compileTriggerRegex } from "../src/lib/comments/triggerMatcher";
+import { validateAntiSpamDiversity, getNextPublicReply } from "../src/lib/comments/publicReplyRotator";
+import { validateDmTemplate, compileDmMessage } from "../src/lib/comments/dmTemplateBuilder";
 
 let passed = 0;
 let total = 0;
@@ -139,6 +141,22 @@ assert(validMatchLink.isMatch === true, "Comentário com 'link' ativa gatilho co
 
 const invalidRegexFallback = matchCommentTrigger("teste regex", ["[unclosed-bracket"], { mode: "regex" });
 assert(invalidRegexFallback.isMatch === false, "Regex com sintaxe inválida não causa crash e retorna isMatch false");
+
+// 8. Robustez do Rotacionador de Respostas Públicas e Construtor de DM
+console.log("\n--- 8. Robustez de Respostas Públicas e Templates de DM ---");
+const nullVariantsHealth = validateAntiSpamDiversity(null as any);
+assert(nullVariantsHealth.status === "critical", "validateAntiSpamDiversity aceita null sem crash e reporta critical");
+assert(nullVariantsHealth.variantCount === 0, "Contador de variantes zero para null");
+
+const nullVariantsReply = getNextPublicReply(null as any);
+assert(typeof nullVariantsReply.reply === "string" && nullVariantsReply.reply.length > 0, "getNextPublicReply retorna fallback seguro para array nulo");
+
+const emptyDmValidation = validateDmTemplate("");
+assert(emptyDmValidation.isValid === false, "Template de DM vazio marcado como inválido");
+assert(emptyDmValidation.warnings.some(w => w.includes("vazio")), "Reporta aviso explícito de template vazio");
+
+const compiledDm = compileDmMessage("Olá {{nome}}! Veja o link {{ctaUrl}}", { name: "Apollo", ctaUrl: "https://v5apollo.com" });
+assert(compiledDm.includes("Apollo") && compiledDm.includes("https://v5apollo.com"), "Compilação de DM substitui placeholders corretamente");
 
 console.log("\n=======================================================");
 console.log(`📊 RESULTADO FINAL: ${passed}/${total} TESTES APROVADOS!`);

@@ -177,7 +177,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [ ] **Etapa 104:** Teste E2E de Fluxo Grupos VIP (Seleção de ofertas, cálculo de desconto e disparo para WhatsApp/Telegram).
 - [ ] **Etapa 105:** Verificação de Responsividade Mobile e Tablet em todas as abas do sistema.
 - [ ] **Etapa 106:** Auditoria de Performance de Carregamento (Tamanho de Bundles JS, otimização de imports de ícones Lucide).
-- [ ] **Etapa 107:** Higienização de Console (Eliminação de warnings do React, chaves ausentes em listas e hooks redundantes).
-- [ ] **Etapa 108:** Atualização do `MEMORIA_ATIVA_POSTER.md` com status de homologação de produção.
+- [x] **Etapa 107:** Higienização de Console (Eliminação de warnings do React, chaves ausentes em listas e hooks redundantes).
+- [x] **Etapa 108:** Atualização do `MEMORIA_ATIVA_POSTER.md` com status de homologação de produção.
 - [ ] **Etapa 109:** Registro de Status no Hive Bus Central (`antigravity_hive_bus.md`) para comunicação com as outras Capitanias.
 - [ ] **Etapa 110:** Homologação Final de Produção (`npm run build`), verificação da Porta `:3011` e Commit de Entrega assinado por `Apollo La Plata <v5estudio@hotmail.com>`.

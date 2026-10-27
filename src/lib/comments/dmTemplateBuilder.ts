@@ -173,7 +173,10 @@ export function validateDmTemplate(template: string, maxChars: number = META_DM_
   const hasNamePlaceholder = /{{nome}}|{{name}}/i.test(cleanTemplate);
 
   // 1. Verificação de Presença do Link (Objetivo principal da DM)
-  if (!hasCtaUrl) {
+  if (charCount === 0) {
+    warnings.push("O template de mensagem direta está vazio.");
+    recommendations.push("Escreva uma mensagem ou escolha um dos templates prontos abaixo.");
+  } else if (!hasCtaUrl) {
     warnings.push("O template não contém o placeholder {{ctaUrl}}. O seguidor receberá a mensagem sem o link oficial.");
     recommendations.push("Adicione {{ctaUrl}} para garantir a conversão do lead.");
   }
