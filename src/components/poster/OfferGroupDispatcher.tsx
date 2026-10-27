@@ -36,7 +36,12 @@ import {
   Copy,
   Eye,
   Users,
-  Link2
+  Link2,
+  Zap,
+  Calendar,
+  CheckSquare,
+  Square,
+  Layers
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { GroupBroadcastDeal } from "@/types/poster";
@@ -66,11 +71,27 @@ import {
   DEFAULT_SHORTENER_DOMAIN,
   PlatformShortLink
 } from "@/lib/finders/affiliateLinkShortener";
+import {
+  calculateBatchScheduleSlots,
+  getBatchSelectionSummary,
+  filterEligibleDealsForDispatch,
+  BatchScheduleConfig,
+  ScheduledDealSlot,
+  BatchDispatchProgress
+} from "@/lib/finders/batchDispatcher";
 import { MessagePreviewSimulator } from "@/components/poster/MessagePreviewSimulator";
 import { toast } from "@/lib/toast/useToast";
 
 export function OfferGroupDispatcher() {
-  const { deals, addDeal, deleteDeal, dispatchDeal, importFindersDeals } = usePosterStore();
+  const { 
+    deals, 
+    addDeal, 
+    deleteDeal, 
+    dispatchDeal, 
+    updateDeal, 
+    dispatchBatchDeals, 
+    importFindersDeals 
+  } = usePosterStore();
 
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>("all");
   const [dispatchingId, setDispatchingId] = useState<string | null>(null);
@@ -78,6 +99,15 @@ export function OfferGroupDispatcher() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [previewDeal, setPreviewDeal] = useState<GroupBroadcastDeal | null>(null);
   const [previewChannel, setPreviewChannel] = useState<"whatsapp" | "telegram">("whatsapp");
+
+  // Estados para Operações em Lote (Etapa 078)
+  const [selectedDealIds, setSelectedDealIds] = useState<string[]>([]);
+  const [isBatchScheduleModalOpen, setIsBatchScheduleModalOpen] = useState<boolean>(false);
+  const [batchScheduleConfig, setBatchScheduleConfig] = useState<BatchScheduleConfig>({
+    startTime: "12:00",
+    intervalMinutes: 30
+  });
+  const [batchProgress, setBatchProgress] = useState<BatchDispatchProgress | null>(null);
 
   // Estado do Formulário de Criação de Oferta
   const [newDealForm, setNewDealForm] = useState<{
@@ -192,6 +222,107 @@ export function OfferGroupDispatcher() {
     });
     return counts;
   }, [deals]);
+
+  // Resumo estatístico das ofertas selecionadas em lote (Etapa 078)
+  const batchSelectionSummary = useMemo(() => {
+    return getBatchSelectionSummary(deals, selectedDealIds);
+  }, [deals, selectedDealIds]);
+
+  // Ofertas selecionadas como objetos
+  const selectedDealsList = useMemo(() => {
+    const idSet = new Set(selectedDealIds);
+    return deals.filter((d) => idSet.has(d.id));
+  }, [deals, selectedDealIds]);
+
+  // Slots calculados para preview do agendamento em lote
+  const previewBatchSlots = useMemo(() => {
+    return calculateBatchScheduleSlots(selectedDealsList, batchScheduleConfig);
+  }, [selectedDealsList, batchScheduleConfig]);
+
+  // Handlers de seleção em lote
+  const handleToggleSelectDeal = (id: string) => {
+    setSelectedDealIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllVisible = () => {
+    const visibleIds = filteredDeals.map((d) => d.id);
+    setSelectedDealIds((prev) => {
+      const allSelected = visibleIds.length > 0 && visibleIds.every((id) => prev.includes(id));
+      if (allSelected) {
+        return prev.filter((id) => !visibleIds.includes(id));
+      }
+      return Array.from(new Set([...prev, ...visibleIds]));
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedDealIds([]);
+  };
+
+  // Disparo em Lote Sequencial com Feedback Anti-Flood
+  const handleExecuteBatchDispatch = () => {
+    const eligible = filterEligibleDealsForDispatch(deals, selectedDealIds);
+    if (eligible.length === 0) {
+      toast.info("Nenhuma oferta pendente selecionada para disparo.");
+      return;
+    }
+
+    const total = eligible.length;
+    let completed = 0;
+    const succeededIds: string[] = [];
+
+    setBatchProgress({
+      total,
+      completed: 0,
+      currentProductName: eligible[0].productName,
+      successCount: 0,
+      failedCount: 0,
+      percentage: 0
+    });
+
+    // Simula transmissão sequencial com throttling anti-flood (500ms por deal)
+    eligible.forEach((item, index) => {
+      setTimeout(() => {
+        completed += 1;
+        succeededIds.push(item.id);
+        const percentage = Math.round((completed / total) * 100);
+
+        setBatchProgress({
+          total,
+          completed,
+          currentDealId: item.id,
+          currentProductName: item.productName,
+          successCount: completed,
+          failedCount: 0,
+          percentage
+        });
+
+        if (completed === total) {
+          setTimeout(() => {
+            dispatchBatchDeals(succeededIds);
+            setBatchProgress(null);
+            setSelectedDealIds([]);
+            toast.success(`Lote de ${total} ofertas transmitido com sucesso para os Grupos VIP!`);
+          }, 400);
+        }
+      }, (index + 1) * 500);
+    });
+  };
+
+  // Aplicação do Agendamento em Lote
+  const handleApplyBatchSchedule = () => {
+    if (previewBatchSlots.length === 0) return;
+
+    previewBatchSlots.forEach((slot) => {
+      updateDeal(slot.dealId, { scheduledTime: slot.scheduledTime });
+    });
+
+    setIsBatchScheduleModalOpen(false);
+    setSelectedDealIds([]);
+    toast.success(`Agendamento em lote aplicado para ${previewBatchSlots.length} ofertas com sucesso!`);
+  };
 
   // Auto-detecta loja quando o usuário cola uma URL de afiliado
   const handleUrlChange = (url: string) => {
@@ -322,7 +453,7 @@ export function OfferGroupDispatcher() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Despachador de Ofertas & Grupos VIP</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Fase 8 • Etapa 077 (Simulador de Preview de Mensagens • Balão WhatsApp & Telegram)
+              Fase 8 • Etapa 078 (Disparo Instantâneo & Agendamento em Lote VIP)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -394,7 +525,81 @@ export function OfferGroupDispatcher() {
             </button>
           );
         })}
+
+        {/* Botão de Selecionar Todas as Ofertas Visíveis */}
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSelectAllVisible}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-mono transition"
+          >
+            <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {filteredDeals.length > 0 && filteredDeals.every((d) => selectedDealIds.includes(d.id))
+                ? "Desmarcar Visíveis"
+                : `Selecionar Visíveis (${filteredDeals.length})`}
+            </span>
+          </button>
+        </div>
       </div>
+
+      {/* 2.5 BARRA DE OPERAÇÕES EM LOTE (ETAPA 078) */}
+      {selectedDealIds.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-950/60 via-zinc-900 to-zinc-950 p-4 rounded-2xl border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold">
+              <Layers className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white">
+                  {batchSelectionSummary.selectedCount} {batchSelectionSummary.selectedCount === 1 ? "oferta selecionada" : "ofertas selecionadas"}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                  👥 ~{(batchSelectionSummary.totalReach / 1000).toFixed(1)}k membros
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {batchSelectionSummary.pendingCount} pendentes • {batchSelectionSummary.alreadySentCount} já disparadas
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExecuteBatchDispatch}
+              disabled={!batchSelectionSummary.canDispatch || Boolean(batchProgress)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-md ${
+                !batchSelectionSummary.canDispatch || Boolean(batchProgress)
+                  ? "bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed"
+                  : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-950/50 active:scale-95"
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              <span>Disparar Lote Agora ({batchSelectionSummary.pendingCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsBatchScheduleModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-xs transition border border-zinc-700 active:scale-95"
+            >
+              <Calendar className="w-4 h-4 text-emerald-400" />
+              <span>Agendar em Lote</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+              title="Limpar Seleção"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 3. GRADE DE OFERTAS (DEALS GRID) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -402,16 +607,33 @@ export function OfferGroupDispatcher() {
           const storeMeta = SUPPORTED_STORES[deal.store as SupportedStore] || SUPPORTED_STORES.Shopee;
           const savings = deal.savingsAmount || Number((deal.originalPrice - deal.promoPrice).toFixed(2));
           const urgency = getDealUrgency(deal.discountPercentage);
+          const isSelected = selectedDealIds.includes(deal.id);
 
           return (
             <div
               key={deal.id}
-              className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between hover:border-zinc-700 transition space-y-4 shadow-lg group relative"
+              className={`border rounded-2xl p-5 flex flex-col justify-between transition space-y-4 shadow-lg group relative ${
+                isSelected 
+                  ? "bg-zinc-900/90 border-emerald-500/80 ring-2 ring-emerald-500/30" 
+                  : "bg-zinc-900/80 border-zinc-800 hover:border-zinc-700"
+              }`}
             >
               <div>
-                {/* Header do Card: Loja e Desconto */}
+                {/* Header do Card: Checkbox Lote, Loja e Desconto */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSelectDeal(deal.id)}
+                      className="p-1 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                      title={isSelected ? "Desmarcar da seleção em lote" : "Selecionar para lote"}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Square className="w-4 h-4 text-zinc-600" />
+                      )}
+                    </button>
                     <span 
                       className={`text-[10px] uppercase font-mono px-2.5 py-0.5 rounded-lg border font-bold flex items-center gap-1.5 bg-zinc-950 ${storeMeta.borderColor} ${storeMeta.textColor}`}
                     >
@@ -978,6 +1200,152 @@ export function OfferGroupDispatcher() {
               initialPlatform={previewChannel}
               onClose={() => setPreviewDeal(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* 6. MODAL DE AGENDAMENTO EM LOTE VIP (ETAPA 078) */}
+      {isBatchScheduleModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">Agendamento em Lote VIP</h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                  {selectedDealsList.length} ofertas
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBatchScheduleModalOpen(false)}
+                className="text-zinc-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs font-mono">
+              <p className="text-zinc-400">
+                Defina o horário inicial e o intervalo entre os disparos. O motor distribuirá as ofertas de forma sequencial para não sobrecarregar os canais.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">
+                    Horário Inicial:
+                  </label>
+                  <input
+                    type="time"
+                    value={batchScheduleConfig.startTime}
+                    onChange={(e) =>
+                      setBatchScheduleConfig({ ...batchScheduleConfig, startTime: e.target.value })
+                    }
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">
+                    Intervalo Entre Posts:
+                  </label>
+                  <select
+                    value={batchScheduleConfig.intervalMinutes}
+                    onChange={(e) =>
+                      setBatchScheduleConfig({
+                        ...batchScheduleConfig,
+                        intervalMinutes: parseInt(e.target.value, 10) || 30
+                      })
+                    }
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value={15}>A cada 15 minutos</option>
+                    <option value={30}>A cada 30 minutos (Padrão)</option>
+                    <option value={45}>A cada 45 minutos</option>
+                    <option value={60}>A cada 1 hora</option>
+                    <option value={120}>A cada 2 horas</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tabela de Preview dos Slots Calculados */}
+              <div>
+                <label className="text-[11px] text-zinc-400 block mb-1 font-semibold">
+                  Cronograma Previsto ({previewBatchSlots.length} disparos):
+                </label>
+                <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-2.5 max-h-48 overflow-y-auto space-y-1.5">
+                  {previewBatchSlots.map((slot) => (
+                    <div
+                      key={slot.dealId}
+                      className="flex items-center justify-between text-[11px] p-1.5 rounded-lg bg-zinc-950/60 border border-zinc-800/80"
+                    >
+                      <span className="text-zinc-300 truncate max-w-[280px]">
+                        {slot.sequenceIndex}. {slot.productName}
+                      </span>
+                      <span className="text-emerald-400 font-bold px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/20">
+                        {slot.scheduledTime}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsBatchScheduleModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyBatchSchedule}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40"
+                >
+                  Confirmar Agendamento em Lote
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. OVERLAY DE PROGRESSO DE DISPARO EM LOTE (ETAPA 078) */}
+      {batchProgress && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-emerald-500/40 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl relative text-center">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <Zap className="w-6 h-6 animate-pulse" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-white">Disparando Lote de Ofertas VIP</h3>
+              <p className="text-xs text-zinc-400 mt-1 font-mono">
+                Processando {batchProgress.completed} de {batchProgress.total} ofertas...
+              </p>
+            </div>
+
+            {/* Barra de Progresso */}
+            <div className="space-y-1.5 font-mono">
+              <div className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-zinc-800">
+                <div
+                  className="bg-emerald-500 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${batchProgress.percentage}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[11px] text-zinc-500">
+                <span className="truncate max-w-[260px] text-zinc-400 text-left">
+                  {batchProgress.currentProductName || "Transmitindo..."}
+                </span>
+                <span className="font-bold text-emerald-400">{batchProgress.percentage}%</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-zinc-500 font-mono">
+              ⚡ Transmissão segura com delay anti-flood ativo (Meta Graph & Telegram Bot API)
+            </p>
           </div>
         </div>
       )}

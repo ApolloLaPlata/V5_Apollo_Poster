@@ -136,7 +136,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 075:** Seletor de Canais de Destino (Canais VIP do Telegram, Comunidades de WhatsApp e Grupos de Anúncios).
 - [x] **Etapa 076:** Construtor de Encurtador de Link de Afiliado com injeção de parâmetros UTM do V5 Poster.
 - [x] **Etapa 077:** Simulador de Preview das Mensagens (Visão idêntica ao balão verde do WhatsApp e ao balão azul do Telegram).
-- [ ] **Etapa 078:** Botão de Disparo Instantâneo e Botão de Agendamento em Lote com feedback de status.
+- [x] **Etapa 078:** Botão de Disparo Instantâneo e Botão de Agendamento em Lote com feedback de status.
 - [ ] **Etapa 079:** Histórico de Ofertas Disparadas com data/hora e confirmação de transmissão.
 - [ ] **Etapa 080:** Validação de Build Next.js 14 (`npm run build`) com Exit Code 0 e homologação da Transmissão de Grupos VIP.
 

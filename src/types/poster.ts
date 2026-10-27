@@ -147,6 +147,7 @@ export interface GroupBroadcastDeal {
   estimatedReach?: number;
   scheduledTime: string;
   status: 'pending' | 'sent' | 'failed';
+  sentAt?: string;
   totalClicks?: number;
 }
 

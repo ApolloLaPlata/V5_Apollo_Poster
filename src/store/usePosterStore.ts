@@ -52,6 +52,7 @@ interface PosterStoreState {
   updateDeal: (id: string, updates: Partial<GroupBroadcastDeal>) => void;
   importFindersDeals: (newDeals: GroupBroadcastDeal[]) => void;
   dispatchDeal: (id: string) => void;
+  dispatchBatchDeals: (ids: string[]) => void;
   deleteDeal: (id: string) => void;
 
   // 5. Logs & Telemetria
@@ -348,9 +349,19 @@ export const usePosterStore = create<PosterStoreState>()(
       dispatchDeal: (id) =>
         set((state) => ({
           deals: state.deals.map((d) =>
-            d.id === id ? { ...d, status: "sent" as const } : d
+            d.id === id ? { ...d, status: "sent" as const, sentAt: new Date().toISOString() } : d
           )
         })),
+      dispatchBatchDeals: (ids) =>
+        set((state) => {
+          const idSet = new Set(ids);
+          const now = new Date().toISOString();
+          return {
+            deals: state.deals.map((d) =>
+              idSet.has(d.id) ? { ...d, status: "sent" as const, sentAt: now } : d
+            )
+          };
+        }),
       deleteDeal: (id) =>
         set((state) => ({
           deals: state.deals.filter((d) => d.id !== id)
