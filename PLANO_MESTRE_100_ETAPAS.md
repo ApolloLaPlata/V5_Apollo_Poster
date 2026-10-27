@@ -90,7 +90,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 041:** Compilador de Payload JSON Estruturado para o V5 AutoBlog (`compileBlogPayload` com tags SEO estendidas).
 - [x] **Etapa 042:** Gerador de Schema.org JSON-LD para BlogPosting / Article com entidade de autor, data e publisher.
 - [x] **Etapa 043:** Gerador de Meta Tags Open Graph (og:title, og:description, og:image, twitter:card) para compartilhamento social.
-- [ ] **Etapa 044:** Conector do Endpoint REST do V5 AutoBlog com autenticação por chave de capitania.
+- [x] **Etapa 044:** Conector do Endpoint REST do V5 AutoBlog com autenticação por chave de capitania.
 - [ ] **Etapa 045:** Conector do Endpoint REST do WordPress (`/wp-json/wp/v2/posts`) com Basic Auth / Application Passwords.
 - [ ] **Etapa 046:** Extrator de Excerpt Automático otimizado para meta description do Google (150-160 caracteres).
 - [ ] **Etapa 047:** Sistema de Categorias e Tags Dinâmicas com sugestão automática de taxonomia.

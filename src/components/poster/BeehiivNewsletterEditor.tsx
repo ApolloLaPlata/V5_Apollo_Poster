@@ -62,6 +62,7 @@ import {
   Battery,
   Archive,
   Printer,
+  Key,
   X
 } from "lucide-react";
 import { MultimodalDispatchPayload, EmailProviderType } from "@/types/poster";
@@ -101,6 +102,14 @@ import {
   renderOpenGraphHtmlMetaTags, 
   validateOpenGraphCompleteness 
 } from "@/lib/dispatch/openGraphGenerator";
+import { 
+  buildAutoBlogHeaders, 
+  testAutoBlogHandshake, 
+  publishToAutoBlog, 
+  AutoBlogHandshakeResult, 
+  AutoBlogDispatchResult, 
+  DEFAULT_CAPITANIA_KEY 
+} from "@/lib/dispatch/autoblogConnector";
 
 export const IMAGE_PRESETS = [
   {
@@ -203,7 +212,8 @@ Nos vemos na próxima transmissão!`,
     category: "Inteligência Artificial",
     tags: ["Agentes IA", "Automação", "Produtividade", "SaaS"],
     author: "Redação Apollo",
-    generateSchema: true
+    generateSchema: true,
+    capitaniaKey: DEFAULT_CAPITANIA_KEY
   },
   socialTeaserOptions: {
     enabled: true,
@@ -497,12 +507,19 @@ export function BeehiivNewsletterEditor() {
   const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [blogSubView, setBlogSubView] = useState<"portal" | "json">("portal");
-  const [blogJsonTab, setBlogJsonTab] = useState<"full" | "seo" | "schema" | "og" | "ai">("full");
+  const [blogJsonTab, setBlogJsonTab] = useState<"full" | "seo" | "schema" | "og" | "ai" | "connector">("full");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
+
+  // AutoBlog REST Connector state (Etapa 044)
+  const [isPingingAutoBlog, setIsPingingAutoBlog] = useState(false);
+  const [autoBlogHandshakeResult, setAutoBlogHandshakeResult] = useState<AutoBlogHandshakeResult | null>(null);
+  const [isPublishingAutoBlog, setIsPublishingAutoBlog] = useState(false);
+  const [autoBlogDispatchResult, setAutoBlogDispatchResult] = useState<AutoBlogDispatchResult | null>(null);
+  const [showCapitaniaKey, setShowCapitaniaKey] = useState(false);
 
   // Media & Cover Image Modal States
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
@@ -857,6 +874,64 @@ export function BeehiivNewsletterEditor() {
     setTimeout(() => setCopiedSnippet(null), 2500);
   };
 
+  const handleTestAutoBlogHandshake = async () => {
+    setIsPingingAutoBlog(true);
+    try {
+      const res = await testAutoBlogHandshake({
+        endpoint: payload.blogOptions.targetEndpoint,
+        capitaniaKey: payload.blogOptions.capitaniaKey
+      });
+      setAutoBlogHandshakeResult(res);
+      if (res.success) {
+        toast.success(
+          "Handshake AutoBlog OK",
+          `Status ${res.statusCode} (${res.latencyMs}ms) • ${res.isMock ? "Mock Gateway" : "API Live"}`
+        );
+      } else {
+        toast.error("Falha no Handshake", res.message);
+      }
+    } catch (e) {
+      toast.error("Erro no Handshake", String(e));
+    } finally {
+      setIsPingingAutoBlog(false);
+    }
+  };
+
+  const handlePublishToAutoBlogDirect = async () => {
+    setIsPublishingAutoBlog(true);
+    try {
+      const compiledPayload = compileBlogPayload(payload);
+      const res = await publishToAutoBlog(compiledPayload, {
+        endpoint: payload.blogOptions.targetEndpoint,
+        capitaniaKey: payload.blogOptions.capitaniaKey
+      });
+      setAutoBlogDispatchResult(res);
+      if (res.success) {
+        toast.success(
+          "Publicado no V5 AutoBlog!",
+          `Post ID: ${res.postId} (${res.latencyMs}ms)`
+        );
+        setPayload(prev => ({
+          ...prev,
+          dispatchStatus: {
+            ...prev.dispatchStatus,
+            blog: {
+              status: "sent",
+              publishedUrl: res.publishedUrl,
+              statusCode: res.statusCode
+            }
+          }
+        }));
+      } else {
+        toast.error("Erro na Publicação", res.message);
+      }
+    } catch (e) {
+      toast.error("Erro ao Publicar", String(e));
+    } finally {
+      setIsPublishingAutoBlog(false);
+    }
+  };
+
   const handleTriggerDispatch = async () => {
     setIsDispatching(true);
     setExecutionResult(null);
@@ -867,6 +942,26 @@ export function BeehiivNewsletterEditor() {
 
     const result = await executeMockDispatch(sanitizedPayload);
 
+    // Conexão direta com a Capitania #13 AutoBlog REST API (Etapa 044)
+    let blogPublishedUrl = result.blogResult.publishedUrl;
+    let blogStatusCode = result.blogResult.statusCode;
+    if (payload.blogOptions.enabled) {
+      try {
+        const blogPayload = compileBlogPayload(sanitizedPayload);
+        const autoBlogRes = await publishToAutoBlog(blogPayload, {
+          endpoint: payload.blogOptions.targetEndpoint,
+          capitaniaKey: payload.blogOptions.capitaniaKey
+        });
+        if (autoBlogRes.success) {
+          blogPublishedUrl = autoBlogRes.publishedUrl;
+          blogStatusCode = autoBlogRes.statusCode;
+          setAutoBlogDispatchResult(autoBlogRes);
+        }
+      } catch (err) {
+        console.error("AutoBlog Dispatch Error:", err);
+      }
+    }
+
     setIsDispatching(false);
     setExecutionResult(result);
     setPayload(prev => ({
@@ -874,7 +969,7 @@ export function BeehiivNewsletterEditor() {
       dispatchStatus: {
         overall: "completed",
         email: { status: "sent", sentCount: result.emailResult.sentCount, messageId: result.emailResult.messageId },
-        blog: { status: "sent", publishedUrl: result.blogResult.publishedUrl, statusCode: result.blogResult.statusCode },
+        blog: { status: "sent", publishedUrl: blogPublishedUrl, statusCode: blogStatusCode },
         social: { status: "sent", deliveredChannels: result.socialResult.deliveredChannels }
       }
     }));
@@ -2160,6 +2255,18 @@ export function BeehiivNewsletterEditor() {
                         >
                           AEO / Key Takeaways
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlogJsonTab("connector")}
+                          className={`px-3 py-1 rounded-lg transition whitespace-nowrap flex items-center gap-1.5 ${
+                            blogJsonTab === "connector" 
+                              ? "bg-amber-500 text-black font-bold" 
+                              : "bg-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          <Server className="w-3 h-3 text-amber-400" />
+                          <span>Conector REST (#13)</span>
+                        </button>
                       </div>
 
                       {/* Schema.org Special Actions Bar (Etapa 042) */}
@@ -2285,6 +2392,96 @@ export function BeehiivNewsletterEditor() {
                         </div>
                       )}
 
+                      {/* 3.5 AUTOBLOG REST CONNECTOR (Etapa 044) */}
+                      {blogJsonTab === "connector" && (
+                        <div className="space-y-3">
+                          {/* Top Bar com Handshake Status */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-zinc-900 border border-amber-500/30 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${
+                                autoBlogHandshakeResult?.success ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                              }`} />
+                              <span className="font-mono text-zinc-300 text-[11px]">
+                                Gateway AutoBlog: <strong className={autoBlogHandshakeResult?.success ? "text-emerald-400" : "text-amber-300"}>
+                                  {autoBlogHandshakeResult ? `${autoBlogHandshakeResult.statusCode} OK (${autoBlogHandshakeResult.latencyMs}ms)` : "Pronto para Handshake"}
+                                </strong>
+                              </span>
+                              {autoBlogHandshakeResult?.isMock && (
+                                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 text-[9px] font-mono">
+                                  Mock Fallback
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={handleTestAutoBlogHandshake}
+                                disabled={isPingingAutoBlog}
+                                className="px-3 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50"
+                              >
+                                <RefreshCw className={`w-3 h-3 ${isPingingAutoBlog ? "animate-spin text-amber-400" : ""}`} />
+                                <span>{isPingingAutoBlog ? "Testando..." : "Ping Handshake"}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handlePublishToAutoBlogDirect}
+                                disabled={isPublishingAutoBlog}
+                                className="px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50 shadow-sm"
+                              >
+                                <Send className={`w-3 h-3 ${isPublishingAutoBlog ? "animate-pulse" : ""}`} />
+                                <span>{isPublishingAutoBlog ? "Publicando..." : "Publicar via REST"}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Se houve publicação recente com sucesso */}
+                          {autoBlogDispatchResult && (
+                            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                  <span>Artigo Publicado no V5 AutoBlog!</span>
+                                </span>
+                                <span className="text-[10px] font-mono text-emerald-400/80">
+                                  HTTP {autoBlogDispatchResult.statusCode} • {autoBlogDispatchResult.latencyMs}ms
+                                </span>
+                              </div>
+                              <div className="text-[11px] font-mono text-zinc-300 flex items-center gap-2">
+                                <span className="text-zinc-500">Post ID:</span>
+                                <span className="text-amber-300">{autoBlogDispatchResult.postId}</span>
+                              </div>
+                              <div className="text-[11px] font-mono flex items-center gap-2">
+                                <span className="text-zinc-500">URL Canônica:</span>
+                                <a 
+                                  href={autoBlogDispatchResult.publishedUrl} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="text-cyan-400 hover:underline flex items-center gap-1 truncate"
+                                >
+                                  <span>{autoBlogDispatchResult.publishedUrl}</span>
+                                  <ExternalLink className="w-3 h-3 shrink-0" />
+                                </a>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Headers Oficiais da Capitania */}
+                          <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 text-[11px] font-mono space-y-1">
+                            <span className="text-zinc-400 font-semibold block text-[10px] uppercase tracking-wider">
+                              Cabeçalhos Oficiais de Segurança (Inter-Capitanias #13)
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-300">
+                              <div><strong className="text-amber-400">Authorization:</strong> Bearer {payload.blogOptions.capitaniaKey ? `${payload.blogOptions.capitaniaKey.substring(0, 10)}...` : "padrão"}</div>
+                              <div><strong className="text-amber-400">X-Capitania-Source:</strong> 13-poster</div>
+                              <div><strong className="text-amber-400">X-Capitania-Port:</strong> 3011</div>
+                              <div><strong className="text-amber-400">X-Capitania-Signer:</strong> Apollo La Plata</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Code Block Pre */}
                       <div className="flex-1 overflow-auto rounded-lg bg-zinc-950 p-3 border border-zinc-900">
                         <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
@@ -2293,6 +2490,13 @@ export function BeehiivNewsletterEditor() {
                             if (blogJsonTab === "schema") return JSON.stringify(compiledBlogJson.seo.schema_org, null, 2);
                             if (blogJsonTab === "og") return JSON.stringify({ open_graph: compiledBlogJson.seo.open_graph, twitter_card: compiledBlogJson.seo.twitter_card }, null, 2);
                             if (blogJsonTab === "ai") return JSON.stringify(compiledBlogJson.seo.ai_search, null, 2);
+                            if (blogJsonTab === "connector") return JSON.stringify({
+                              target_endpoint: payload.blogOptions.targetEndpoint,
+                              capitania_key_configured: Boolean(payload.blogOptions.capitaniaKey),
+                              handshake_status: autoBlogHandshakeResult,
+                              last_dispatch_result: autoBlogDispatchResult,
+                              official_request_headers: buildAutoBlogHeaders(payload.blogOptions.capitaniaKey)
+                            }, null, 2);
                             return JSON.stringify(compiledBlogJson, null, 2);
                           })()}
                         </pre>
@@ -2548,6 +2752,96 @@ export function BeehiivNewsletterEditor() {
                         }))}
                         className="rounded text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
                       />
+                    </div>
+
+                    {/* Conector REST do V5 AutoBlog (Etapa 044) */}
+                    <div className="pt-3 border-t border-zinc-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Server className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Endpoint & Chave de Capitania (#13)</span>
+                        </label>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                          Porta :3011 Nativa
+                        </span>
+                      </div>
+
+                      {/* Endpoint URL Input */}
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">URL Endpoint REST API:</label>
+                        <input
+                          type="text"
+                          value={payload.blogOptions.targetEndpoint}
+                          onChange={(e) => setPayload(prev => ({
+                            ...prev,
+                            blogOptions: { ...prev.blogOptions, targetEndpoint: e.target.value }
+                          }))}
+                          placeholder="https://v5autoblog.com/api/v1/posts"
+                          className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                        />
+                      </div>
+
+                      {/* Capitania Key Input */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                            <Key className="w-3 h-3 text-amber-400" />
+                            <span>Chave de Capitania (Bearer):</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowCapitaniaKey(!showCapitaniaKey)}
+                            className="text-[10px] text-amber-400 hover:underline font-mono"
+                          >
+                            {showCapitaniaKey ? "Ocultar" : "Mostrar"}
+                          </button>
+                        </div>
+                        <input
+                          type={showCapitaniaKey ? "text" : "password"}
+                          value={payload.blogOptions.capitaniaKey || ""}
+                          onChange={(e) => setPayload(prev => ({
+                            ...prev,
+                            blogOptions: { ...prev.blogOptions, capitaniaKey: e.target.value }
+                          }))}
+                          placeholder="cap_v5_poster_3011_live"
+                          className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                        />
+                      </div>
+
+                      {/* Handshake & Publish Buttons */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleTestAutoBlogHandshake}
+                          disabled={isPingingAutoBlog}
+                          className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-[11px] font-mono flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isPingingAutoBlog ? "animate-spin text-amber-400" : ""}`} />
+                          <span>{isPingingAutoBlog ? "Testando..." : "Ping Handshake"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handlePublishToAutoBlogDirect}
+                          disabled={isPublishingAutoBlog}
+                          className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] font-mono flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-sm"
+                        >
+                          <Send className={`w-3.5 h-3.5 ${isPublishingAutoBlog ? "animate-pulse" : ""}`} />
+                          <span>{isPublishingAutoBlog ? "Publicando..." : "Publicar Agora"}</span>
+                        </button>
+                      </div>
+
+                      {/* Handshake Result Feedback */}
+                      {autoBlogHandshakeResult && (
+                        <div className={`p-2.5 rounded-lg border text-[11px] font-mono flex items-center justify-between ${
+                          autoBlogHandshakeResult.success 
+                            ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                            : "bg-red-950/30 border-red-500/30 text-red-300"
+                        }`}>
+                          <span className="truncate">{autoBlogHandshakeResult.message}</span>
+                          <span className="shrink-0 font-bold ml-2">HTTP {autoBlogHandshakeResult.statusCode}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

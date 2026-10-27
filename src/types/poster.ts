@@ -168,6 +168,7 @@ export interface MultimodalDispatchPayload {
     tags: string[];
     author: string;
     generateSchema: boolean;
+    capitaniaKey?: string;
   };
   socialTeaserOptions: {
     enabled: boolean;
