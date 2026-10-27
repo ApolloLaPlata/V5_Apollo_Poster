@@ -73,6 +73,11 @@ import {
   ThrottlerMetrics, 
   ThrottledTask 
 } from "@/lib/comments/antiBanThrottler";
+import { 
+  generateTrackedDmUrl, 
+  validateTrackedDmUrl, 
+  parseTrackedDmUrl 
+} from "@/lib/comments/trackedLinkGenerator";
 
 export function CommentToDmManager() {
   const { 
@@ -173,6 +178,44 @@ export function CommentToDmManager() {
     if (!selectedRule) return null;
     return validateDmTemplate(selectedRule.dmMessageTemplate);
   }, [selectedRule]);
+
+  // Validação e Análise de Conformidade do Link Rastreado com UTM Dedicado
+  const trackedUrlValidation = useMemo(() => {
+    if (!selectedRule?.ctaUrl) return null;
+    return validateTrackedDmUrl(selectedRule.ctaUrl);
+  }, [selectedRule?.ctaUrl]);
+
+  const parsedTrackedUrl = useMemo(() => {
+    if (!selectedRule?.ctaUrl) return null;
+    return parseTrackedDmUrl(selectedRule.ctaUrl);
+  }, [selectedRule?.ctaUrl]);
+
+  // Injeta parâmetros UTM oficiais na URL da regra selecionada
+  const handleInjectOfficialUtm = () => {
+    if (!selectedRule) return;
+    const result = generateTrackedDmUrl({
+      baseUrl: selectedRule.ctaUrl || "https://v5autoblog.com/artigo/agentes-autonomos",
+      platform: selectedRule.platform,
+      campaign: selectedRule.name,
+      matchedKeyword: selectedRule.keywords[0] || "link",
+      couponCode: selectedRule.couponCode
+    });
+    updateCommentRule(selectedRule.id, { ctaUrl: result.finalUrl });
+    toast.success("Parâmetros UTM oficiais injetados na URL de destino!");
+  };
+
+  // Injeta parâmetros UTM oficiais no formulário de nova regra
+  const handleInjectOfficialUtmNewRule = () => {
+    const result = generateTrackedDmUrl({
+      baseUrl: newRuleForm.ctaUrl || "https://v5autoblog.com/artigo/agentes-autonomos",
+      platform: newRuleForm.platform,
+      campaign: newRuleForm.name || "nova_campanha",
+      matchedKeyword: newRuleForm.keywords[0] || "link",
+      couponCode: newRuleForm.couponCode
+    });
+    setNewRuleForm({ ...newRuleForm, ctaUrl: result.finalUrl });
+    toast.success("Parâmetros UTM oficiais injetados no formulário!");
+  };
 
   // Aplica pacote de 5 variações pré-construídas por nicho
   const handleApplyNichePack = (niche: ContentNiche) => {
@@ -476,7 +519,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 067 (Fila Anti-Ban & Throttling 30/min)
+              Etapa 068 (Links Rastreados com UTM Dedicado & Cupom)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -910,15 +953,47 @@ export function CommentToDmManager() {
                 {/* Grid: URL de Destino e Cupom de Desconto */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                   <div className="md:col-span-8">
-                    <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                      URL de Destino com UTM (Placeholder &#123;&#123;ctaUrl&#125;&#125;):
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-mono text-zinc-400 block">
+                        URL de Destino com UTM (Placeholder &#123;&#123;ctaUrl&#125;&#125;):
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleInjectOfficialUtm}
+                        className="text-[10px] font-mono text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
+                      >
+                        <Sparkles className="w-3 h-3 text-blue-400" />
+                        Injetar UTM Oficial
+                      </button>
+                    </div>
                     <input
                       type="url"
                       value={selectedRule.ctaUrl}
                       onChange={(e) => updateCommentRule(selectedRule.id, { ctaUrl: e.target.value })}
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-blue-500 font-mono"
                     />
+
+                    {/* Badge de Validação de UTM */}
+                    {trackedUrlValidation && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                        {trackedUrlValidation.isValid ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-300">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            UTM Válida: {parsedTrackedUrl?.utmSource || "ig_comment_dm"} / {parsedTrackedUrl?.utmMedium || "direct_message"}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-950/60 border border-amber-500/30 text-amber-300">
+                            <AlertCircle className="w-3 h-3 text-amber-400" />
+                            {trackedUrlValidation.warnings[0] || "URL sem parâmetros UTM oficiais recomendados"}
+                          </span>
+                        )}
+                        {parsedTrackedUrl?.coupon && (
+                          <span className="px-2 py-0.5 rounded bg-purple-950/60 border border-purple-500/30 text-purple-300">
+                            Cupom na URL: {parsedTrackedUrl.coupon}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="md:col-span-4">
@@ -1185,6 +1260,24 @@ export function CommentToDmManager() {
                           Message ID: {simResult.metaMessageId}
                         </div>
                       </div>
+
+                      {/* Auditoria de UTM Dedicado na Telemetria */}
+                      {simExecutionResult?.trackedUrl && (
+                        <div className="p-2 rounded-lg bg-purple-950/30 border border-purple-500/30 text-[10px] font-mono space-y-1">
+                          <span className="text-purple-300 font-bold block">Link Rastreado com UTM:</span>
+                          <div className="text-[9px] text-zinc-300 break-all bg-black/40 p-1.5 rounded border border-purple-900/40">
+                            {simExecutionResult.trackedUrl.finalUrl}
+                          </div>
+                          <div className="flex flex-wrap gap-1 text-[8px] text-purple-200">
+                            <span className="bg-purple-900/50 px-1 rounded">src: {simExecutionResult.trackedUrl.utmSource}</span>
+                            <span className="bg-purple-900/50 px-1 rounded">med: {simExecutionResult.trackedUrl.utmMedium}</span>
+                            <span className="bg-purple-900/50 px-1 rounded">camp: {simExecutionResult.trackedUrl.utmCampaign}</span>
+                            {simExecutionResult.trackedUrl.couponParam && (
+                              <span className="bg-emerald-900/60 text-emerald-300 px-1 rounded">cupom: {simExecutionResult.trackedUrl.couponParam}</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 ) : (
@@ -1316,9 +1409,19 @@ export function CommentToDmManager() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                    URL de Destino (com UTM):
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-mono text-zinc-400 block">
+                      URL de Destino (com UTM):
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleInjectOfficialUtmNewRule}
+                      className="text-[10px] font-mono text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-blue-400" />
+                      Injetar UTM Oficial
+                    </button>
+                  </div>
                   <input
                     type="url"
                     required

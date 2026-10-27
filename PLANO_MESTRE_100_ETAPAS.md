@@ -122,7 +122,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 065:** Implementação da Lógica de Envio de DM Ancorada no `comment_id` (Bypass da janela de 24h Meta Graph API).
 - [x] **Etapa 066:** Simulador Interativo de Comentários com resposta pública e DM em tempo real no dashboard.
 - [x] **Etapa 067:** Mecanismo de Throttling e Fila Anti-Ban (Taxa máxima de 30 DMs/min com jitter randômico de 2 a 5 segundos).
-- [ ] **Etapa 068:** Gerador de Link Rastreado com UTM dedicado para DM (`utm_source=ig_comment_dm&utm_medium=direct_message`).
+- [x] **Etapa 068:** Gerador de Link Rastreado com UTM dedicado para DM (`utm_source=ig_comment_dm&utm_medium=direct_message`).
 - [ ] **Etapa 069:** Painel de Métricas de Engajamento de DM: Comentários Detectados, Respostas Enviadas, DMs Entregues e Conversão.
 - [ ] **Etapa 070:** Validação de Build Next.js 14 (`npm run build`) com Exit Code 0 e homologação do Comment-to-DM Engine.
 

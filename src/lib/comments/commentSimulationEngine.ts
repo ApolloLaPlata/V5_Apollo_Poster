@@ -14,6 +14,7 @@ import { matchCommentTrigger, TriggerMatchMode, TriggerMatchResult } from "./tri
 import { getNextPublicReply, formatPublicReply } from "./publicReplyRotator";
 import { compileDmMessage, validateDmTemplate, DmTemplateValidation } from "./dmTemplateBuilder";
 import { sendMetaPrivateReply, MetaPrivateReplyResponse } from "./metaPrivateReplyClient";
+import { generateTrackedDmUrl, TrackedLinkResult } from "./trackedLinkGenerator";
 import { CommentRule } from "@/types/poster";
 
 export interface SimulationInput {
@@ -36,6 +37,7 @@ export interface SimulationExecutionResult {
   metaCommentId?: string;
   metaMessageId?: string;
   bypass24hVerified: boolean;
+  trackedUrl?: TrackedLinkResult;
   latencyMs: number;
   timestamp: string;
   executionSteps: Array<{
@@ -172,11 +174,20 @@ export async function simulateCommentInteraction(
     details: `Variação #${selectedIndex + 1} selecionada sem repetição consecutiva: "${publicReplyText}"`
   });
 
-  // ETAPA 3: Compilação e Validação do Template de Direct Message
+  // ETAPA 3: Compilação e Validação do Template de Direct Message com UTM Onicanal Dedicado
+  const trackedUrlResult = generateTrackedDmUrl({
+    baseUrl: rule.ctaUrl,
+    platform: (input.platform || rule.platform) === "tiktok" ? "tiktok" : "instagram",
+    campaign: rule.name,
+    matchedKeyword: matchResult.matchedKeyword,
+    couponCode: rule.couponCode
+  });
+  const effectiveCtaUrl = trackedUrlResult.finalUrl;
+
   const dmMessageText = compileDmMessage(rule.dmMessageTemplate, {
     name: rawUsernameWithoutAt,
     username: cleanUsername,
-    ctaUrl: rule.ctaUrl,
+    ctaUrl: effectiveCtaUrl,
     couponCode: rule.couponCode || "PROMO10",
     postTitle: rule.name
   });
@@ -186,7 +197,7 @@ export async function simulateCommentInteraction(
   steps.push({
     step: "DM Template Builder",
     status: "success",
-    details: `DM compilada (${dmMessageText.length}c) com placeholders preenchidos e link rastreado.`
+    details: `DM compilada (${dmMessageText.length}c) com placeholders preenchidos e link UTM oficial (${trackedUrlResult.utmSource}/${trackedUrlResult.utmCampaign}).`
   });
 
   // ETAPA 4: Despacho Meta Graph API Ancorado no comment_id (Bypass 24h)
@@ -220,6 +231,7 @@ export async function simulateCommentInteraction(
     metaCommentId,
     metaMessageId: metaReply.messageId,
     bypass24hVerified: metaReply.bypass24hVerified,
+    trackedUrl: trackedUrlResult,
     latencyMs,
     timestamp,
     executionSteps: steps
