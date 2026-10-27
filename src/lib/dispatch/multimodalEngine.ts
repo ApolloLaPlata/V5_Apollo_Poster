@@ -1,4 +1,14 @@
-import { MultimodalDispatchPayload } from "@/types/poster";
+import { 
+  MultimodalDispatchPayload, 
+  V5AutoBlogPayload, 
+  ExtendedSeoMetadata, 
+  OpenGraphMetadata, 
+  TwitterCardMetadata, 
+  SchemaOrgBlogPosting, 
+  AiSearchReadiness, 
+  BlogAuthorProfile, 
+  BlogFeaturedImage 
+} from "@/types/poster";
 import { sanitizeMarkdown } from "@/lib/utils/markdownSanitizer";
 
 export function slugify(text: string): string {
@@ -564,11 +574,183 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
 }
 
 /**
- * Compila o payload estruturado exato para a API REST do V5 AutoBlog ou WordPress
+ * Extrai um resumo otimizado para a SERP do Google (150 a 160 caracteres)
+ * Respeita limites de palavras para não cortar termos ao meio.
  */
-export function compileBlogPayload(payload: MultimodalDispatchPayload) {
-  const slug = payload.slug || slugify(payload.title);
+export function extractOptimizedExcerpt(contentMarkdown: string, fallbackSummary?: string, maxChars: number = 158): string {
+  if (fallbackSummary && fallbackSummary.trim().length >= 40 && fallbackSummary.trim().length <= maxChars) {
+    return fallbackSummary.trim();
+  }
+
+  const clean = contentMarkdown
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+    .replace(/^#+\s+.*$/gm, "")
+    .replace(/^[*\-+]\s+/gm, "")
+    .replace(/[>_`*~|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (clean.length <= maxChars) {
+    return clean || fallbackSummary || "Artigo completo com diretrizes e insights exclusivos.";
+  }
+
+  const truncated = clean.substring(0, maxChars);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return (lastSpace > 50 ? truncated.substring(0, lastSpace) : truncated) + "...";
+}
+
+/**
+ * Extrai os 3 principais insights acionáveis (Key Takeaways) para Answer Engine Optimization (Perplexity / ChatGPT Search)
+ */
+export function extractKeyTakeaways(contentMarkdown: string, title: string): string[] {
+  const takeaways: string[] = [];
+  const lines = contentMarkdown.split("\n");
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line.startsWith("- ") || line.startsWith("* ") || /^\d+\.\s+/.test(line)) {
+      const cleanItem = line.replace(/^[-*]|\d+\.\s*/, "").replace(/[*_`]/g, "").trim();
+      if (cleanItem.length > 25 && cleanItem.length < 150) {
+        takeaways.push(cleanItem);
+      }
+    } else if (line.startsWith("## ")) {
+      const cleanHeading = line.replace(/^##\s+/, "").replace(/[*_`]/g, "").trim();
+      if (cleanHeading.length > 12 && !cleanHeading.toLowerCase().includes("conclusão")) {
+        takeaways.push(`Análise aprofundada: ${cleanHeading}`);
+      }
+    }
+    if (takeaways.length >= 3) break;
+  }
+
+  if (takeaways.length === 0) {
+    takeaways.push(`Visão completa e estratégica sobre ${title}`);
+    takeaways.push("Metodologia de aplicação prática e escalável");
+    takeaways.push("Diretrizes de conformidade e integração com o ecossistema V5");
+  }
+
+  return takeaways.slice(0, 3);
+}
+
+/**
+ * Converte Markdown puro em HTML semântico estruturado para o portal Web AutoBlog
+ */
+export function convertMarkdownToSemanticHtml(markdown: string): string {
+  const lines = markdown.split("\n");
+  const htmlParts: string[] = [];
+  let inList: "ul" | "ol" | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    if (!line) {
+      if (inList) {
+        htmlParts.push(`</${inList}>`);
+        inList = null;
+      }
+      continue;
+    }
+
+    // Paywall Gate Delimiter
+    if (line.includes("[PAYWALL_BREAK") || line.toLowerCase().includes("<!-- paywall")) {
+      if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+      htmlParts.push('<div class="v5-paywall-gate" data-paywall="true"><!-- PAYWALL_GATE_DELIMITER --></div>');
+      continue;
+    }
+
+    // Headings
+    if (line.startsWith("### ")) {
+      if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+      const text = line.replace(/^###\s+/, "");
+      htmlParts.push(`<h3 class="text-lg font-bold text-zinc-100 mt-6 mb-3">${formatInlineWeb(text)}</h3>`);
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+      const text = line.replace(/^##\s+/, "");
+      const id = slugify(text);
+      htmlParts.push(`<h2 id="${id}" class="text-xl font-bold text-amber-400 mt-8 mb-4 border-b border-zinc-800 pb-2">${formatInlineWeb(text)}</h2>`);
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+      const text = line.replace(/^#\s+/, "");
+      htmlParts.push(`<h1 class="text-2xl font-black text-white mt-4 mb-4">${formatInlineWeb(text)}</h1>`);
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith("> ")) {
+      if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+      const text = line.replace(/^>\s*/, "");
+      htmlParts.push(`<blockquote class="border-l-4 border-amber-500 pl-4 py-1 my-4 italic text-zinc-300 bg-zinc-900/40 rounded-r-lg"><p>${formatInlineWeb(text)}</p></blockquote>`);
+      continue;
+    }
+
+    // Unordered List (- or *)
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      if (inList !== "ul") {
+        if (inList) htmlParts.push(`</${inList}>`);
+        htmlParts.push('<ul class="list-disc list-inside space-y-1.5 my-3 text-zinc-300">');
+        inList = "ul";
+      }
+      const text = line.replace(/^[-*]\s+/, "");
+      htmlParts.push(`<li>${formatInlineWeb(text)}</li>`);
+      continue;
+    }
+
+    // Ordered List (1. )
+    if (/^\d+\.\s+/.test(line)) {
+      if (inList !== "ol") {
+        if (inList) htmlParts.push(`</${inList}>`);
+        htmlParts.push('<ol class="list-decimal list-inside space-y-1.5 my-3 text-zinc-300">');
+        inList = "ol";
+      }
+      const text = line.replace(/^\d+\.\s+/, "");
+      htmlParts.push(`<li>${formatInlineWeb(text)}</li>`);
+      continue;
+    }
+
+    // Imagem: ![alt](url)
+    const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (imgMatch) {
+      if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+      const alt = imgMatch[1] || "Imagem ilustrativa";
+      const src = imgMatch[2];
+      htmlParts.push(`<figure class="my-6 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950"><img src="${src}" alt="${alt}" class="w-full h-auto object-cover" /><figcaption class="p-2 text-center text-xs text-zinc-400 font-mono">${alt}</figcaption></figure>`);
+      continue;
+    }
+
+    // Parágrafo Padrão
+    if (inList) { htmlParts.push(`</${inList}>`); inList = null; }
+    htmlParts.push(`<p class="leading-relaxed text-zinc-300 my-3">${formatInlineWeb(line)}</p>`);
+  }
+
+  if (inList) {
+    htmlParts.push(`</${inList}>`);
+  }
+
+  return htmlParts.join("\n");
+}
+
+function formatInlineWeb(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic text-zinc-200">$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="bg-zinc-800 text-amber-300 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline font-medium">$1</a>');
+}
+
+/**
+ * Compila o payload estruturado exato para a API REST do V5 AutoBlog ou WordPress
+ * Com tags SEO estendidas, Open Graph, Twitter Cards, Schema.org e AEO (Etapa 041)
+ */
+export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBlogPayload {
+  const slug = payload.slug ? slugify(payload.slug) : slugify(payload.title);
   const canonicalUrl = `https://v5autoblog.com/artigo/${slug}`;
+  const nowIso = new Date().toISOString();
+  
   const hasPaywall = payload.contentMarkdown.includes("[PAYWALL_BREAK") || 
                      payload.contentMarkdown.includes("<!-- paywall") ||
                      payload.contentMarkdown.includes("<!-- PAYWALL");
@@ -576,51 +758,145 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload) {
     ? payload.contentMarkdown.search(/\[PAYWALL_BREAK|<!--\s*paywall/i) 
     : undefined;
 
-  const schemaJsonLd = {
+  // Extração e Sanitização de Texto
+  const cleanMarkdown = sanitizeMarkdown(payload.contentMarkdown);
+  const contentHtml = convertMarkdownToSemanticHtml(cleanMarkdown);
+  const excerpt = extractOptimizedExcerpt(cleanMarkdown, payload.summary || payload.emailOptions.previewText, 158);
+
+  // Contagem de palavras e tempo de leitura
+  const words = cleanMarkdown.split(/\s+/).filter(w => w.length > 0);
+  const wordCount = words.length;
+  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+
+  // Imagem de destaque com dimensões canônicas (1200x630px para OG)
+  const featuredImageUrl = payload.coverImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200";
+  const featuredImageAlt = payload.coverImageAlt || payload.title;
+
+  // Schema.org BlogPosting Completo (Google Rich Results Compliant)
+  const schemaOrg: SchemaOrgBlogPosting = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": payload.title,
-    "description": payload.summary || payload.emailOptions.previewText,
-    "articleBody": payload.contentMarkdown,
-    "author": {
-      "@type": "Person",
-      "name": payload.blogOptions.author || "Equipe V5 Apollo"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "V5 AutoBlog",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://v5autoblog.com/logo.png"
-      }
-    },
-    "mainEntityOfPage": {
+    headline: payload.title,
+    description: excerpt,
+    articleBody: cleanMarkdown,
+    inLanguage: "pt-BR",
+    mainEntityOfPage: {
       "@type": "WebPage",
       "@id": canonicalUrl
     },
-    "datePublished": new Date().toISOString()
+    author: {
+      "@type": "Person",
+      name: payload.blogOptions.author || "Equipe V5 Apollo",
+      url: "https://v5autoblog.com/autores/apollo-la-plata"
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Holding V5 Apollo",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://v5autoblog.com/logo.png"
+      }
+    },
+    datePublished: nowIso,
+    dateModified: nowIso,
+    image: {
+      "@type": "ImageObject",
+      url: featuredImageUrl,
+      width: 1200,
+      height: 630
+    },
+    keywords: payload.blogOptions.tags.join(", "),
+    wordCount,
+    articleSection: payload.blogOptions.category || "Tecnologia"
+  };
+
+  // Open Graph Metadata
+  const openGraph: OpenGraphMetadata = {
+    og_title: `${payload.title} | V5 AutoBlog`,
+    og_description: excerpt,
+    og_url: canonicalUrl,
+    og_type: "article",
+    og_image: featuredImageUrl,
+    og_image_alt: featuredImageAlt,
+    og_site_name: "V5 AutoBlog",
+    og_locale: "pt_BR",
+    article_published_time: nowIso,
+    article_modified_time: nowIso,
+    article_author: payload.blogOptions.author || "Apollo La Plata",
+    article_section: payload.blogOptions.category || "Tecnologia",
+    article_tag: payload.blogOptions.tags
+  };
+
+  // Twitter Card Metadata
+  const twitterCard: TwitterCardMetadata = {
+    card: "summary_large_image",
+    title: payload.title,
+    description: excerpt,
+    image: featuredImageUrl,
+    creator: "@v5apollo",
+    site: "@v5apollo"
+  };
+
+  // AI Search & AEO Readiness (Perplexity, ChatGPT, Gemini Citations)
+  const keyTakeaways = extractKeyTakeaways(cleanMarkdown, payload.title);
+  const aiSearch: AiSearchReadiness = {
+    topic_cluster: payload.blogOptions.category || "Tecnologia",
+    key_takeaways: keyTakeaways,
+    content_freshness: "evergreen",
+    citation_anchor: `${payload.title} - Análise por ${payload.blogOptions.author || "Equipe V5 Apollo"}`,
+    direct_answer_summary: `${payload.title}: ${excerpt}`
+  };
+
+  // Montagem das Tags SEO Estendidas
+  const seo: ExtendedSeoMetadata = {
+    meta_title: `${payload.title} | V5 AutoBlog`,
+    meta_description: excerpt,
+    canonical_url: canonicalUrl,
+    focus_keywords: payload.blogOptions.tags.slice(0, 5),
+    reading_time_minutes: readingTimeMinutes,
+    word_count: wordCount,
+    robots: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+    open_graph: openGraph,
+    twitter_card: twitterCard,
+    schema_org: schemaOrg,
+    ai_search: aiSearch
   };
 
   return {
+    id: payload.id || `post_${Date.now()}`,
     title: payload.title,
-    slug: slug,
-    content: sanitizeMarkdown(payload.contentMarkdown),
-    excerpt: payload.summary || payload.emailOptions.previewText,
-    category: payload.blogOptions.category,
-    tags: payload.blogOptions.tags,
-    status: "publish",
-    author: payload.blogOptions.author,
+    slug,
     canonical_url: canonicalUrl,
-    featured_image: payload.coverImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200",
-    image_alt: payload.coverImageAlt || payload.title,
+    content: cleanMarkdown,
+    content_html: contentHtml,
+    excerpt,
+    category: payload.blogOptions.category || "Tecnologia",
+    tags: payload.blogOptions.tags || [],
+    status: "publish",
+    published_at: nowIso,
+    updated_at: nowIso,
+    author: {
+      name: payload.blogOptions.author || "Apollo La Plata",
+      role: "Editor Chefe & Arquiteto de Sistemas",
+      avatarUrl: "https://v5autoblog.com/avatars/apollo.jpg",
+      profileUrl: "https://v5autoblog.com/autores/apollo-la-plata"
+    },
+    featured_image: {
+      url: featuredImageUrl,
+      alt: featuredImageAlt,
+      width: 1200,
+      height: 630,
+      caption: `Capa ilustrativa de ${payload.title}`
+    },
     has_paywall: hasPaywall,
     paywall_index: paywallIndex,
-    schema_org: schemaJsonLd,
-    meta_seo: {
-      meta_title: `${payload.title} | V5 AutoBlog`,
-      meta_description: payload.summary || payload.emailOptions.previewText,
-      focus_keywords: payload.blogOptions.tags.slice(0, 3).join(", ")
-    }
+    reading_time_minutes: readingTimeMinutes,
+    word_count: wordCount,
+    seo,
+    target_platform: payload.blogOptions.targetPlatform || "v5autoblog",
+    target_endpoint: payload.blogOptions.targetEndpoint || "https://v5autoblog.com/api/v1/posts",
+    api_version: "v1.4-multimodal",
+    dispatched_by: "Capitania #13: V5 Apollo Poster (:3011)"
   };
 }
 

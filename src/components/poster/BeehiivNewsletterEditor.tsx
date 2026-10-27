@@ -488,6 +488,7 @@ export function BeehiivNewsletterEditor() {
   const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [blogSubView, setBlogSubView] = useState<"portal" | "json">("portal");
+  const [blogJsonTab, setBlogJsonTab] = useState<"full" | "seo" | "schema" | "og" | "ai">("full");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
@@ -2059,12 +2060,111 @@ export function BeehiivNewsletterEditor() {
                     </div>
                   )}
 
-                  {/* 3.2 REST API JSON SCHEMA */}
+                  {/* 3.2 REST API JSON SCHEMA & EXTENDED SEO METADATA (Etapa 041) */}
                   {blogSubView === "json" && (
-                    <div className="flex-1 bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
-                      <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
-                        {JSON.stringify(compiledBlogJson, null, 2)}
-                      </pre>
+                    <div className="flex-1 flex flex-col space-y-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-hidden">
+                      {/* Top Bar com Status de Endpoint e Contadores SEO */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-zinc-900/90 rounded-xl border border-zinc-800/80 text-xs font-mono">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold text-[10px]">
+                            POST • /api/v1/posts
+                          </span>
+                          <span className="text-zinc-400 text-[11px] truncate max-w-xs">
+                            {compiledBlogJson.target_endpoint}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded border text-[10px] ${
+                            compiledBlogJson.seo.meta_title.length <= 60 
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" 
+                              : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                          }`}>
+                            Title: {compiledBlogJson.seo.meta_title.length}/60c
+                          </span>
+                          <span className={`px-2 py-0.5 rounded border text-[10px] ${
+                            compiledBlogJson.seo.meta_description.length <= 160 
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" 
+                              : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                          }`}>
+                            Desc: {compiledBlogJson.seo.meta_description.length}/160c
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[10px]">
+                            🤖 AEO Ready
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Sub-Tabs de Inspeção Estruturada */}
+                      <div className="flex items-center gap-1.5 border-b border-zinc-800 pb-2 text-[11px] font-mono overflow-x-auto">
+                        <button
+                          type="button"
+                          onClick={() => setBlogJsonTab("full")}
+                          className={`px-3 py-1 rounded-lg transition whitespace-nowrap ${
+                            blogJsonTab === "full" 
+                              ? "bg-amber-500 text-black font-bold" 
+                              : "bg-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Payload Completo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlogJsonTab("seo")}
+                          className={`px-3 py-1 rounded-lg transition whitespace-nowrap ${
+                            blogJsonTab === "seo" 
+                              ? "bg-amber-500 text-black font-bold" 
+                              : "bg-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Tags SEO Estendidas
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlogJsonTab("schema")}
+                          className={`px-3 py-1 rounded-lg transition whitespace-nowrap ${
+                            blogJsonTab === "schema" 
+                              ? "bg-amber-500 text-black font-bold" 
+                              : "bg-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Schema.org (JSON-LD)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlogJsonTab("og")}
+                          className={`px-3 py-1 rounded-lg transition whitespace-nowrap ${
+                            blogJsonTab === "og" 
+                              ? "bg-amber-500 text-black font-bold" 
+                              : "bg-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Open Graph & Twitter
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlogJsonTab("ai")}
+                          className={`px-3 py-1 rounded-lg transition whitespace-nowrap ${
+                            blogJsonTab === "ai" 
+                              ? "bg-amber-500 text-black font-bold" 
+                              : "bg-zinc-900 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          AEO / Key Takeaways
+                        </button>
+                      </div>
+
+                      {/* Code Block Pre */}
+                      <div className="flex-1 overflow-auto rounded-lg bg-zinc-950 p-3 border border-zinc-900">
+                        <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
+                          {(() => {
+                            if (blogJsonTab === "seo") return JSON.stringify(compiledBlogJson.seo, null, 2);
+                            if (blogJsonTab === "schema") return JSON.stringify(compiledBlogJson.seo.schema_org, null, 2);
+                            if (blogJsonTab === "og") return JSON.stringify({ open_graph: compiledBlogJson.seo.open_graph, twitter_card: compiledBlogJson.seo.twitter_card }, null, 2);
+                            if (blogJsonTab === "ai") return JSON.stringify(compiledBlogJson.seo.ai_search, null, 2);
+                            return JSON.stringify(compiledBlogJson, null, 2);
+                          })()}
+                        </pre>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -144,6 +144,7 @@ export interface MultimodalDispatchPayload {
   id: string;
   title: string;
   slug: string;
+  canonical_url?: string;
   summary: string;
   contentMarkdown: string;
   coverImageUrl?: string;
@@ -179,6 +180,131 @@ export interface MultimodalDispatchPayload {
     blog: { status: 'idle' | 'sent' | 'failed'; publishedUrl?: string; statusCode?: number; error?: string };
     social: { status: 'idle' | 'sent' | 'failed'; deliveredChannels?: string[]; error?: string };
   };
+}
+
+export interface BlogAuthorProfile {
+  name: string;
+  role?: string;
+  avatarUrl?: string;
+  profileUrl?: string;
+}
+
+export interface BlogFeaturedImage {
+  url: string;
+  alt: string;
+  width: number;
+  height: number;
+  caption?: string;
+}
+
+export interface OpenGraphMetadata {
+  og_title: string;
+  og_description: string;
+  og_url: string;
+  og_type: 'article';
+  og_image: string;
+  og_image_alt: string;
+  og_site_name: string;
+  og_locale: string;
+  article_published_time: string;
+  article_modified_time?: string;
+  article_author: string;
+  article_section: string;
+  article_tag: string[];
+}
+
+export interface TwitterCardMetadata {
+  card: 'summary_large_image' | 'summary';
+  title: string;
+  description: string;
+  image: string;
+  creator: string;
+  site: string;
+}
+
+export interface SchemaOrgBlogPosting {
+  '@context': 'https://schema.org';
+  '@type': 'BlogPosting' | 'Article' | 'TechArticle';
+  headline: string;
+  description: string;
+  articleBody: string;
+  inLanguage: string;
+  mainEntityOfPage: {
+    '@type': 'WebPage';
+    '@id': string;
+  };
+  author: {
+    '@type': 'Person';
+    name: string;
+    url?: string;
+  };
+  publisher: {
+    '@type': 'Organization';
+    name: string;
+    logo: {
+      '@type': 'ImageObject';
+      url: string;
+    };
+  };
+  datePublished: string;
+  dateModified: string;
+  image: {
+    '@type': 'ImageObject';
+    url: string;
+    width: number;
+    height: number;
+  };
+  keywords: string;
+  wordCount: number;
+  articleSection: string;
+}
+
+export interface AiSearchReadiness {
+  topic_cluster: string;
+  key_takeaways: string[];
+  content_freshness: 'evergreen' | 'breaking_news' | 'technical_guide';
+  citation_anchor: string;
+  direct_answer_summary: string;
+}
+
+export interface ExtendedSeoMetadata {
+  meta_title: string;
+  meta_description: string;
+  canonical_url: string;
+  focus_keywords: string[];
+  reading_time_minutes: number;
+  word_count: number;
+  robots: string;
+  open_graph: OpenGraphMetadata;
+  twitter_card: TwitterCardMetadata;
+  schema_org: SchemaOrgBlogPosting;
+  ai_search: AiSearchReadiness;
+}
+
+export interface V5AutoBlogPayload {
+  id: string;
+  title: string;
+  slug: string;
+  canonical_url: string;
+  content: string;
+  content_html: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  status: 'publish' | 'draft' | 'future';
+  published_at: string;
+  updated_at: string;
+  author: BlogAuthorProfile;
+  featured_image: BlogFeaturedImage;
+  has_paywall: boolean;
+  paywall_index?: number;
+  reading_time_minutes: number;
+  word_count: number;
+  seo: ExtendedSeoMetadata;
+  target_platform: 'v5autoblog' | 'wordpress' | 'both';
+  target_endpoint: string;
+  api_version: string;
+  dispatched_by: string;
 }
 
 export interface DispatchLogEntry {
