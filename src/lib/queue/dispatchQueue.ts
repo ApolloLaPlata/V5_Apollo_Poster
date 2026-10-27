@@ -24,6 +24,7 @@ import {
 } from "./taskStateTransition";
 
 export * from "./taskStateTransition";
+export * from "./retryManager";
 
 export const PRIORITY_WEIGHTS: Record<QueueItemPriority, number> = {
   urgent: 4,

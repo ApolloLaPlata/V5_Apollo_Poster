@@ -32,7 +32,8 @@ import {
   updateItemStatus as updateQueueItemStatusUtil,
   cancelQueueItem as cancelQueueItemUtil,
   removeQueueItem as removeQueueItemUtil,
-  clearCompletedItems as clearCompletedItemsUtil
+  clearCompletedItems as clearCompletedItemsUtil,
+  applyRetryToQueueItem
 } from "@/lib/queue/dispatchQueue";
 
 export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "logs";
@@ -79,6 +80,7 @@ interface PosterStoreState {
   enqueueQueueItem: (item: QueueItem) => void;
   enqueueBatchQueue: (items: QueueItem[]) => void;
   updateQueueItemStatus: (id: string, status: QueueItemStatus, errorMessage?: string) => void;
+  retryQueueItem: (id: string, error: unknown, statusCode?: number) => void;
   cancelQueueItem: (id: string) => void;
   removeQueueItem: (id: string) => void;
   clearCompletedQueue: () => void;
@@ -431,6 +433,15 @@ export const usePosterStore = create<PosterStoreState>()(
         set((state) => ({
           dispatchQueue: updateQueueItemStatusUtil(state.dispatchQueue, id, status, errorMessage)
         })),
+      retryQueueItem: (id, error, statusCode) =>
+        set((state) => {
+          const target = state.dispatchQueue.find((i) => i.id === id);
+          if (!target) return state;
+          const { item: updatedItem } = applyRetryToQueueItem(target, error, statusCode);
+          return {
+            dispatchQueue: state.dispatchQueue.map((i) => (i.id === id ? updatedItem : i))
+          };
+        }),
       cancelQueueItem: (id) =>
         set((state) => ({
           dispatchQueue: cancelQueueItemUtil(state.dispatchQueue, id)
