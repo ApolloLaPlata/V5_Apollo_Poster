@@ -29,7 +29,19 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
       continue;
     }
 
-    if (line.startsWith("# ")) {
+    if (line.includes("[PAYWALL_BREAK") || line.includes("<!-- paywall") || line.includes("<!-- PAYWALL")) {
+      htmlBodyLines.push(
+        `<div style="margin: 32px 0; padding: 24px 16px; border: 2px dashed #f59e0b; background-color: #fffbeb; border-radius: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <p style="color: #92400e; font-weight: 800; font-size: 15px; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;">🔒 Conteúdo Exclusivo de Assinantes VIP</p>
+          <p style="color: #b45309; font-size: 13px; line-height: 1.5; margin: 0 0 16px 0;">Este é o ponto de corte da prévia gratuita. Assine o plano VIP para liberar a leitura completa.</p>
+          <a href="https://v5autoblog.com/vip?${utmSuffix}" style="display: inline-block; background-color: #f59e0b; color: #000000; font-weight: 800; font-size: 13px; text-decoration: none; padding: 10px 20px; border-radius: 8px;">Desbloquear Assinatura VIP →</a>
+        </div>`
+      );
+    } else if (line === "---" || line === "***") {
+      htmlBodyLines.push(
+        `<hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 28px 0;" />`
+      );
+    } else if (line.startsWith("# ")) {
       htmlBodyLines.push(
         `<h1 style="color: #111827; font-size: 26px; font-weight: 800; line-height: 1.3; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${line.replace("# ", "")}</h1>`
       );
@@ -142,6 +154,12 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
 export function compileBlogPayload(payload: MultimodalDispatchPayload) {
   const slug = payload.slug || slugify(payload.title);
   const canonicalUrl = `https://v5autoblog.com/artigo/${slug}`;
+  const hasPaywall = payload.contentMarkdown.includes("[PAYWALL_BREAK") || 
+                     payload.contentMarkdown.includes("<!-- paywall") ||
+                     payload.contentMarkdown.includes("<!-- PAYWALL");
+  const paywallIndex = hasPaywall 
+    ? payload.contentMarkdown.search(/\[PAYWALL_BREAK|<!--\s*paywall/i) 
+    : undefined;
 
   const schemaJsonLd = {
     "@context": "https://schema.org",
@@ -178,6 +196,8 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload) {
     status: "publish",
     author: payload.blogOptions.author,
     canonical_url: canonicalUrl,
+    has_paywall: hasPaywall,
+    paywall_index: paywallIndex,
     schema_org: schemaJsonLd,
     meta_seo: {
       meta_title: `${payload.title} | V5 AutoBlog`,

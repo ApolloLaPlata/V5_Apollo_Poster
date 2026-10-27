@@ -61,7 +61,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 ### FASE 3: MOTOR DUAL BEEHIIV/SUBSTACK (EDITOR MARKDOWN) (021 - 030)
 - [x] **Etapa 021:** Estruturação do Editor Dual Avançado (`BeehiivNewsletterEditor.tsx`) com divisão em tela dividida (Split-Pane).
 - [x] **Etapa 022:** Toolbar de Formatação Markdown Rápida (H1, H2, H3, Citações, Listas, Negrito, Links).
-- [ ] **Etapa 023:** Inserção do Divisor "Paywall Break / Linha de Assinatura" no Markdown nativo.
+- [x] **Etapa 023:** Inserção do Divisor "Paywall Break / Linha de Assinatura" no Markdown nativo.
 - [ ] **Etapa 024:** Extrator Automático de Metadados: Cálculo de Tempo de Leitura, Contagem de Palavras e Densidade Semântica.
 - [ ] **Etapa 025:** Sanitizador de Markdown para remoção de caracteres de controle e tags maliciosas.
 - [ ] **Etapa 026:** Alternador de Abas de Visualização (Editor Puro vs. Preview E-mail HTML vs. Preview AutoBlog Web).
