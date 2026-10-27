@@ -6,7 +6,9 @@ export type SocialPlatform =
   | 'autoblog'
   | 'newsletter'
   | 'whatsapp'
-  | 'telegram';
+  | 'telegram'
+  | 'x_twitter'
+  | 'threads';
 
 export type PostStatus = 'draft' | 'scheduled' | 'published' | 'failed';
 
@@ -58,4 +60,41 @@ export interface GroupBroadcastDeal {
   targetChannels: Array<'whatsapp' | 'telegram'>;
   scheduledTime: string;
   status: 'pending' | 'sent';
+}
+
+export interface MultimodalDispatchPayload {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  contentMarkdown: string;
+  emailOptions: {
+    enabled: boolean;
+    subject: string;
+    previewText: string;
+    fromName: string;
+    provider: 'resend' | 'ses' | 'smtp';
+    audienceList: string;
+    utmCampaign: string;
+  };
+  blogOptions: {
+    enabled: boolean;
+    targetPlatform: 'v5autoblog' | 'wordpress' | 'both';
+    targetEndpoint: string;
+    category: string;
+    tags: string[];
+    author: string;
+    generateSchema: boolean;
+  };
+  socialTeaserOptions: {
+    enabled: boolean;
+    platforms: Array<'instagram' | 'x_twitter' | 'threads' | 'telegram' | 'whatsapp'>;
+    customHook?: string;
+  };
+  dispatchStatus: {
+    overall: 'idle' | 'in_progress' | 'completed' | 'partial_error';
+    email: { status: 'idle' | 'sent' | 'failed'; sentCount?: number; messageId?: string; error?: string };
+    blog: { status: 'idle' | 'sent' | 'failed'; publishedUrl?: string; statusCode?: number; error?: string };
+    social: { status: 'idle' | 'sent' | 'failed'; deliveredChannels?: string[]; error?: string };
+  };
 }

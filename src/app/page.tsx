@@ -41,7 +41,7 @@ export default function PosterPage() {
               }`}
             >
               <Mail className="w-3.5 h-3.5" />
-              <span>Dual Beehiiv</span>
+              <span>Despacho Multimodal</span>
             </button>
 
             <button
