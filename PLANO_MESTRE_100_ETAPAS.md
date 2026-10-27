@@ -130,7 +130,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 
 ### FASE 8: TRANSMISSÃO DE GRUPOS VIP FINDERS (071 - 080)
 - [x] **Etapa 071:** Conexão do Despachador de Ofertas (`OfferGroupDispatcher.tsx`) com os dados das lojas (Shopee, Mercado Livre, Amazon, AliExpress, Magalu).
-- [ ] **Etapa 072:** Compilador de Formatação Especial para Telegram (HTML/Markdown com `<s>preço original</s>`, preço promocional em destaque e emoji de fogo).
+- [x] **Etapa 072:** Compilador de Formatação Especial para Telegram (HTML/Markdown com `<s>preço original</s>`, preço promocional em destaque e emoji de fogo).
 - [ ] **Etapa 073:** Compilador de Formatação Especial para WhatsApp (Padrão de texto com `~preço original~`, cupom em caixa alta e link curto).
 - [ ] **Etapa 074:** Calculadora Automática de Porcentagem de Desconto e Destaque de Economia em Reais (`Você economiza R$ X`).
 - [ ] **Etapa 075:** Seletor de Canais de Destino (Canais VIP do Telegram, Comunidades de WhatsApp e Grupos de Anúncios).
