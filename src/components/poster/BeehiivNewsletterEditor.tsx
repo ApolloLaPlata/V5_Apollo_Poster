@@ -141,6 +141,7 @@ import { ThreadsTeaserCard } from "@/components/poster/ThreadsTeaserCard";
 import { InstagramCaptionCard } from "@/components/poster/InstagramCaptionCard";
 import { WhatsAppMessageCard } from "@/components/poster/WhatsAppMessageCard";
 import { TelegramMessageCard } from "@/components/poster/TelegramMessageCard";
+import { SocialTeasersEditorPanel } from "@/components/poster/SocialTeasersEditorPanel";
 
 export const IMAGE_PRESETS = [
   {
@@ -2767,6 +2768,9 @@ export function BeehiivNewsletterEditor() {
               {/* 3.3 MODO SOCIAL TEASERS (Etapas 051 - 060) */}
               {previewFormat === "social" && (
                 <div className="h-full flex flex-col space-y-4 overflow-y-auto pr-1">
+                  {/* Painel Avançado de Edição e Contadores de Caracteres em Tempo Real (Etapa 057) */}
+                  <SocialTeasersEditorPanel payload={payload} />
+
                   <div className="flex items-center justify-between bg-zinc-900/80 p-3 rounded-xl border border-zinc-800 text-xs">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-amber-400" />

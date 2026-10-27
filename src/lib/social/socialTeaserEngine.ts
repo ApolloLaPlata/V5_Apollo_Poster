@@ -38,6 +38,61 @@ export const SOCIAL_PLATFORM_NAMES: Record<SocialTeaserPlatform, string> = {
   linkedin: "LinkedIn Artigos"
 };
 
+export const SOCIAL_SWEET_SPOTS: Record<SocialTeaserPlatform, { min: number; max: number; label: string }> = {
+  x_twitter: { min: 200, max: 260, label: "200-260 caracteres" },
+  threads: { min: 300, max: 450, label: "300-450 caracteres" },
+  instagram: { min: 500, max: 1400, label: "500-1.400 caracteres" },
+  whatsapp: { min: 200, max: 800, label: "200-800 caracteres" },
+  telegram: { min: 300, max: 1200, label: "300-1.200 caracteres" },
+  linkedin: { min: 800, max: 1800, label: "800-1.800 caracteres" }
+};
+
+export interface TeaserMetrics {
+  platform: SocialTeaserPlatform;
+  charCount: number;
+  charLimit: number;
+  remainingChars: number;
+  isWithinLimit: boolean;
+  percentUsed: number;
+  isSweetSpot: boolean;
+  sweetSpotMin: number;
+  sweetSpotMax: number;
+  status: "comfortable" | "approaching_limit" | "exceeded_limit";
+}
+
+/**
+ * Calcula métricas em tempo real para qualquer texto de teaser individual
+ */
+export function calculateTeaserMetrics(platform: SocialTeaserPlatform, text: string): TeaserMetrics {
+  const charLimit = SOCIAL_CHAR_LIMITS[platform] || 280;
+  const sweetSpot = SOCIAL_SWEET_SPOTS[platform] || { min: 50, max: charLimit, label: "" };
+  const charCount = text ? text.length : 0;
+  const remainingChars = charLimit - charCount;
+  const isWithinLimit = charCount <= charLimit;
+  const percentUsed = Math.min(100, Math.round((charCount / charLimit) * 100));
+  const isSweetSpot = charCount >= sweetSpot.min && charCount <= sweetSpot.max;
+
+  let status: "comfortable" | "approaching_limit" | "exceeded_limit" = "comfortable";
+  if (!isWithinLimit) {
+    status = "exceeded_limit";
+  } else if (percentUsed >= 85) {
+    status = "approaching_limit";
+  }
+
+  return {
+    platform,
+    charCount,
+    charLimit,
+    remainingChars,
+    isWithinLimit,
+    percentUsed,
+    isSweetSpot,
+    sweetSpotMin: sweetSpot.min,
+    sweetSpotMax: sweetSpot.max,
+    status
+  };
+}
+
 export interface SocialTeaserOptions {
   customHook?: string;
   commentToDmKeyword?: string;
