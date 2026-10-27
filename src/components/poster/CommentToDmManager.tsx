@@ -68,6 +68,11 @@ import {
   QuickTestScenario,
   SimulationExecutionResult 
 } from "@/lib/comments/commentSimulationEngine";
+import { 
+  globalAntiBanThrottler, 
+  ThrottlerMetrics, 
+  ThrottledTask 
+} from "@/lib/comments/antiBanThrottler";
 
 export function CommentToDmManager() {
   const { 
@@ -119,11 +124,13 @@ export function CommentToDmManager() {
     isActive: true
   });
 
-  // Estado do Simulador
+  // Estado do Simulador e Fila Anti-Ban
   const [simUsername, setSimUsername] = useState<string>("@dev_growth");
   const [simCommentText, setSimCommentText] = useState<string>("Eu quero esse link agora!");
   const [simActiveTab, setSimActiveTab] = useState<"visual" | "telemetry">("visual");
   const [simExecutionResult, setSimExecutionResult] = useState<SimulationExecutionResult | null>(null);
+  const [throttlerMetrics, setThrottlerMetrics] = useState<ThrottlerMetrics>(() => globalAntiBanThrottler.getMetrics());
+  const [isBurstSimulating, setIsBurstSimulating] = useState<boolean>(false);
   const [simResult, setSimResult] = useState<{
     matched: boolean;
     matchedKeyword?: string;
@@ -202,16 +209,38 @@ export function CommentToDmManager() {
   const handleRunSimulator = async () => {
     if (!selectedRule) return;
 
+    // Checagem de Proteção da Fila Anti-Ban
+    const canDispatch = globalAntiBanThrottler.canDispatchNow();
+    const jitter = globalAntiBanThrottler.calculateJitter();
+
     const res = await simulateCommentInteraction({
       commentText: simCommentText,
       username: simUsername,
       rule: selectedRule,
-      platform: selectedRule.platform
+      platform: selectedRule.platform,
+      simulatedLatencyMs: jitter
     });
 
     setSimExecutionResult(res);
 
     if (res.isTriggerMatched) {
+      if (canDispatch) {
+        globalAntiBanThrottler.recordSuccessfulDispatch();
+      } else {
+        // Enfileira com throttling seguro
+        globalAntiBanThrottler.enqueue({
+          ruleId: selectedRule.id,
+          commentId: res.metaCommentId || `cmt_${Date.now()}`,
+          username: simUsername,
+          commentText: simCommentText,
+          dmMessage: res.dmMessageText || "",
+          publicReply: res.publicReplyText || "",
+          priority: "high"
+        });
+      }
+
+      setThrottlerMetrics(globalAntiBanThrottler.getMetrics());
+
       setSimResult({
         matched: true,
         matchedKeyword: res.matchResult.matchedKeyword,
@@ -240,10 +269,14 @@ export function CommentToDmManager() {
         publicReplySent: res.publicReplyText || "",
         dmSent: res.dmMessageText || "",
         couponUsed: res.couponApplied,
-        status: res.success ? "success" : "failed"
+        status: canDispatch ? (res.success ? "success" : "failed") : "throttled"
       });
 
-      toast.success(`Gatilho ativado (${res.matchResult.matchModeUsed.toUpperCase()}): "${res.matchResult.matchedKeyword}"! DM despachada (${res.latencyMs}ms).`);
+      if (canDispatch) {
+        toast.success(`Gatilho ativado (${res.matchResult.matchModeUsed.toUpperCase()}): "${res.matchResult.matchedKeyword}"! Jitter Anti-Ban: ${(jitter / 1000).toFixed(1)}s.`);
+      } else {
+        toast.warning(`Proteção Anti-Ban: limite atingido! DM colocada na fila de amortecimento com jitter estocástico.`);
+      }
     } else {
       setSimResult({
         matched: false,
@@ -252,6 +285,40 @@ export function CommentToDmManager() {
       });
       toast.info("Nenhuma palavra-chave ou sinônimo compatível encontrado no comentário.");
     }
+  };
+
+  // Simula Avalanche de 5 Comentários Simultâneos para provar a proteção da fila anti-ban
+  const handleSimulateBurst = async () => {
+    if (!selectedRule || isBurstSimulating) return;
+    setIsBurstSimulating(true);
+
+    toast.info("Simulando avalanche de 5 comentários simultâneos...");
+
+    const burstUsers = [
+      { user: "@pedro_viral", text: "Eu quero o link agora!" },
+      { user: "@mariana_mkt", text: "Tem cupom de desconto?" },
+      { user: "@lucas_coder", text: "Manda o link no direct pfv" },
+      { user: "@gabriela_vip", text: "QUERO muito esse acesso!" },
+      { user: "@thiago_growth", text: "Manda esse linck por favor!" }
+    ];
+
+    for (let i = 0; i < burstUsers.length; i++) {
+      const b = burstUsers[i];
+      globalAntiBanThrottler.enqueue({
+        ruleId: selectedRule.id,
+        commentId: `burst_${Date.now()}_${i}`,
+        username: b.user,
+        commentText: b.text,
+        dmMessage: selectedRule.dmMessageTemplate,
+        publicReply: "Enviado no direct!",
+        priority: i === 0 ? "high" : "normal"
+      });
+      globalAntiBanThrottler.recordSuccessfulDispatch();
+    }
+
+    setThrottlerMetrics(globalAntiBanThrottler.getMetrics());
+    setIsBurstSimulating(false);
+    toast.success("Avalanche amortecida com sucesso! 5 DMs enfileiradas com jitter seguro (2s a 5s).");
   };
 
   // Carrega e executa imediatamente um cenário de teste rápido (1 Clique)
@@ -409,7 +476,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 066 (Simulador Interativo em Tempo Real)
+              Etapa 067 (Fila Anti-Ban & Throttling 30/min)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -907,6 +974,57 @@ export function CommentToDmManager() {
                   }`}
                 >
                   Pipeline
+                </button>
+              </div>
+            </div>
+
+            {/* Fila Anti-Ban & Rate Limiting (Meta Graph Protection) */}
+            <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-1.5 text-[10px] font-mono">
+              <div className="flex items-center justify-between text-zinc-300">
+                <span className="flex items-center gap-1 font-bold text-amber-400">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  Fila Anti-Ban (30 DMs/min):
+                </span>
+                <span className={`px-1.5 py-0.2 rounded border font-bold ${
+                  throttlerMetrics.safetyStatus === "optimal"
+                    ? "text-emerald-400 bg-emerald-950/40 border-emerald-500/30"
+                    : throttlerMetrics.safetyStatus === "moderate"
+                    ? "text-blue-400 bg-blue-950/40 border-blue-500/30"
+                    : "text-rose-400 bg-rose-950/40 border-rose-500/30"
+                }`}>
+                  {throttlerMetrics.safetyStatus.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-zinc-400 text-[9px]">
+                <span>Taxa da Janela (60s):</span>
+                <span className="font-bold text-white">{throttlerMetrics.dmsInLastMinute} / 30 DMs</span>
+              </div>
+
+              {/* Barra de Consumo da Janela */}
+              <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    throttlerMetrics.capacityUtilizationPercent > 80
+                      ? "bg-rose-500"
+                      : throttlerMetrics.capacityUtilizationPercent > 50
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                  }`}
+                  style={{ width: `${Math.min(100, throttlerMetrics.capacityUtilizationPercent)}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[9px] text-zinc-500 pt-0.5">
+                <span>Jitter: 2s a 5s estocástico</span>
+                <button
+                  type="button"
+                  onClick={handleSimulateBurst}
+                  disabled={isBurstSimulating}
+                  className="text-blue-400 hover:text-blue-300 underline font-semibold disabled:opacity-50"
+                  title="Simula 5 comentários em avalanche para testar o amortecimento"
+                >
+                  {isBurstSimulating ? "Amortecendo..." : "⚡ Simular Avalanche (5 DMs)"}
                 </button>
               </div>
             </div>
