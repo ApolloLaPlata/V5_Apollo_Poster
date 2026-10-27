@@ -135,6 +135,7 @@ import {
   normalizeTagName 
 } from "@/lib/seo/taxonomyEngine";
 import { V5AutoBlogWebSimulator } from "@/components/poster/V5AutoBlogWebSimulator";
+import { GoogleRichResultsInspector } from "@/components/poster/GoogleRichResultsInspector";
 
 export const IMAGE_PRESETS = [
   {
@@ -537,7 +538,7 @@ export function BeehiivNewsletterEditor() {
   const [splitMode, setSplitMode] = useState<"split" | "editor" | "preview">("split");
   const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
-  const [blogSubView, setBlogSubView] = useState<"portal" | "json">("portal");
+  const [blogSubView, setBlogSubView] = useState<"portal" | "rich_results" | "json">("portal");
   const [blogJsonTab, setBlogJsonTab] = useState<"full" | "seo" | "schema" | "og" | "ai" | "connector">("full");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
@@ -2220,7 +2221,16 @@ export function BeehiivNewsletterEditor() {
                         }`}
                       >
                         <Globe className="w-3 h-3" />
-                        <span>Portal Web (AutoBlog Frontend)</span>
+                        <span>Portal Web</span>
+                      </button>
+                      <button
+                        onClick={() => setBlogSubView("rich_results")}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-medium transition ${
+                          blogSubView === "rich_results" ? "bg-amber-500 text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>Google Rich Results & Schema</span>
                       </button>
                       <button
                         onClick={() => setBlogSubView("json")}
@@ -2229,7 +2239,7 @@ export function BeehiivNewsletterEditor() {
                         }`}
                       >
                         <Code className="w-3 h-3" />
-                        <span>Payload REST API (Schema.org)</span>
+                        <span>Payload REST API</span>
                       </button>
                     </div>
 
@@ -2251,6 +2261,11 @@ export function BeehiivNewsletterEditor() {
                       onAutoOptimizeExcerpt={handleAutoExtractGoogleExcerpt}
                       renderMarkdownToHtml={renderMarkdownToHtml}
                     />
+                  )}
+
+                  {/* 3.2 GOOGLE RICH RESULTS & SCHEMA INSPECTOR (Etapa 049) */}
+                  {blogSubView === "rich_results" && (
+                    <GoogleRichResultsInspector payload={payload} />
                   )}
 
                   {/* 3.2 REST API JSON SCHEMA & EXTENDED SEO METADATA (Etapa 041) */}
