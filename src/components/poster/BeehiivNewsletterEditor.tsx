@@ -134,6 +134,7 @@ import {
   TaxonomySuggestion, 
   normalizeTagName 
 } from "@/lib/seo/taxonomyEngine";
+import { V5AutoBlogWebSimulator } from "@/components/poster/V5AutoBlogWebSimulator";
 
 export const IMAGE_PRESETS = [
   {
@@ -2241,143 +2242,15 @@ export function BeehiivNewsletterEditor() {
                     </button>
                   </div>
 
-                  {/* 3.1 V5 AUTOBlog FRONTEND SIMULATION */}
+                  {/* 3.1 V5 AUTOBlog FRONTEND SIMULATION (Etapa 048) */}
                   {blogSubView === "portal" && (
-                    <div className={`mx-auto transition-all ${previewDevice === "mobile" ? "max-w-[375px]" : "w-full"} space-y-4`}>
-                      {/* Browser Address Bar Simulation */}
-                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 flex items-center gap-2 text-xs font-mono text-zinc-400 shadow-sm">
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-zinc-500">https://</span>
-                        <span className="text-zinc-200">v5autoblog.com/artigo/{payload.slug}</span>
-                      </div>
-
-                      {/* Google SERP Snippet Preview Card (Etapa 046) */}
-                      {(() => {
-                        const currentExcerpt = payload.summary || payload.emailOptions.previewText;
-                        const excerptQuality = evaluateExcerptQuality(currentExcerpt, payload.blogOptions.tags);
-                        return (
-                          <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 space-y-2 shadow-sm">
-                            <div className="flex items-center justify-between text-[11px] text-zinc-400 font-sans">
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[9px]">G</span>
-                                <span>v5autoblog.com › artigo › {payload.slug}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-                                  excerptQuality.status === "optimal"
-                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                    : excerptQuality.status === "acceptable"
-                                    ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                                    : excerptQuality.status === "too_long"
-                                    ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
-                                    : "bg-amber-500/10 text-amber-300 border-amber-500/30"
-                                }`}>
-                                  {excerptQuality.characterCount}/160c • {
-                                    excerptQuality.status === "optimal" ? "Sweet Spot SERP" :
-                                    excerptQuality.status === "too_long" ? "Truncamento Google" : "Curto"
-                                  }
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={handleAutoExtractGoogleExcerpt}
-                                  className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono hover:underline"
-                                  title="Extrair e ajustar automaticamente para 150-160 caracteres"
-                                >
-                                  <Sparkles className="w-3 h-3 text-amber-400" />
-                                  <span>Auto Otimizar</span>
-                                </button>
-                              </div>
-                            </div>
-                            <h4 className="text-sm font-bold text-blue-400 hover:underline cursor-pointer leading-tight">
-                              {payload.title} | V5 AutoBlog
-                            </h4>
-                            <p className="text-xs text-zinc-300 leading-relaxed">
-                              {currentExcerpt}
-                            </p>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Web Article Page Simulation */}
-                      <div className="bg-zinc-900/40 p-6 md:p-8 rounded-xl border border-zinc-800/80 space-y-6">
-                        {/* Breadcrumbs */}
-                        <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1.5">
-                          <span>Início</span>
-                          <span>&gt;</span>
-                          <span>Blog</span>
-                          <span>&gt;</span>
-                          <span className="text-amber-400 font-semibold">{payload.blogOptions.category}</span>
-                        </div>
-
-                        {/* Title & Metadata */}
-                        <div>
-                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider mb-2">
-                            {payload.blogOptions.category}
-                          </span>
-                          <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight mb-3">
-                            {payload.title}
-                          </h1>
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-mono border-b border-zinc-800/80 pb-4">
-                            <span>Por <strong>{payload.blogOptions.author}</strong></span>
-                            <span>•</span>
-                            <span>27 de Outubro de 2026</span>
-                            <span>•</span>
-                            <span>{readingTime} min de leitura</span>
-                          </div>
-                        </div>
-
-                        {/* Featured Hero Image */}
-                        {payload.coverImageUrl && (
-                          <figure className="my-5 rounded-2xl overflow-hidden border border-zinc-800 shadow-xl bg-zinc-950">
-                            <img
-                              src={payload.coverImageUrl}
-                              alt={payload.coverImageAlt || payload.title}
-                              className="w-full max-h-[420px] object-cover"
-                            />
-                            {payload.coverImageAlt && (
-                              <figcaption className="p-2.5 text-center text-xs text-zinc-400 font-mono bg-zinc-950/90 border-t border-zinc-900">
-                                {payload.coverImageAlt}
-                              </figcaption>
-                            )}
-                          </figure>
-                        )}
-
-                        {/* Article Body */}
-                        <div className="prose prose-invert max-w-none text-zinc-300">
-                          {renderMarkdownToHtml(payload.contentMarkdown)}
-                        </div>
-
-                        {/* Tags Cloud */}
-                        {payload.blogOptions.tags.length > 0 && (
-                          <div className="pt-4 border-t border-zinc-800/80 space-y-2">
-                            <span className="text-[11px] font-mono text-zinc-500 uppercase block font-semibold">Tópicos e Tags:</span>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {payload.blogOptions.tags.map((tag) => (
-                                <span 
-                                  key={tag}
-                                  className="px-2.5 py-1 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 text-xs font-mono"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Author Bio Box */}
-                        <div className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold text-sm shrink-0">
-                            AP
-                          </div>
-                          <div className="text-xs">
-                            <span className="font-bold text-white block">{payload.blogOptions.author}</span>
-                            <p className="text-zinc-400 text-[11px] mt-0.5">
-                              Canal editorial oficial da Capitania #13 • V5 Apollo Poster Ecosystem. Artigos otimizados para busca e retenção.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <V5AutoBlogWebSimulator
+                      payload={payload}
+                      readingTimeMinutes={readingTime}
+                      wordCount={words}
+                      onAutoOptimizeExcerpt={handleAutoExtractGoogleExcerpt}
+                      renderMarkdownToHtml={renderMarkdownToHtml}
+                    />
                   )}
 
                   {/* 3.2 REST API JSON SCHEMA & EXTENDED SEO METADATA (Etapa 041) */}
