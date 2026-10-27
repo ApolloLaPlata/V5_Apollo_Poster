@@ -62,6 +62,12 @@ import {
   validateCommentEligibilityForPrivateReply, 
   MetaPrivateReplyResponse 
 } from "@/lib/comments/metaPrivateReplyClient";
+import { 
+  simulateCommentInteraction, 
+  QUICK_TEST_SCENARIOS, 
+  QuickTestScenario,
+  SimulationExecutionResult 
+} from "@/lib/comments/commentSimulationEngine";
 
 export function CommentToDmManager() {
   const { 
@@ -116,6 +122,8 @@ export function CommentToDmManager() {
   // Estado do Simulador
   const [simUsername, setSimUsername] = useState<string>("@dev_growth");
   const [simCommentText, setSimCommentText] = useState<string>("Eu quero esse link agora!");
+  const [simActiveTab, setSimActiveTab] = useState<"visual" | "telemetry">("visual");
+  const [simExecutionResult, setSimExecutionResult] = useState<SimulationExecutionResult | null>(null);
   const [simResult, setSimResult] = useState<{
     matched: boolean;
     matchedKeyword?: string;
@@ -130,6 +138,7 @@ export function CommentToDmManager() {
     metaMessageId?: string;
     metaCommentId?: string;
     bypass24hVerified?: boolean;
+    latencyMs?: number;
   } | null>(null);
 
   // Regra atualmente selecionada para edição
@@ -193,62 +202,31 @@ export function CommentToDmManager() {
   const handleRunSimulator = async () => {
     if (!selectedRule) return;
 
-    const matchMode = (selectedRule.matchMode as TriggerMatchMode) || "contains";
-    const matchResult = matchCommentTrigger(simCommentText, selectedRule.keywords, {
-      mode: matchMode,
-      useSynonyms: true,
-      fuzzyMaxDistance: 1
+    const res = await simulateCommentInteraction({
+      commentText: simCommentText,
+      username: simUsername,
+      rule: selectedRule,
+      platform: selectedRule.platform
     });
 
-    if (matchResult.isMatch) {
-      const matchedKw = matchResult.matchedKeyword || selectedRule.keywords[0] || "LINK";
+    setSimExecutionResult(res);
 
-      // Seleciona a próxima resposta pública rotativa com estratégia anti-repetição
-      const { reply: chosenTemplate, selectedIndex } = getNextPublicReply(
-        selectedRule.publicReplyVariants,
-        selectedRule.id,
-        "random_no_repeat"
-      );
-
-      const cleanUsername = simUsername.replace("@", "");
-      const formattedPublicReply = formatPublicReply(chosenTemplate, {
-        username: simUsername,
-        name: cleanUsername
-      });
-
-      // Compila a mensagem de DM com suporte a todos os placeholders dinâmicos
-      const formattedDm = compileDmMessage(selectedRule.dmMessageTemplate, {
-        name: cleanUsername,
-        username: simUsername,
-        ctaUrl: selectedRule.ctaUrl,
-        couponCode: selectedRule.couponCode,
-        postTitle: selectedRule.name
-      });
-
-      // Gera ID de comentário autêntico da Meta Graph API
-      const mockCommentId = `17841400${Math.floor(10000000 + Math.random() * 90000000)}`;
-
-      // Executa o envio oficial ancorado no comment_id (Bypass da janela de 24h)
-      const metaReply = await sendMetaPrivateReply({
-        commentId: mockCommentId,
-        text: formattedDm,
-        forceSimulation: true
-      });
-
+    if (res.isTriggerMatched) {
       setSimResult({
         matched: true,
-        matchedKeyword: matchedKw,
-        matchedSnippet: matchResult.matchedSnippet,
-        confidence: matchResult.confidence,
-        matchModeUsed: matchResult.matchModeUsed,
-        normalizedComment: matchResult.normalizedComment,
-        publicReply: formattedPublicReply,
-        publicReplyIndex: selectedIndex,
-        dmMessage: formattedDm,
-        couponUsed: selectedRule.couponCode,
-        metaMessageId: metaReply.messageId,
-        metaCommentId: mockCommentId,
-        bypass24hVerified: metaReply.bypass24hVerified
+        matchedKeyword: res.matchResult.matchedKeyword,
+        matchedSnippet: res.matchResult.matchedSnippet,
+        confidence: res.matchResult.confidence,
+        matchModeUsed: res.matchResult.matchModeUsed,
+        normalizedComment: res.matchResult.normalizedComment,
+        publicReply: res.publicReplyText,
+        publicReplyIndex: res.publicReplyIndex,
+        dmMessage: res.dmMessageText,
+        couponUsed: res.couponApplied,
+        metaMessageId: res.metaMessageId,
+        metaCommentId: res.metaCommentId,
+        bypass24hVerified: res.bypass24hVerified,
+        latencyMs: res.latencyMs
       });
 
       // Grava no histórico de telemetria do Zustand
@@ -256,22 +234,81 @@ export function CommentToDmManager() {
         ruleId: selectedRule.id,
         platform: selectedRule.platform,
         username: simUsername,
-        commentId: mockCommentId,
+        commentId: res.metaCommentId || `mock_${Date.now()}`,
         commentText: simCommentText,
-        matchedKeyword: matchedKw,
-        publicReplySent: formattedPublicReply,
-        dmSent: formattedDm,
-        couponUsed: selectedRule.couponCode,
-        status: metaReply.success ? "success" : "failed"
+        matchedKeyword: res.matchResult.matchedKeyword || "TRIGGER",
+        publicReplySent: res.publicReplyText || "",
+        dmSent: res.dmMessageText || "",
+        couponUsed: res.couponApplied,
+        status: res.success ? "success" : "failed"
       });
 
-      toast.success(`Gatilho ativado (${matchResult.matchModeUsed.toUpperCase()}): "${matchedKw}"! DM entregue via Bypass 24h Meta.`);
+      toast.success(`Gatilho ativado (${res.matchResult.matchModeUsed.toUpperCase()}): "${res.matchResult.matchedKeyword}"! DM despachada (${res.latencyMs}ms).`);
     } else {
       setSimResult({
         matched: false,
-        normalizedComment: matchResult.normalizedComment
+        normalizedComment: res.matchResult.normalizedComment,
+        latencyMs: res.latencyMs
       });
       toast.info("Nenhuma palavra-chave ou sinônimo compatível encontrado no comentário.");
+    }
+  };
+
+  // Carrega e executa imediatamente um cenário de teste rápido (1 Clique)
+  const handleApplyQuickScenario = async (scenario: QuickTestScenario) => {
+    setSimUsername(scenario.username);
+    setSimCommentText(scenario.commentText);
+    toast.info(`Cenário "${scenario.title}" selecionado!`);
+
+    if (selectedRule) {
+      const res = await simulateCommentInteraction({
+        commentText: scenario.commentText,
+        username: scenario.username,
+        rule: selectedRule,
+        platform: selectedRule.platform
+      });
+
+      setSimExecutionResult(res);
+
+      if (res.isTriggerMatched) {
+        setSimResult({
+          matched: true,
+          matchedKeyword: res.matchResult.matchedKeyword,
+          matchedSnippet: res.matchResult.matchedSnippet,
+          confidence: res.matchResult.confidence,
+          matchModeUsed: res.matchResult.matchModeUsed,
+          normalizedComment: res.matchResult.normalizedComment,
+          publicReply: res.publicReplyText,
+          publicReplyIndex: res.publicReplyIndex,
+          dmMessage: res.dmMessageText,
+          couponUsed: res.couponApplied,
+          metaMessageId: res.metaMessageId,
+          metaCommentId: res.metaCommentId,
+          bypass24hVerified: res.bypass24hVerified,
+          latencyMs: res.latencyMs
+        });
+
+        logCommentTrigger({
+          ruleId: selectedRule.id,
+          platform: selectedRule.platform,
+          username: scenario.username,
+          commentId: res.metaCommentId || `mock_${Date.now()}`,
+          commentText: scenario.commentText,
+          matchedKeyword: res.matchResult.matchedKeyword || "TRIGGER",
+          publicReplySent: res.publicReplyText || "",
+          dmSent: res.dmMessageText || "",
+          couponUsed: res.couponApplied,
+          status: res.success ? "success" : "failed"
+        });
+        toast.success(`Cenário "${scenario.title}" disparado com sucesso!`);
+      } else {
+        setSimResult({
+          matched: false,
+          normalizedComment: res.matchResult.normalizedComment,
+          latencyMs: res.latencyMs
+        });
+        toast.info(`Nenhum gatilho ativado para o cenário "${scenario.title}".`);
+      }
     }
   };
 
@@ -372,7 +409,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 065 (Bypass 24h Meta Graph API)
+              Etapa 066 (Simulador Interativo em Tempo Real)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -841,18 +878,64 @@ export function CommentToDmManager() {
 
         {/* COLUNA DIREITA: SIMULADOR INTERATIVO EM TEMPO REAL (3 cols) */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-              <div className="flex items-center gap-2">
+          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 space-y-3.5 shadow-xl">
+            {/* Header com Seletor de Abas */}
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
+              <div className="flex items-center gap-1.5">
                 <Play className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-bold text-white">Simulador de Disparo</span>
+                <span className="text-xs font-bold text-white">Simulador Onicanal</span>
               </div>
-              <span className="text-[10px] text-zinc-500 font-mono">Meta Graph</span>
+              <div className="flex items-center gap-1 bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 text-[10px] font-mono">
+                <button
+                  type="button"
+                  onClick={() => setSimActiveTab("visual")}
+                  className={`px-2 py-0.5 rounded ${
+                    simActiveTab === "visual"
+                      ? "bg-blue-600 text-white font-bold"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Visual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimActiveTab("telemetry")}
+                  className={`px-2 py-0.5 rounded ${
+                    simActiveTab === "telemetry"
+                      ? "bg-blue-600 text-white font-bold"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Pipeline
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-3">
+            {/* Cenários Rápidos com 1 Clique */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-mono text-zinc-400 block">
+                Cenários Rápidos (1 Clique):
+              </span>
+              <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
+                {QUICK_TEST_SCENARIOS.slice(0, 4).map((sc) => (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() => handleApplyQuickScenario(sc)}
+                    className="p-1.5 rounded-lg bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-left truncate transition flex items-center gap-1"
+                    title={sc.description}
+                  >
+                    <span>{sc.category === "hot_lead" ? "🔥" : sc.category === "typo_fuzzy" ? "✏️" : sc.category === "coupon_request" ? "💸" : "🛡️"}</span>
+                    <span className="truncate">{sc.title.split("(")[0]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form de Inputs do Comentário */}
+            <div className="space-y-2.5 pt-1">
               <div>
-                <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                <label className="text-[10px] font-mono text-zinc-400 block mb-1">
                   Usuário Simulado:
                 </label>
                 <input
@@ -864,14 +947,14 @@ export function CommentToDmManager() {
               </div>
 
               <div>
-                <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                <label className="text-[10px] font-mono text-zinc-400 block mb-1">
                   Comentário no Post:
                 </label>
                 <textarea
                   rows={2}
                   value={simCommentText}
                   onChange={(e) => setSimCommentText(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-200 focus:outline-none resize-none font-mono"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none resize-none font-mono"
                 />
               </div>
 
@@ -885,67 +968,107 @@ export function CommentToDmManager() {
               </button>
             </div>
 
-            {/* Resultado do Teste Simulado */}
+            {/* Resultado do Teste Simulado com Abas */}
             {simResult && (
               <div className="space-y-2 pt-2 border-t border-zinc-800/60 animate-in fade-in duration-200">
                 {simResult.matched ? (
-                  <>
-                    <div className="flex items-center justify-between text-[10px] font-mono bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg text-emerald-300">
-                      <span>Match: <strong className="text-white">{simResult.matchModeUsed?.toUpperCase()}</strong></span>
-                      <span>Snippet: &quot;{simResult.matchedSnippet}&quot;</span>
-                      <span>Confiança: <strong>{Math.round((simResult.confidence || 1) * 100)}%</strong></span>
-                    </div>
+                  simActiveTab === "visual" ? (
+                    /* ABA 1: VISUAL REALISTA ESTILO INSTAGRAM POST + DIRECT CHAT */
+                    <div className="space-y-3">
+                      {/* 1. Preview da Conversa Pública no Reel */}
+                      <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] text-zinc-300 font-bold shrink-0">
+                            {simUsername.replace("@", "").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[10px] font-bold text-blue-300 font-mono mr-1.5">
+                              {simUsername}
+                            </span>
+                            <span className="text-[11px] text-zinc-200">{simCommentText}</span>
+                          </div>
+                        </div>
 
-                    <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block">
-                          1. Resposta Pública no Post:
-                        </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300 border border-zinc-700">
-                          Variação #{((simResult.publicReplyIndex ?? 0) >= 0 ? (simResult.publicReplyIndex! + 1) : 1)} (Sem Repetição)
-                        </span>
+                        {/* Balão da Resposta Oficial com Badge Verificado */}
+                        <div className="flex items-start gap-2 pl-4 border-l-2 border-blue-500/40 ml-2">
+                          <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[9px] text-white font-bold shrink-0">
+                            V5
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <span className="text-[10px] font-bold text-white font-mono">
+                                v5_apollo
+                              </span>
+                              <CheckCircle2 className="w-3 h-3 text-blue-400 fill-blue-400/20" />
+                              <span className="text-[8px] font-mono text-zinc-500">Autor</span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-snug">
+                              {simResult.publicReply}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-zinc-200 text-[11px]">{simResult.publicReply}</p>
-                    </div>
 
-                    <div className="p-2.5 rounded-lg bg-blue-950/40 border border-blue-500/30 text-xs space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono uppercase text-blue-400 font-bold block">
-                          2. Direct Message (DM Privada):
-                        </span>
-                        {simResult.couponUsed && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
-                            Cupom: {simResult.couponUsed}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-zinc-200 text-[11px] leading-relaxed whitespace-pre-line">{simResult.dmMessage}</p>
-                    </div>
+                      {/* 2. Preview do Chat Privado do Instagram Direct */}
+                      <div className="p-3 rounded-xl bg-gradient-to-b from-zinc-950 to-blue-950/20 border border-blue-500/30 space-y-2 text-xs">
+                        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-1.5 text-[10px] font-mono text-zinc-400">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-white font-semibold">Instagram Direct</span>
+                          </div>
+                          <span className="text-amber-400">Bypass 24h Ativo</span>
+                        </div>
 
-                    {/* Status da Entrega Oficial Meta Graph API (Bypass 24h) */}
-                    <div className="p-2 rounded-lg bg-blue-950/30 border border-blue-500/30 text-[10px] font-mono space-y-1">
-                      <div className="flex items-center justify-between text-blue-300 font-semibold">
-                        <span className="flex items-center gap-1.5">
-                          <Zap className="w-3.5 h-3.5 text-amber-400" />
-                          Bypass 24h Meta Graph (Private Reply)
-                        </span>
-                        <span className="text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                          {simResult.bypass24hVerified ? "ATIVO (OK)" : "PENDENTE"}
-                        </span>
-                      </div>
-                      <div className="text-zinc-400 text-[9px] flex items-center justify-between">
-                        <span>Ancorado no Comment ID: {simResult.metaCommentId}</span>
-                        <span className="truncate max-w-[120px]" title={simResult.metaMessageId}>
-                          MID: {simResult.metaMessageId?.substring(0, 16)}...
-                        </span>
-                      </div>
-                    </div>
+                        <div className="p-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-zinc-200 text-[11px] leading-relaxed whitespace-pre-line space-y-1">
+                          <p>{simResult.dmMessage}</p>
+                          {simResult.couponUsed && (
+                            <div className="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
+                              Cupom Ativado: {simResult.couponUsed}
+                            </div>
+                          )}
+                        </div>
 
-                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Evento registrado em triggerEvents no Zustand!</span>
+                        <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 pt-0.5">
+                          <span>Entregue via Meta Graph</span>
+                          <span>MID: {simResult.metaMessageId?.substring(0, 14)}...</span>
+                        </div>
+                      </div>
                     </div>
-                  </>
+                  ) : (
+                    /* ABA 2: PIPELINE & TELEMETRIA DE AUDITORIA TÉCNICA */
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[10px] font-mono bg-emerald-950/40 border border-emerald-500/30 p-2 rounded-lg text-emerald-300">
+                        <span>Match: <strong className="text-white">{simResult.matchModeUsed?.toUpperCase()}</strong></span>
+                        <span>Confiança: <strong>{Math.round((simResult.confidence || 1) * 100)}%</strong></span>
+                        <span>Latência: <strong>{simResult.latencyMs || 120}ms</strong></span>
+                      </div>
+
+                      {simExecutionResult?.executionSteps && (
+                        <div className="space-y-1 p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] font-mono">
+                          <span className="text-zinc-500 block mb-0.5 font-bold">Etapas de Execução:</span>
+                          {simExecutionResult.executionSteps.map((step, idx) => (
+                            <div key={idx} className="flex items-start gap-1.5 text-zinc-300">
+                              <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                              <div className="min-w-0">
+                                <strong className="text-white mr-1">{step.step}:</strong>
+                                <span className="text-zinc-400">{step.details}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="p-2 rounded-lg bg-blue-950/30 border border-blue-500/30 text-[10px] font-mono space-y-0.5">
+                        <div className="text-blue-300 font-bold flex items-center justify-between">
+                          <span>Comment ID Ancorado:</span>
+                          <span className="text-white">{simResult.metaCommentId}</span>
+                        </div>
+                        <div className="text-zinc-400 truncate text-[9px]">
+                          Message ID: {simResult.metaMessageId}
+                        </div>
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 text-[11px] text-rose-300 space-y-1">
                     <div className="flex items-center gap-1.5">
