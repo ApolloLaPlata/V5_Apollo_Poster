@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { History, Trash2, CheckCircle2, AlertTriangle, Clock, RefreshCw, Terminal } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils/formatters";
+import { ChannelDistributionChart } from "./ChannelDistributionChart";
 
 export function DispatchLogsViewer() {
   const { logs, clearLogs } = usePosterStore();
@@ -54,6 +55,9 @@ export function DispatchLogsViewer() {
           )}
         </div>
       </div>
+
+      {/* Gráfico Visual de Distribuição de Posts por Canal (Etapa 092) */}
+      <ChannelDistributionChart />
 
       {/* Logs Table / List */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">

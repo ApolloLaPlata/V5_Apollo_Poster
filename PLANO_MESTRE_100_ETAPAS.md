@@ -158,7 +158,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 
 ### FASE 10: DASHBOARD DE ANALYTICS DE ENTREGA E LOGS (091 - 100)
 - [x] **Etapa 091:** Painel Executivo de Telemetria de Despacho no Topo da Aplicação (Total Disparados, Taxa de Sucesso %, DMs Enviadas, Alcance Estimado).
-- [ ] **Etapa 092:** Gráfico Visual de Distribuição de Posts por Canal (Barras de proporção entre Blog, Email, Redes e Grupos).
+- [x] **Etapa 092:** Gráfico Visual de Distribuição de Posts por Canal (Barras de proporção entre Blog, Email, Redes e Grupos).
 - [ ] **Etapa 093:** Tabela de Logs de Auditoria de Despacho com Data/Hora, Plataforma, ID da Mensagem e Código HTTP de Resposta.
 - [ ] **Etapa 094:** Drawer / Modal de Inspecionar Payload Completo de Log (visualização do JSON exato enviado e recebido).
 - [ ] **Etapa 095:** Filtro de Logs por Status de Sucesso (200/201 OK) vs. Erro (4xx/5xx).
