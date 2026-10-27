@@ -16,6 +16,7 @@ import { History, Trash2 } from "lucide-react";
 import { ChannelDistributionChart } from "./ChannelDistributionChart";
 import { AuditLogsTable } from "./AuditLogsTable";
 import { LogPayloadDrawer } from "./LogPayloadDrawer";
+import { AuditExportButtons } from "./AuditExportButtons";
 import { DispatchLogEntry } from "@/types/poster";
 
 export function DispatchLogsViewer() {
@@ -37,15 +38,20 @@ export function DispatchLogsViewer() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {logs.length > 0 && (
-            <button
-              onClick={clearLogs}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-medium transition"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Limpar Logs ({logs.length})</span>
-            </button>
+            <>
+              {/* Botão de Exportar Logs (Etapa 096) */}
+              <AuditExportButtons logs={logs} totalCount={logs.length} />
+
+              <button
+                onClick={clearLogs}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-medium transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Limpar Logs ({logs.length})</span>
+              </button>
+            </>
           )}
         </div>
       </div>

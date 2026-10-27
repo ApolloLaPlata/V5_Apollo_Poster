@@ -162,7 +162,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 093:** Tabela de Logs de Auditoria de Despacho com Data/Hora, Plataforma, ID da Mensagem e Código HTTP de Resposta.
 - [x] **Etapa 094:** Drawer / Modal de Inspecionar Payload Completo de Log (visualização do JSON exato enviado e recebido).
 - [x] **Etapa 095:** Filtro de Logs por Status de Sucesso (200/201 OK) vs. Erro (4xx/5xx).
-- [ ] **Etapa 096:** Botão de Exportar Logs de Disparo em formato JSON ou CSV para auditoria.
+- [x] **Etapa 096:** Botão de Exportar Logs de Disparo em formato JSON ou CSV para auditoria.
 - [ ] **Etapa 097:** Indicador de Latência Média de Despacho (Tempo de resposta das APIs em milissegundos).
 - [ ] **Etapa 098:** Botão de Limpar Logs Antigos com confirmação de segurança.
 - [ ] **Etapa 099:** Alertas Visuais de Saúde do Sistema (Status do Gateway V5 Apollo API e APIs parceiras).

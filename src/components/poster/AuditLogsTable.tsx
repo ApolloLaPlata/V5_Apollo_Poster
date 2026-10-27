@@ -25,6 +25,7 @@ import {
 import { PLATFORM_METADATA } from "@/lib/analytics/channelDistribution";
 import { formatRelativeDate } from "@/lib/utils/formatters";
 import { toast } from "@/lib/toast/useToast";
+import { AuditExportButtons } from "./AuditExportButtons";
 import {
   Search,
   Filter,
@@ -461,9 +462,9 @@ export function AuditLogsTable({ logs, onSelectLog }: AuditLogsTableProps) {
         </table>
       </div>
 
-      {/* Rodapé da Tabela: Paginação */}
-      <div className="p-3 bg-zinc-950/80 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-400 font-mono">
-        <div className="flex items-center gap-2">
+      {/* Rodapé da Tabela: Paginação e Exportação (Etapa 096) */}
+      <div className="p-3 bg-zinc-950/80 border-t border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-zinc-400 font-mono">
+        <div className="flex flex-wrap items-center gap-2">
           <span>
             Exibindo <strong>{paginated.totalCount === 0 ? 0 : paginated.startIndex + 1}</strong> a{" "}
             <strong>{paginated.endIndex}</strong> de <strong>{paginated.totalCount}</strong> eventos
@@ -486,6 +487,10 @@ export function AuditLogsTable({ logs, onSelectLog }: AuditLogsTableProps) {
               <option value={50}>50</option>
             </select>
           </div>
+
+          <span className="text-zinc-600 hidden sm:inline">•</span>
+
+          <AuditExportButtons logs={filteredLogs} totalCount={logs.length} />
         </div>
 
         {/* Controles de Navegação da Página */}
