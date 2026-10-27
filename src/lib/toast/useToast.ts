@@ -19,6 +19,8 @@ interface ToastStore {
   removeToast: (id: string) => void;
 }
 
+const activeTimers = new Map<string, NodeJS.Timeout>();
+
 export const useToastStore = create<ToastStore>((set) => ({
   toasts: [],
   addToast: (toastData) => {
@@ -30,16 +32,25 @@ export const useToastStore = create<ToastStore>((set) => ({
     }));
 
     const duration = toastData.duration || 4500;
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      activeTimers.delete(id);
       set((state) => ({
         toasts: state.toasts.filter((t) => t.id !== id)
       }));
     }, duration);
+
+    activeTimers.set(id, timer);
   },
-  removeToast: (id) =>
+  removeToast: (id) => {
+    const timer = activeTimers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      activeTimers.delete(id);
+    }
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id)
-    }))
+    }));
+  }
 }));
 
 export const toast = {

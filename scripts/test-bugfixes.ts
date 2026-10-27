@@ -21,6 +21,8 @@ import { validateAntiSpamDiversity, getNextPublicReply } from "../src/lib/commen
 import { validateDmTemplate, compileDmMessage } from "../src/lib/comments/dmTemplateBuilder";
 import { calculateHistoryMetrics, createBroadcastReceipt } from "../src/lib/finders/broadcastHistoryManager";
 import { compileEmailHtml } from "../src/lib/dispatch/multimodalEngine";
+import { sortQueueFifo } from "../src/lib/queue/dispatchQueue";
+import { useToastStore, toast } from "../src/lib/toast/useToast";
 
 let passed = 0;
 let total = 0;
@@ -212,6 +214,25 @@ const payloadWithoutEmailOptions = {
 } as any;
 const htmlResult = compileEmailHtml(payloadWithoutEmailOptions);
 assert(typeof htmlResult === "string" && htmlResult.includes("<!DOCTYPE html>"), "compileEmailHtml tolera payload sem emailOptions sem crash");
+
+// 10. Robustez de Fila FIFO com Timestamps Incompletos e Toast Store
+console.log("\n--- 10. Robustez de Fila FIFO e Toast Timers ---");
+const queueWithMissingTimes = [
+  { id: "q1", priority: "normal", status: "published", updatedAt: undefined as any },
+  { id: "q2", priority: "urgent", status: "scheduled", scheduledFor: undefined as any },
+  { id: "q3", priority: "high", status: "queued", scheduledFor: "2026-10-27T10:00:00" }
+] as any;
+const sortedIncomplete = sortQueueFifo(queueWithMissingTimes);
+assert(sortedIncomplete.length === 3, "sortQueueFifo não quebra com timestamps undefined");
+assert(sortedIncomplete[0].id === "q2" || sortedIncomplete[0].id === "q3", "Itens ativos permanecem no topo mesmo com campos incompletos");
+
+toast.info("Toast de Teste", "Mensagem de teste");
+const initialToasts = useToastStore.getState().toasts;
+assert(initialToasts.length >= 1, "Adiciona toast com id gerado");
+const addedId = initialToasts[initialToasts.length - 1].id;
+useToastStore.getState().removeToast(addedId);
+const afterRemoveToasts = useToastStore.getState().toasts;
+assert(!afterRemoveToasts.some(t => t.id === addedId), "Remove toast e limpa timer ativo sem vazamento");
 
 console.log("\n=======================================================");
 console.log(`📊 RESULTADO FINAL: ${passed}/${total} TESTES APROVADOS!`);

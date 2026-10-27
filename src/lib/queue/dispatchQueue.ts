@@ -108,21 +108,23 @@ export function sortQueueFifo(items: QueueItem[]): QueueItem[] {
       }
 
       // Se a prioridade for igual, aplica FIFO estrito por scheduledFor (menor timestamp primeiro)
-      const timeA = new Date(a.scheduledFor).getTime();
-      const timeB = new Date(b.scheduledFor).getTime();
+      const timeA = a.scheduledFor ? new Date(a.scheduledFor).getTime() : 0;
+      const timeB = b.scheduledFor ? new Date(b.scheduledFor).getTime() : 0;
 
       if (timeA !== timeB) {
         return timeA - timeB;
       }
 
       // Desempate por createdAt (quem entrou na fila primeiro)
-      const createdA = new Date(a.createdAt).getTime();
-      const createdB = new Date(b.createdAt).getTime();
+      const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return createdA - createdB;
     }
 
     // Se ambos são finalizados, ordena pelo mais recentemente atualizado
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    const updatedA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+    const updatedB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+    return updatedB - updatedA;
   });
 }
 
