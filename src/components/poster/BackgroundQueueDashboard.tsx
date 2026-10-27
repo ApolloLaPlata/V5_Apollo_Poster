@@ -25,6 +25,10 @@ import { DEFAULT_BATCH_CONCURRENCY } from "@/lib/queue/batchNetworkSimulator";
 import {
   formatRetryCountdown
 } from "@/lib/queue/retryManager";
+import {
+  executeManualForcedDispatch,
+  executeBatchManualForcedDispatch
+} from "@/lib/queue/manualDispatchHandler";
 import { QueueItem, QueueItemPriority, SocialPlatform } from "@/types/poster";
 import {
   Layers,
@@ -95,6 +99,52 @@ export function BackgroundQueueDashboard() {
   const finishedItems = filteredQueue.filter(
     (i) => i.status === "published" || i.status === "failed" || i.status === "cancelled"
   );
+
+  // Estados de carregamento de disparo manual
+  const [dispatchingIds, setDispatchingIds] = useState<Set<string>>(new Set());
+  const [isBatchDispatching, setIsBatchDispatching] = useState(false);
+
+  // Disparo Forçado Manual de um item específico
+  const handleForceDispatchItem = async (itemId: string, title: string) => {
+    setDispatchingIds((prev) => new Set(prev).add(itemId));
+    toast.info(`⚡ Forçando disparo imediato de "${title}"...`);
+    try {
+      const res = await executeManualForcedDispatch(itemId);
+      if (res.success) {
+        toast.success(`Publicação de "${title}" executada com sucesso!`);
+      } else {
+        toast.error(`Falha no envio de "${title}". Encaminhado para fila de retentativas.`);
+      }
+    } catch (err) {
+      toast.error(`Erro ao disparar "${title}": ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDispatchingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  };
+
+  // Disparo Forçado Manual em Lote
+  const handleBatchForceDispatch = async () => {
+    if (scheduledOrQueuedItems.length === 0) return;
+    setIsBatchDispatching(true);
+    toast.info(`⚡ Disparando em lote ${scheduledOrQueuedItems.length} post(s) agora...`);
+    try {
+      const ids = scheduledOrQueuedItems.map((i) => i.id);
+      const res = await executeBatchManualForcedDispatch(ids);
+      if (res.success) {
+        toast.success(`Lote executado com 100% de sucesso (${res.report.succeededCount}/${res.report.totalTasks} tarefas)!`);
+      } else {
+        toast.warning(`Lote concluído: ${res.report.succeededCount} sucesso, ${res.report.retriedCount} retry, ${res.report.failedCount} falhas.`);
+      }
+    } catch (err) {
+      toast.error(`Erro no disparo em lote: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsBatchDispatching(false);
+    }
+  };
 
   const handleManualScanClick = () => {
     const res = triggerManualScan();
@@ -304,6 +354,27 @@ export function BackgroundQueueDashboard() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          {scheduledOrQueuedItems.length > 0 && (
+            <button
+              onClick={handleBatchForceDispatch}
+              disabled={isBatchDispatching}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-lg text-xs transition disabled:opacity-50 shadow-sm"
+              title="Forçar despacho de todas as tarefas pendentes agora"
+            >
+              {isBatchDispatching ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Disparando...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Disparar Todos ({scheduledOrQueuedItems.length})</span>
+                </>
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => setIsNewTaskModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg font-medium border border-zinc-700 transition"
@@ -485,19 +556,22 @@ export function BackgroundQueueDashboard() {
                       {/* Ações do Item */}
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-800/60">
                         <button
-                          onClick={() => {
-                            updateQueueItemStatus(item.id, "processing");
-                            toast.info(`Iniciando despacho manual de "${item.title}"...`);
-                            setTimeout(() => {
-                              updateQueueItemStatus(item.id, "published");
-                              toast.success(`Publicação de "${item.title}" concluída com sucesso!`);
-                            }, 1200);
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 text-xs font-semibold transition"
-                          title="Forçar execução imediata agora"
+                          onClick={() => handleForceDispatchItem(item.id, item.title)}
+                          disabled={dispatchingIds.has(item.id)}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 text-xs font-semibold transition disabled:opacity-50"
+                          title="Forçar execução imediata agora (bypass temporal)"
                         >
-                          <Send className="w-3 h-3" />
-                          <span>Disparar</span>
+                          {dispatchingIds.has(item.id) ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
+                              <span>Enviando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-3 h-3 text-amber-400" />
+                              <span>Forçar Disparo</span>
+                            </>
+                          )}
                         </button>
 
                         <button
