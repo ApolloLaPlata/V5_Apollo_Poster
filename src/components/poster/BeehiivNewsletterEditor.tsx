@@ -121,6 +121,13 @@ import {
   DEFAULT_WP_SITE_URL, 
   DEFAULT_WP_CONFIG 
 } from "@/lib/dispatch/wordpressConnector";
+import { 
+  generateGoogleMetaExcerpt, 
+  evaluateExcerptQuality, 
+  rebalanceExcerptToSerpLimit,
+  cleanMarkdownForExcerpt,
+  ExcerptQualityScore 
+} from "@/lib/seo/excerptExtractor";
 
 export const IMAGE_PRESETS = [
   {
@@ -897,6 +904,23 @@ export function BeehiivNewsletterEditor() {
     setCopiedSnippet(label);
     toast.info("Copiado!", `${label} transferido para a área de transferência.`);
     setTimeout(() => setCopiedSnippet(null), 2500);
+  };
+
+  const handleAutoExtractGoogleExcerpt = () => {
+    const result = generateGoogleMetaExcerpt(payload.contentMarkdown, {
+      focusKeywords: payload.blogOptions.tags,
+      actionCall: "Confira a análise completa.",
+      minChars: 150,
+      maxChars: 160
+    });
+    setPayload(prev => ({
+      ...prev,
+      summary: result.excerpt
+    }));
+    toast.success(
+      "Excerpt Otimizado para o Google!",
+      `${result.characterCount} caracteres (${result.quality.status === "optimal" ? "Sweet Spot SERP 100%" : "Ajustado"})`
+    );
   };
 
   const handleTestAutoBlogHandshake = async () => {
@@ -2181,19 +2205,52 @@ export function BeehiivNewsletterEditor() {
                         <span className="text-zinc-200">v5autoblog.com/artigo/{payload.slug}</span>
                       </div>
 
-                      {/* Google SERP Snippet Preview Card */}
-                      <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 space-y-1.5 shadow-sm">
-                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-sans">
-                          <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[9px]">G</span>
-                          <span>v5autoblog.com › artigo › {payload.slug}</span>
-                        </div>
-                        <h4 className="text-sm font-bold text-blue-400 hover:underline cursor-pointer leading-tight">
-                          {payload.title} | V5 AutoBlog
-                        </h4>
-                        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
-                          {payload.summary || payload.emailOptions.previewText}
-                        </p>
-                      </div>
+                      {/* Google SERP Snippet Preview Card (Etapa 046) */}
+                      {(() => {
+                        const currentExcerpt = payload.summary || payload.emailOptions.previewText;
+                        const excerptQuality = evaluateExcerptQuality(currentExcerpt, payload.blogOptions.tags);
+                        return (
+                          <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 space-y-2 shadow-sm">
+                            <div className="flex items-center justify-between text-[11px] text-zinc-400 font-sans">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[9px]">G</span>
+                                <span>v5autoblog.com › artigo › {payload.slug}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                                  excerptQuality.status === "optimal"
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                    : excerptQuality.status === "acceptable"
+                                    ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                                    : excerptQuality.status === "too_long"
+                                    ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                    : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                                }`}>
+                                  {excerptQuality.characterCount}/160c • {
+                                    excerptQuality.status === "optimal" ? "Sweet Spot SERP" :
+                                    excerptQuality.status === "too_long" ? "Truncamento Google" : "Curto"
+                                  }
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={handleAutoExtractGoogleExcerpt}
+                                  className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono hover:underline"
+                                  title="Extrair e ajustar automaticamente para 150-160 caracteres"
+                                >
+                                  <Sparkles className="w-3 h-3 text-amber-400" />
+                                  <span>Auto Otimizar</span>
+                                </button>
+                              </div>
+                            </div>
+                            <h4 className="text-sm font-bold text-blue-400 hover:underline cursor-pointer leading-tight">
+                              {payload.title} | V5 AutoBlog
+                            </h4>
+                            <p className="text-xs text-zinc-300 leading-relaxed">
+                              {currentExcerpt}
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       {/* Web Article Page Simulation */}
                       <div className="bg-zinc-900/40 p-6 md:p-8 rounded-xl border border-zinc-800/80 space-y-6">
@@ -3798,23 +3855,53 @@ export function BeehiivNewsletterEditor() {
                       </div>
                     </div>
 
-                    {/* Resumo SEO */}
+                    {/* Resumo SEO com Extrator Automático (Etapa 046) */}
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                          Meta Description / Resumo SEO
-                        </label>
-                        <span className={`text-[10px] font-mono ${payload.summary.length > 160 ? "text-amber-400" : "text-zinc-500"}`}>
-                          {payload.summary.length}/160 carac.
-                        </span>
-                      </div>
-                      <textarea
-                        value={payload.summary}
-                        onChange={(e) => setPayload(prev => ({ ...prev, summary: e.target.value }))}
-                        rows={3}
-                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg p-2.5 text-xs text-zinc-200 focus:outline-none resize-none leading-relaxed"
-                        placeholder="Resumo otimizado para snippets do Google e compartilhamento social..."
-                      />
+                      {(() => {
+                        const excerptQuality = evaluateExcerptQuality(payload.summary, payload.blogOptions.tags);
+                        return (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Meta Description / Resumo Google</span>
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-mono font-bold ${
+                                  excerptQuality.status === "optimal" ? "text-emerald-400" :
+                                  excerptQuality.status === "too_long" ? "text-rose-400" : "text-amber-400"
+                                }`}>
+                                  {payload.summary.length}/160 caracteres
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={handleAutoExtractGoogleExcerpt}
+                                  className="text-[10px] text-amber-400 hover:underline font-mono flex items-center gap-1"
+                                >
+                                  <Sparkles className="w-3 h-3" />
+                                  <span>Extrair (155c)</span>
+                                </button>
+                              </div>
+                            </div>
+                            <textarea
+                              value={payload.summary}
+                              onChange={(e) => setPayload(prev => ({ ...prev, summary: e.target.value }))}
+                              rows={3}
+                              className={`w-full bg-zinc-900 border rounded-lg p-2.5 text-xs text-zinc-200 focus:outline-none resize-none leading-relaxed font-mono ${
+                                excerptQuality.status === "optimal" ? "border-emerald-500/50 focus:border-emerald-400" :
+                                excerptQuality.status === "too_long" ? "border-rose-500/50 focus:border-rose-400" : "border-zinc-700 focus:border-amber-500"
+                              }`}
+                              placeholder="Resumo otimizado para snippets do Google e compartilhamento social..."
+                            />
+                            <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-0.5">
+                              <span>{excerptQuality.feedbackMessage}</span>
+                              {excerptQuality.containsActionHook && (
+                                <span className="text-emerald-400 font-mono font-semibold">⚡ CTR Hook Detectado</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}

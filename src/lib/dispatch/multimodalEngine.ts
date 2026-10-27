@@ -16,6 +16,11 @@ import {
   generateTwitterCardMetadata, 
   renderOpenGraphHtmlMetaTags 
 } from "./openGraphGenerator";
+import { 
+  generateGoogleMetaExcerpt,
+  cleanMarkdownForExcerpt,
+  evaluateExcerptQuality 
+} from "@/lib/seo/excerptExtractor";
 
 export function slugify(text: string): string {
   return text
@@ -581,29 +586,15 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
 
 /**
  * Extrai um resumo otimizado para a SERP do Google (150 a 160 caracteres)
- * Respeita limites de palavras para não cortar termos ao meio.
+ * Respeita limites de palavras para não cortar termos ao meio e atinge a janela ideal da SERP.
  */
 export function extractOptimizedExcerpt(contentMarkdown: string, fallbackSummary?: string, maxChars: number = 158): string {
-  if (fallbackSummary && fallbackSummary.trim().length >= 40 && fallbackSummary.trim().length <= maxChars) {
-    return fallbackSummary.trim();
-  }
-
-  const clean = contentMarkdown
-    .replace(/!\[.*?\]\(.*?\)/g, "")
-    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-    .replace(/^#+\s+.*$/gm, "")
-    .replace(/^[*\-+]\s+/gm, "")
-    .replace(/[>_`*~|]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (clean.length <= maxChars) {
-    return clean || fallbackSummary || "Artigo completo com diretrizes e insights exclusivos.";
-  }
-
-  const truncated = clean.substring(0, maxChars);
-  const lastSpace = truncated.lastIndexOf(" ");
-  return (lastSpace > 50 ? truncated.substring(0, lastSpace) : truncated) + "...";
+  const result = generateGoogleMetaExcerpt(contentMarkdown, {
+    minChars: 150,
+    maxChars: Math.min(160, Math.max(150, maxChars)),
+    fallbackSummary
+  });
+  return result.excerpt;
 }
 
 /**
