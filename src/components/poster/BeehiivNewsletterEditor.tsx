@@ -142,6 +142,7 @@ import { InstagramCaptionCard } from "@/components/poster/InstagramCaptionCard";
 import { WhatsAppMessageCard } from "@/components/poster/WhatsAppMessageCard";
 import { TelegramMessageCard } from "@/components/poster/TelegramMessageCard";
 import { SocialTeasersEditorPanel } from "@/components/poster/SocialTeasersEditorPanel";
+import { CopyAllTeasersButton } from "@/components/poster/CopyAllTeasersButton";
 
 export const IMAGE_PRESETS = [
   {
@@ -2779,6 +2780,9 @@ export function BeehiivNewsletterEditor() {
                         <span className="text-[11px] text-zinc-400">Micro-cópias e ganchos adaptados aos limites oficiais de cada rede</span>
                       </div>
                     </div>
+
+                    {/* Botão de Cópia em Massa do Kit Completo (Etapa 058) */}
+                    <CopyAllTeasersButton payload={payload} />
                   </div>
 
                   {/* Gerador e Card de Preview para X/Twitter (Etapa 052) */}

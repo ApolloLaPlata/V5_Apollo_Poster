@@ -44,6 +44,7 @@ import {
   buildSocialUtmUrl
 } from "@/lib/social/socialTeaserEngine";
 import { toast } from "@/lib/toast/useToast";
+import { SocialCopyButton } from "@/components/poster/SocialCopyButton";
 
 export interface SocialTeasersEditorPanelProps {
   payload: MultimodalDispatchPayload;
@@ -408,24 +409,13 @@ export function SocialTeasersEditorPanel({ payload, onTeaserChange }: SocialTeas
           </button>
         </div>
 
-        {/* Botão de Cópia da Rede Ativa */}
-        <button
-          type="button"
-          onClick={handleCopyCurrent}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 text-xs font-semibold transition-all shadow-sm active:scale-95"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-400">Copiado!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Copiar {SOCIAL_PLATFORM_NAMES[activePlatform].split(" ")[0]}</span>
-            </>
-          )}
-        </button>
+        {/* Botão de Cópia com 1 Clique Reativo (Etapa 058) */}
+        <SocialCopyButton
+          textToCopy={currentText}
+          platform={activePlatform}
+          label={`Copiar ${SOCIAL_PLATFORM_NAMES[activePlatform].split(" ")[0]}`}
+          showCharCount={true}
+        />
       </div>
     </div>
   );
