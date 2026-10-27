@@ -75,6 +75,76 @@ export function injectUtmParameters(
   });
 }
 
+export interface BulletproofButtonOptions {
+  url: string;
+  label: string;
+  bgColor?: string;
+  textColor?: string;
+  fontSize?: number;
+  fontWeight?: string | number;
+  width?: number;
+  height?: number;
+  borderRadius?: number;
+  borderStrokeColor?: string;
+  align?: "left" | "center" | "right";
+  fullWidth?: boolean;
+}
+
+/**
+ * Renderiza um Botão CTA de Alta Conversão à Prova de Balas (Bulletproof Button)
+ * 100% compatível com Microsoft Outlook Desktop (Word Engine via VML <!--[if mso]>)
+ * e clientes modernos (Gmail, Apple Mail, iOS, Android, Outlook Web).
+ */
+export function renderOutlookCtaButton(options: BulletproofButtonOptions): string {
+  const {
+    url,
+    label,
+    bgColor = "#f59e0b",
+    textColor = "#000000",
+    fontSize = 14,
+    fontWeight = 700,
+    width = 280,
+    height = 48,
+    borderRadius = 10,
+    borderStrokeColor,
+  } = options;
+
+  // Cálculo da curvatura do retângulo vetorial VML (arcsize aproximado em porcentagem)
+  const arcPercent = Math.min(Math.round((borderRadius / height) * 100), 50);
+  const strokeAttr = borderStrokeColor ? `strokecolor="${borderStrokeColor}"` : 'stroke="f"';
+
+  return `<!--[if mso]>
+  <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:${height}px;v-text-anchor:middle;width:${width}px;" arcsize="${arcPercent}%" ${strokeAttr} fillcolor="${bgColor}">
+    <w:anchorlock/>
+    <center style="color:${textColor};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:${fontSize}px;font-weight:${fontWeight};">
+      ${label}
+    </center>
+  </v:roundrect>
+  <![endif]-->
+  <!--[if !mso]><!-- -->
+  <a href="${url}" target="_blank" style="background-color:${bgColor};border-radius:${borderRadius}px;color:${textColor};display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:${fontSize}px;font-weight:${fontWeight};line-height:${height}px;text-align:center;text-decoration:none;width:${width}px;-webkit-text-size-adjust:none;mso-hide:all;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06);transition:all 0.2s ease;">
+    ${label}
+  </a>
+  <!--<![endif]-->`;
+}
+
+/**
+ * Envolve o botão em uma tabela de apresentação centralizada para compatibilidade máxima com clientes de e-mail
+ */
+export function renderEmailCtaContainer(
+  buttonHtml: string,
+  align: "left" | "center" | "right" = "center",
+  padding: string = "16px 0"
+): string {
+  return `<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width: 100%; border-collapse: collapse; margin: 0 auto;">
+    <tr>
+      <td align="${align}" style="padding: ${padding}; text-align: ${align};">
+        ${buttonHtml}
+      </td>
+    </tr>
+  </table>`;
+}
+
 /**
  * Converte blocos de tabela Markdown (| col1 | col2 |) para tabelas HTML com estilos inline
  * 100% compatíveis com Outlook Desktop, Gmail App e Apple Mail.
@@ -242,13 +312,47 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
       htmlBodyLines.push(
         `<figure style="margin: 24px 0; text-align: center;"><img src="${imgMatch[2]}" alt="${imgMatch[1] || 'Imagem ilustrativa'}" style="width: 100%; max-width: 580px; height: auto; border-radius: 8px; display: block; margin: 0 auto;" />${imgMatch[1] ? `<figcaption style="color: #6b7280; font-size: 12px; margin-top: 6px;">${imgMatch[1]}</figcaption>` : ''}</figure>`
       );
+    } else if (/^\[(?:CTA|BUTTON|BOTAO):(.*?)\|(https?:\/\/[^\s\]]+)\]$/i.test(line)) {
+      // Suporte a Botão CTA Bulletproof personalizado no Markdown: [CTA:Texto|https://link]
+      const ctaMatch = line.match(/^\[(?:CTA|BUTTON|BOTAO):(.*?)\|(https?:\/\/[^\s\]]+)\]$/i);
+      if (ctaMatch) {
+        const ctaLabel = ctaMatch[1].trim();
+        const rawCtaUrl = ctaMatch[2].trim();
+        const trackedCtaUrl = buildTrackingUrl(rawCtaUrl, { ...utmConfig, content: "inline_cta_button" });
+        const calcWidth = Math.min(Math.max(ctaLabel.length * 11 + 60, 220), 400);
+        const inlineButton = renderOutlookCtaButton({
+          url: trackedCtaUrl,
+          label: ctaLabel,
+          bgColor: "#f59e0b",
+          textColor: "#000000",
+          fontSize: 14,
+          fontWeight: 700,
+          width: calcWidth,
+          height: 48,
+          borderRadius: 10,
+        });
+        htmlBodyLines.push(renderEmailCtaContainer(inlineButton, "center", "20px 0"));
+      }
     } else if (line.includes("[PAYWALL_BREAK") || line.includes("<!-- paywall") || line.includes("<!-- PAYWALL")) {
       const paywallTrackedUrl = buildTrackingUrl("https://v5autoblog.com/vip", { ...utmConfig, content: "vip_paywall_button" });
+      const paywallButton = renderOutlookCtaButton({
+        url: paywallTrackedUrl,
+        label: "Desbloquear Assinatura VIP →",
+        bgColor: "#f59e0b",
+        textColor: "#000000",
+        fontSize: 13,
+        fontWeight: 800,
+        width: 260,
+        height: 44,
+        borderRadius: 8,
+      });
       htmlBodyLines.push(
         `<div style="margin: 32px 0; padding: 24px 16px; border: 2px dashed #f59e0b; background-color: #fffbeb; border-radius: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
           <p style="color: #92400e; font-weight: 800; font-size: 15px; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;">🔒 Conteúdo Exclusivo de Assinantes VIP</p>
           <p style="color: #b45309; font-size: 13px; line-height: 1.5; margin: 0 0 16px 0;">Este é o ponto de corte da prévia gratuita. Assine o plano VIP para liberar a leitura completa.</p>
-          <a href="${paywallTrackedUrl}" style="display: inline-block; background-color: #f59e0b; color: #000000; font-weight: 800; font-size: 13px; text-decoration: none; padding: 10px 20px; border-radius: 8px;">Desbloquear Assinatura VIP →</a>
+          <div style="margin: 0 auto; text-align: center;">
+            ${paywallButton}
+          </div>
         </div>`
       );
     } else if (line === "---" || line === "***") {
@@ -291,12 +395,33 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   const prefsUrl = buildTrackingUrl("https://v5apollo.com/preferencias", { ...utmConfig, content: "footer_preferences" });
   const unsubUrl = buildTrackingUrl("https://v5apollo.com/cancelar", { ...utmConfig, content: "footer_unsubscribe" });
 
+  const mainCtaHtml = renderOutlookCtaButton({
+    url: mainCtaUrl,
+    label: "Ler Artigo Completo no Blog →",
+    bgColor: "#f59e0b",
+    textColor: "#000000",
+    fontSize: 14,
+    fontWeight: 700,
+    width: 290,
+    height: 48,
+    borderRadius: 10,
+  });
+
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${payload.emailOptions.subject || title}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   ${preheaderBlock}
@@ -329,16 +454,10 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
             </td>
           </tr>
 
-          <!-- Call to Action Button -->
+          <!-- Call to Action Button (Bulletproof Outlook MSO + Mobile) -->
           <tr>
             <td align="center" style="padding: 0 32px 36px 32px;">
-              <table border="0" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="border-radius: 10px; background-color: #f59e0b;">
-                    <a href="${mainCtaUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; color: #000000; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Ler Artigo Completo no Blog →</a>
-                  </td>
-                </tr>
-              </table>
+              ${renderEmailCtaContainer(mainCtaHtml, "center", "0")}
             </td>
           </tr>
 

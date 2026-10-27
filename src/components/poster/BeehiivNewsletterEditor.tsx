@@ -60,7 +60,8 @@ import {
   executeMockDispatch,
   slugify,
   buildTrackingUrl,
-  getSampleTrackingUrls
+  getSampleTrackingUrls,
+  renderOutlookCtaButton
 } from "@/lib/dispatch/multimodalEngine";
 import { usePosterStore } from "@/store/usePosterStore";
 import { toast } from "@/lib/toast/useToast";
@@ -334,6 +335,30 @@ function renderMarkdownToHtml(markdown: string) {
         </figure>
       );
       continue;
+    }
+
+    // Suporte a Botão CTA Bulletproof personalizado no Markdown: [CTA:Texto|URL]
+    if (/^\[(?:CTA|BUTTON|BOTAO):(.*?)\|(https?:\/\/[^\s\]]+)\]$/i.test(line)) {
+      const ctaMatch = line.match(/^\[(?:CTA|BUTTON|BOTAO):(.*?)\|(https?:\/\/[^\s\]]+)\]$/i);
+      if (ctaMatch) {
+        const ctaLabel = ctaMatch[1].trim();
+        const ctaUrl = ctaMatch[2].trim();
+        elements.push(
+          <div key={`cta-${i}`} className="my-6 text-center">
+            <a
+              href={ctaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all transform hover:-translate-y-0.5"
+            >
+              <Zap className="w-4 h-4 fill-black" />
+              <span>{ctaLabel}</span>
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+        );
+        continue;
+      }
     }
 
     if (line.startsWith("# ")) {
@@ -1326,6 +1351,17 @@ export function BeehiivNewsletterEditor() {
                   <Minus className="w-3.5 h-3.5" />
                 </button>
 
+                {/* Botão CTA Bulletproof (Outlook MSO - Etapa 034) */}
+                <button
+                  type="button"
+                  onClick={() => applyBlockFormat(`[CTA:Ler Artigo Completo no Blog →|https://v5autoblog.com/artigo/${payload.slug}]`, "")}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold transition shadow-sm"
+                  title="Inserir Botão CTA de Alta Conversão ([CTA:Texto|URL]) - Compatível com Outlook MSO (VML) e Mobile"
+                >
+                  <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />
+                  <span>Botão CTA</span>
+                </button>
+
                 {/* Paywall Break (VIP) */}
                 <button
                   type="button"
@@ -2166,6 +2202,41 @@ export function BeehiivNewsletterEditor() {
                         </div>
                       );
                     })()}
+
+                    {/* Botão CTA Bulletproof Outlook MSO (Etapa 034) */}
+                    <div className="p-3.5 bg-zinc-900/70 rounded-xl border border-zinc-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                          <span>Motor de CTA Bulletproof (Outlook MSO)</span>
+                        </span>
+                        <span className="text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                          VML + MSO Ativo
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-zinc-300 leading-relaxed">
+                        Botões de alta conversão compilados com condicionais vetoriais <code className="text-amber-400 font-mono text-[10px]">&lt;!--[if mso]&gt;</code> para manter dimensões e cantos arredondados no Microsoft Outlook Desktop (Word Engine).
+                      </div>
+
+                      <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800/80 text-center space-y-2">
+                        <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest block">Preview do Botão CTA Principal</span>
+                        <div className="inline-block py-2.5 px-6 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold text-xs shadow-md shadow-amber-500/20">
+                          Ler Artigo Completo no Blog →
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="bg-zinc-950 p-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 text-zinc-300">
+                          <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span>Outlook 2013-2021 (VML)</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 text-zinc-300">
+                          <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span>Gmail & Apple Mail (CSS)</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
