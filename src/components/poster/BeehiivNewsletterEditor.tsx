@@ -140,6 +140,7 @@ import { TwitterTeaserCard } from "@/components/poster/TwitterTeaserCard";
 import { ThreadsTeaserCard } from "@/components/poster/ThreadsTeaserCard";
 import { InstagramCaptionCard } from "@/components/poster/InstagramCaptionCard";
 import { WhatsAppMessageCard } from "@/components/poster/WhatsAppMessageCard";
+import { TelegramMessageCard } from "@/components/poster/TelegramMessageCard";
 
 export const IMAGE_PRESETS = [
   {
@@ -2787,6 +2788,9 @@ export function BeehiivNewsletterEditor() {
 
                   {/* Gerador de Mensagens Curtas para WhatsApp (Etapa 055) */}
                   <WhatsAppMessageCard payload={payload} />
+
+                  {/* Gerador de Mensagens com Markdown Rico para Telegram (Etapa 056) */}
+                  <TelegramMessageCard payload={payload} />
                 </div>
               )}
 
