@@ -44,6 +44,11 @@ import {
   ShieldCheck,
   Image as ImageIcon,
   Trash2,
+  Settings,
+  Tag,
+  Folder,
+  Users,
+  Plus,
   X
 } from "lucide-react";
 import { MultimodalDispatchPayload } from "@/types/poster";
@@ -87,6 +92,29 @@ export const IMAGE_PRESETS = [
     url: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200",
     alt: "Mídia digital, canais de distribuição de conteúdo e audiência"
   }
+];
+
+export const PRESET_CATEGORIES = [
+  "Inteligência Artificial",
+  "Afiliados & Achadinhos",
+  "Produtividade & Automação",
+  "SaaS & Startups",
+  "Marketing & Growth",
+  "Finanças Digitais & E-commerce"
+];
+
+export const PRESET_AUDIENCES = [
+  "Assinantes VIP (1.845 inscritos)",
+  "Lista Geral Newsletter (14.200 inscritos)",
+  "Compradores Recentes (3.120 inscritos)",
+  "Todos os Inscritos Ativos (19.165 inscritos)"
+];
+
+export const PRESET_AUTHORS = [
+  "Redação Apollo",
+  "Apollo La Plata",
+  "V5 Growth Team",
+  "Holding V5 Apollo"
 ];
 
 const DEFAULT_PAYLOAD: MultimodalDispatchPayload = {
@@ -412,6 +440,40 @@ export function BeehiivNewsletterEditor() {
     setMediaAltInput(preset.alt);
   };
 
+  // Publication Settings Drawer States & Handlers
+  const [settingsTab, setSettingsTab] = useState<"blog" | "email" | "seo" | "dispatch">("blog");
+  const [newTagInput, setNewTagInput] = useState("");
+
+  const handleAddTag = (tagToAdd?: string) => {
+    const rawTag = (tagToAdd !== undefined ? tagToAdd : newTagInput).trim();
+    if (!rawTag) return;
+    const cleanTag = rawTag.replace(/^#/, "");
+    if (!payload.blogOptions.tags.includes(cleanTag)) {
+      const updatedTags = [...payload.blogOptions.tags, cleanTag];
+      setPayload(prev => ({
+        ...prev,
+        blogOptions: { ...prev.blogOptions, tags: updatedTags }
+      }));
+      toast.success("Tag Adicionada", `A tag "#${cleanTag}" foi incluída na taxonomia.`);
+    }
+    setNewTagInput("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const updatedTags = payload.blogOptions.tags.filter(t => t !== tagToRemove);
+    setPayload(prev => ({
+      ...prev,
+      blogOptions: { ...prev.blogOptions, tags: updatedTags }
+    }));
+    toast.info("Tag Removida", `A tag "#${tagToRemove}" foi excluída.`);
+  };
+
+  const handleRegenerateSlug = () => {
+    const freshSlug = slugify(payload.title);
+    setPayload(prev => ({ ...prev, slug: freshSlug }));
+    toast.info("Slug Atualizado!", `URL canônica baseada no título: ${freshSlug}`);
+  };
+
   const compiledHtml = compileEmailHtml(payload);
   const compiledBlogJson = compileBlogPayload(payload);
   const compiledTeasers = compileSocialTeasers(payload);
@@ -680,17 +742,18 @@ export function BeehiivNewsletterEditor() {
             </button>
           </div>
 
-          {/* Toggle Destination Settings */}
+          {/* Toggle Publication Settings Slide-Over */}
           <button
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            onClick={() => setIsSettingsOpen(true)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
               isSettingsOpen 
-                ? "bg-amber-500/20 text-amber-300 border-amber-500/40" 
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm" 
                 : "bg-zinc-800/80 text-zinc-300 border-zinc-700/60 hover:text-white"
             }`}
+            title="Abrir Painel Lateral de Configurações de Publicação"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Matriz Despacho</span>
+            <Settings className="w-3.5 h-3.5 text-amber-400" />
+            <span>Configurações</span>
           </button>
         </div>
       </div>
@@ -1443,138 +1506,470 @@ export function BeehiivNewsletterEditor() {
         )}
       </div>
 
-      {/* COLLAPSIBLE DESTINATION & DISPATCH DRAWER */}
+      {/* SIDEBAR: PAINEL LATERAL DE CONFIGURAÇÕES DE PUBLICAÇÃO */}
       {isSettingsOpen && (
-        <div className="bg-zinc-900/90 border border-amber-500/30 rounded-2xl p-5 shadow-2xl space-y-5 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-              <Zap className="w-4 h-4 fill-amber-400" />
-              <span>Matriz Onicanal de Despacho Simultâneo</span>
-            </div>
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="text-xs text-zinc-400 hover:text-white"
-            >
-              Fechar Painel
-            </button>
-          </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsSettingsOpen(false)}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Email Destination */}
-            <label className="flex items-start gap-3 bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-zinc-700 transition">
-              <input
-                type="checkbox"
-                checked={payload.emailOptions.enabled}
-                onChange={(e) => setPayload(prev => ({
-                  ...prev,
-                  emailOptions: { ...prev.emailOptions, enabled: e.target.checked }
-                }))}
-                className="mt-1 rounded text-amber-500 focus:ring-0"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Ponta E-mail (Newsletter)</span>
-                <span className="text-[11px] text-zinc-400 block mt-0.5">
-                  Resend API • {payload.emailOptions.audienceList}
-                </span>
-              </div>
-            </label>
-
-            {/* AutoBlog Destination */}
-            <label className="flex items-start gap-3 bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-zinc-700 transition">
-              <input
-                type="checkbox"
-                checked={payload.blogOptions.enabled}
-                onChange={(e) => setPayload(prev => ({
-                  ...prev,
-                  blogOptions: { ...prev.blogOptions, enabled: e.target.checked }
-                }))}
-                className="mt-1 rounded text-amber-500 focus:ring-0"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Ponta Blog (V5 AutoBlog REST)</span>
-                <span className="text-[11px] text-zinc-400 block mt-0.5">
-                  Schema.org + Tags SEO • Endpoint Seguro
-                </span>
-              </div>
-            </label>
-
-            {/* Social Teasers Destination */}
-            <label className="flex items-start gap-3 bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-zinc-700 transition">
-              <input
-                type="checkbox"
-                checked={payload.socialTeaserOptions.enabled}
-                onChange={(e) => setPayload(prev => ({
-                  ...prev,
-                  socialTeaserOptions: { ...prev.socialTeaserOptions, enabled: e.target.checked }
-                }))}
-                className="mt-1 rounded text-amber-500 focus:ring-0"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Ponta Social & VIP</span>
-                <span className="text-[11px] text-zinc-400 block mt-0.5">
-                  Teasers formatados para Telegram VIP, WhatsApp e Redes
-                </span>
-              </div>
-            </label>
-          </div>
-
-          {/* Social Teasers Preview Grid */}
-          {payload.socialTeaserOptions.enabled && (
-            <div className="pt-2 border-t border-zinc-800/80 space-y-3">
-              <span className="text-xs font-bold text-zinc-300 block">Teasers Automáticos Gerados:</span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
-                  <div className="flex items-center justify-between text-[11px] text-pink-400 font-semibold mb-1">
-                    <span>Instagram / Threads</span>
-                    <button onClick={() => handleCopy(compiledTeasers.instagram_caption, "Legenda Instagram")} className="text-amber-400 hover:underline">Copiar</button>
+          <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex">
+            <div className="w-screen max-w-md sm:max-w-lg bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-zinc-800/80 bg-zinc-900/60 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Settings className="w-4 h-4" />
                   </div>
-                  <p className="text-zinc-400 line-clamp-2 text-[11px] font-mono">{compiledTeasers.instagram_caption}</p>
-                </div>
-                <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
-                  <div className="flex items-center justify-between text-[11px] text-sky-400 font-semibold mb-1">
-                    <span>Telegram VIP</span>
-                    <button onClick={() => handleCopy(compiledTeasers.telegram_vip, "Telegram VIP")} className="text-amber-400 hover:underline">Copiar</button>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Configurações de Publicação</h3>
+                    <p className="text-[11px] text-zinc-400 font-mono">Audiência, Taxonomia, SEO & Canais</p>
                   </div>
-                  <p className="text-zinc-400 line-clamp-2 text-[11px] font-mono">{compiledTeasers.telegram_vip}</p>
                 </div>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                  title="Fechar Painel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            </div>
-          )}
 
-          {/* Trigger Dispatch Button */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-zinc-400">
-              Pronto para transmissão sem extensões de navegador ou intervenção manual.
-            </div>
-            <button
-              onClick={handleTriggerDispatch}
-              disabled={isDispatching}
-              className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:brightness-110 text-black font-extrabold px-6 py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-            >
-              {isDispatching ? (
-                <span className="animate-pulse">Transmitindo pelos canais...</span>
-              ) : (
-                <>
+              {/* Drawer Tabs */}
+              <div className="grid grid-cols-4 border-b border-zinc-800/80 bg-zinc-900/30 p-1.5 text-xs font-medium">
+                <button
+                  onClick={() => setSettingsTab("blog")}
+                  className={`py-2 px-1 rounded-lg text-center transition flex flex-col items-center gap-1 ${
+                    settingsTab === "blog" 
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold" 
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Folder className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">AutoBlog</span>
+                </button>
+                <button
+                  onClick={() => setSettingsTab("email")}
+                  className={`py-2 px-1 rounded-lg text-center transition flex flex-col items-center gap-1 ${
+                    settingsTab === "email" 
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold" 
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">Audiência</span>
+                </button>
+                <button
+                  onClick={() => setSettingsTab("seo")}
+                  className={`py-2 px-1 rounded-lg text-center transition flex flex-col items-center gap-1 ${
+                    settingsTab === "seo" 
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold" 
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">Slug & SEO</span>
+                </button>
+                <button
+                  onClick={() => setSettingsTab("dispatch")}
+                  className={`py-2 px-1 rounded-lg text-center transition flex flex-col items-center gap-1 ${
+                    settingsTab === "dispatch" 
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold" 
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">Despacho</span>
+                </button>
+              </div>
+
+              {/* Drawer Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+                {/* 1. BLOG & TAXONOMIA */}
+                {settingsTab === "blog" && (
+                  <div className="space-y-4">
+                    {/* Channel Active Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+                      <div>
+                        <span className="font-bold text-white block">Ponta AutoBlog (REST API)</span>
+                        <span className="text-[11px] text-zinc-400">Publicar no portal web oficial</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={payload.blogOptions.enabled}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          blogOptions: { ...prev.blogOptions, enabled: e.target.checked }
+                        }))}
+                        className="rounded text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Categoria */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                        <Folder className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Categoria Editorial</span>
+                      </label>
+                      <select
+                        value={payload.blogOptions.category}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          blogOptions: { ...prev.blogOptions, category: e.target.value }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                      >
+                        {PRESET_CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Autor */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Autor Editorial</span>
+                      </label>
+                      <select
+                        value={payload.blogOptions.author}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          blogOptions: { ...prev.blogOptions, author: e.target.value }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                      >
+                        {PRESET_AUTHORS.map(author => (
+                          <option key={author} value={author}>{author}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Gerenciador Dinâmico de Tags */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Tags & Palavras-Chave ({payload.blogOptions.tags.length})</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleInjectKeywordsAsTags}
+                          className="text-[10px] text-amber-400 hover:underline font-mono"
+                        >
+                          Sugerir do Texto
+                        </button>
+                      </div>
+
+                      {/* Tag Chips */}
+                      <div className="flex flex-wrap items-center gap-1.5 min-h-[42px] p-2 bg-zinc-900/60 rounded-xl border border-zinc-800">
+                        {payload.blogOptions.tags.length === 0 ? (
+                          <span className="text-[11px] text-zinc-500 italic">Nenhuma tag associada ainda...</span>
+                        ) : (
+                          payload.blogOptions.tags.map(tag => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 text-[11px] font-mono group"
+                            >
+                              <span>#{tag}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTag(tag)}
+                                className="text-zinc-500 hover:text-red-400 transition"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Input Nova Tag */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newTagInput}
+                          onChange={(e) => setNewTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddTag();
+                            }
+                          }}
+                          placeholder="Nova tag (ex: Automação, IA)..."
+                          className="flex-1 bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddTag()}
+                          className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700 transition flex items-center gap-1 font-medium"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Schema.org Toggle */}
+                    <div className="pt-2 border-t border-zinc-800 flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-zinc-200 block">Schema.org JSON-LD</span>
+                        <span className="text-[11px] text-zinc-500">Gera metadados ricos (BlogPosting) para o Google</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={payload.blogOptions.generateSchema}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          blogOptions: { ...prev.blogOptions, generateSchema: e.target.checked }
+                        }))}
+                        className="rounded text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. E-MAIL & AUDIÊNCIA */}
+                {settingsTab === "email" && (
+                  <div className="space-y-4">
+                    {/* Channel Active Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+                      <div>
+                        <span className="font-bold text-white block">Ponta E-mail (Newsletter)</span>
+                        <span className="text-[11px] text-zinc-400">Disparo via Resend API / SES</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={payload.emailOptions.enabled}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          emailOptions: { ...prev.emailOptions, enabled: e.target.checked }
+                        }))}
+                        className="rounded text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Lista de Audiência */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Lista de Destinatários</span>
+                      </label>
+                      <select
+                        value={payload.emailOptions.audienceList}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          emailOptions: { ...prev.emailOptions, audienceList: e.target.value }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                      >
+                        {PRESET_AUDIENCES.map(aud => (
+                          <option key={aud} value={aud}>{aud}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Provedor de Disparo */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Provedor de Infraestrutura</span>
+                      </label>
+                      <select
+                        value={payload.emailOptions.provider}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          emailOptions: { ...prev.emailOptions, provider: e.target.value as any }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                      >
+                        <option value="resend">Resend API (Oficial Nuvem)</option>
+                        <option value="ses">Amazon SES (High Volume)</option>
+                        <option value="smtp">SMTP Corporativo Customizado</option>
+                      </select>
+                    </div>
+
+                    {/* Nome do Remetente */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                        Nome do Remetente
+                      </label>
+                      <input
+                        type="text"
+                        value={payload.emailOptions.fromName}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          emailOptions: { ...prev.emailOptions, fromName: e.target.value }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
+                        placeholder="Holding V5 Apollo"
+                      />
+                    </div>
+
+                    {/* Campanha UTM */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1 flex items-center justify-between">
+                        <span>Campanha UTM (Rastreamento)</span>
+                        <button
+                          type="button"
+                          onClick={() => setPayload(prev => ({
+                            ...prev,
+                            emailOptions: { ...prev.emailOptions, utmCampaign: prev.slug }
+                          }))}
+                          className="text-[10px] text-amber-400 hover:underline font-mono"
+                        >
+                          Usar Slug
+                        </button>
+                      </label>
+                      <input
+                        type="text"
+                        value={payload.emailOptions.utmCampaign}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          emailOptions: { ...prev.emailOptions, utmCampaign: e.target.value }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-amber-300 focus:outline-none font-mono"
+                        placeholder="newsletter_agentes_2026"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. SLUG & SEO */}
+                {settingsTab === "seo" && (
+                  <div className="space-y-4">
+                    {/* Slug Customizado */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Link2 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Slug Canônico Customizado</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRegenerateSlug}
+                          className="text-[10px] text-amber-400 hover:underline font-mono flex items-center gap-1"
+                        >
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          <span>Regenerar do Título</span>
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={payload.slug}
+                        onChange={(e) => setPayload(prev => ({ ...prev, slug: e.target.value }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-amber-400 font-mono focus:outline-none"
+                      />
+                    </div>
+
+                    {/* URL Final Preview */}
+                    <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800 space-y-1">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase">URL Canônica Final:</span>
+                      <div className="text-xs font-mono text-zinc-300 break-all select-all">
+                        https://v5autoblog.com/artigo/<strong className="text-amber-400">{payload.slug}</strong>
+                      </div>
+                    </div>
+
+                    {/* Resumo SEO */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                          Meta Description / Resumo SEO
+                        </label>
+                        <span className={`text-[10px] font-mono ${payload.summary.length > 160 ? "text-amber-400" : "text-zinc-500"}`}>
+                          {payload.summary.length}/160 carac.
+                        </span>
+                      </div>
+                      <textarea
+                        value={payload.summary}
+                        onChange={(e) => setPayload(prev => ({ ...prev, summary: e.target.value }))}
+                        rows={3}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg p-2.5 text-xs text-zinc-200 focus:outline-none resize-none leading-relaxed"
+                        placeholder="Resumo otimizado para snippets do Google e compartilhamento social..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. DESPACHO & TEASERS */}
+                {settingsTab === "dispatch" && (
+                  <div className="space-y-4">
+                    {/* Social Teasers destination */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-900/60 rounded-xl border border-zinc-800">
+                      <div>
+                        <span className="font-bold text-white block">Ponta Social & Grupos VIP</span>
+                        <span className="text-[11px] text-zinc-400">Telegram, WhatsApp, Instagram e Redes</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={payload.socialTeaserOptions.enabled}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          socialTeaserOptions: { ...prev.socialTeaserOptions, enabled: e.target.checked }
+                        }))}
+                        className="rounded text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {payload.socialTeaserOptions.enabled && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-pink-400 font-semibold">
+                            <span>Instagram / Threads</span>
+                            <button onClick={() => handleCopy(compiledTeasers.instagram_caption, "Legenda Instagram")} className="text-amber-400 hover:underline">Copiar</button>
+                          </div>
+                          <p className="text-zinc-400 text-[11px] font-mono line-clamp-3">{compiledTeasers.instagram_caption}</p>
+                        </div>
+                        <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-sky-400 font-semibold">
+                            <span>Telegram VIP</span>
+                            <button onClick={() => handleCopy(compiledTeasers.telegram_vip, "Telegram VIP")} className="text-amber-400 hover:underline">Copiar</button>
+                          </div>
+                          <p className="text-zinc-400 text-[11px] font-mono line-clamp-3">{compiledTeasers.telegram_vip}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {executionResult && (
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1.5 text-xs">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Despacho Concluído com Sucesso!</span>
+                        </div>
+                        <div className="text-[11px] text-zinc-300 space-y-0.5 font-mono">
+                          <div>• E-mail: {executionResult.emailResult.sentCount} disparos ({executionResult.emailResult.messageId})</div>
+                          <div>• AutoBlog: HTTP {executionResult.blogResult.statusCode} OK (<a href={executionResult.blogResult.publishedUrl} target="_blank" className="underline text-amber-400">{executionResult.blogResult.publishedUrl}</a>)</div>
+                          <div>• Social & VIP: {executionResult.socialResult.deliveredChannels.join(", ")}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Drawer Sticky Footer */}
+              <div className="p-4 border-t border-zinc-800/80 bg-zinc-900/70 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition font-medium"
+                >
+                  Concluir & Fechar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTriggerDispatch}
+                  disabled={isDispatching}
+                  className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow disabled:opacity-50"
+                >
                   <Zap className="w-4 h-4 fill-black" />
-                  <span>Disparar Agora pelos Canais Ativos</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {executionResult && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1.5 text-xs">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Despacho Concluído com Sucesso!</span>
-              </div>
-              <div className="text-[11px] text-zinc-300 space-y-0.5 font-mono">
-                <div>• E-mail: {executionResult.emailResult.sentCount} disparos ({executionResult.emailResult.messageId})</div>
-                <div>• AutoBlog: HTTP {executionResult.blogResult.statusCode} OK (<a href={executionResult.blogResult.publishedUrl} target="_blank" className="underline text-amber-400">{executionResult.blogResult.publishedUrl}</a>)</div>
-                <div>• Social & VIP: {executionResult.socialResult.deliveredChannels.join(", ")}</div>
+                  <span>{isDispatching ? "Despachando..." : "Disparar Agora"}</span>
+                </button>
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 

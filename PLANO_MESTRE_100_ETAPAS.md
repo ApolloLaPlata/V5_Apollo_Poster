@@ -66,7 +66,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 025:** Sanitizador de Markdown para remoção de caracteres de controle e tags maliciosas.
 - [x] **Etapa 026:** Alternador de Abas de Visualização (Editor Puro vs. Preview E-mail HTML vs. Preview AutoBlog Web).
 - [x] **Etapa 027:** Suporte a Inserção de Mídia e Imagens de Capa com URL canônica e tag ALT automática.
-- [ ] **Etapa 028:** Painel Lateral de Configurações de Publicação (Audiência, Categoria, Tags e Slug customizado).
+- [x] **Etapa 028:** Painel Lateral de Configurações de Publicação (Audiência, Categoria, Tags e Slug customizado).
 - [ ] **Etapa 029:** Persistência de Rascunho Automática (Auto-Save a cada 3 segundos com status visual discreto).
 - [ ] **Etapa 030:** Validação de Build Next.js 14 (`npm run build`) com Exit Code 0 e homologação do Editor Dual.
 
