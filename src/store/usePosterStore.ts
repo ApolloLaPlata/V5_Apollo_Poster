@@ -36,7 +36,7 @@ import {
   applyRetryToQueueItem
 } from "@/lib/queue/dispatchQueue";
 
-export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "logs";
+export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "queue" | "logs";
 
 interface PosterStoreState {
   // Navegação

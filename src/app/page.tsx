@@ -7,17 +7,21 @@ import { MasterCalendar } from "@/components/poster/MasterCalendar";
 import { BeehiivNewsletterEditor } from "@/components/poster/BeehiivNewsletterEditor";
 import { CommentToDmManager } from "@/components/poster/CommentToDmManager";
 import { OfferGroupDispatcher } from "@/components/poster/OfferGroupDispatcher";
+import { BackgroundQueueDashboard } from "@/components/poster/BackgroundQueueDashboard";
 import { DispatchLogsViewer } from "@/components/poster/DispatchLogsViewer";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { usePosterStore, PosterTab } from "@/store/usePosterStore";
-import { Calendar, Mail, MessageSquare, Flame, History } from "lucide-react";
+import { Calendar, Mail, MessageSquare, Flame, History, Layers } from "lucide-react";
 
 export default function PosterPage() {
-  const { activeTab, setActiveTab, posts, commentRules, deals, logs } = usePosterStore();
+  const { activeTab, setActiveTab, posts, commentRules, deals, logs, dispatchQueue } = usePosterStore();
 
   const scheduledCount = posts.filter((p) => p.status === "scheduled").length;
   const activeRulesCount = commentRules.filter((r) => r.isActive).length;
   const pendingDealsCount = deals.filter((d) => d.status === "pending").length;
+  const activeQueueCount = dispatchQueue.filter(
+    (i) => i.status === "scheduled" || i.status === "queued" || i.status === "processing"
+  ).length;
 
   return (
     <div className="min-h-screen bg-[#030712] text-zinc-100 flex flex-col font-sans">
@@ -98,6 +102,25 @@ export default function PosterPage() {
             </button>
 
             <button
+              onClick={() => setActiveTab("queue")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                activeTab === "queue"
+                  ? "bg-amber-500 text-black font-bold shadow-md shadow-amber-500/10"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+              }`}
+            >
+              <Layers className="w-4 h-4 text-amber-400" />
+              <span>Fila Background</span>
+              {activeQueueCount > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  activeTab === "queue" ? "bg-black/20 text-black" : "bg-blue-500/20 text-blue-400"
+                }`}>
+                  {activeQueueCount}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab("logs")}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
                 activeTab === "logs"
@@ -127,6 +150,7 @@ export default function PosterPage() {
         {activeTab === "newsletter" && <BeehiivNewsletterEditor />}
         {activeTab === "comment" && <CommentToDmManager />}
         {activeTab === "offers" && <OfferGroupDispatcher />}
+        {activeTab === "queue" && <BackgroundQueueDashboard />}
         {activeTab === "logs" && <DispatchLogsViewer />}
       </main>
 
