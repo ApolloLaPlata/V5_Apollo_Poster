@@ -34,7 +34,8 @@ import {
   DollarSign,
   X,
   Copy,
-  Eye
+  Eye,
+  Users
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { GroupBroadcastDeal } from "@/types/poster";
@@ -62,6 +63,13 @@ import {
   getDealUrgency, 
   FullSavingsResult 
 } from "@/lib/finders/discountCalculator";
+import { 
+  DEFAULT_BROADCAST_CHANNELS, 
+  BroadcastChannel, 
+  calculateAudienceReach, 
+  groupChannelsByPlatform, 
+  validateChannelSelection 
+} from "@/lib/finders/channelManager";
 import { toast } from "@/lib/toast/useToast";
 
 export function OfferGroupDispatcher() {
@@ -84,6 +92,7 @@ export function OfferGroupDispatcher() {
     couponCode: string;
     affiliateUrl: string;
     targetChannels: Array<"whatsapp" | "telegram">;
+    targetChannelIds: string[];
     scheduledTime: string;
   }>({
     productName: "",
@@ -93,6 +102,7 @@ export function OfferGroupDispatcher() {
     couponCode: "",
     affiliateUrl: "",
     targetChannels: ["whatsapp", "telegram"],
+    targetChannelIds: DEFAULT_BROADCAST_CHANNELS.map((c) => c.id),
     scheduledTime: "12:00"
   });
 
@@ -109,6 +119,56 @@ export function OfferGroupDispatcher() {
     const promo = parseFloat(newDealForm.promoPrice.replace(",", ".")) || 0;
     return calculateFullSavings({ originalPrice: orig, promoPrice: promo });
   }, [newDealForm.originalPrice, newDealForm.promoPrice]);
+
+  // Estatísticas de alcance de membros e canais selecionados em tempo real
+  const selectedReachStats = useMemo(() => {
+    return calculateAudienceReach(newDealForm.targetChannelIds);
+  }, [newDealForm.targetChannelIds]);
+
+  // Canais agrupados por plataforma (Telegram vs WhatsApp)
+  const groupedChannels = useMemo(() => {
+    return groupChannelsByPlatform(DEFAULT_BROADCAST_CHANNELS);
+  }, []);
+
+  // Handlers para seleção de canais
+  const handleToggleChannelId = (channelId: string) => {
+    setNewDealForm((prev) => {
+      const exists = prev.targetChannelIds.includes(channelId);
+      const updatedIds = exists
+        ? prev.targetChannelIds.filter((id) => id !== channelId)
+        : [...prev.targetChannelIds, channelId];
+
+      const hasTg = updatedIds.some((id) => id.startsWith("tg_"));
+      const hasWa = updatedIds.some((id) => id.startsWith("wa_"));
+      const targetChannels: Array<"whatsapp" | "telegram"> = [];
+      if (hasWa) targetChannels.push("whatsapp");
+      if (hasTg) targetChannels.push("telegram");
+
+      return {
+        ...prev,
+        targetChannelIds: updatedIds,
+        targetChannels: targetChannels.length > 0 ? targetChannels : ["whatsapp", "telegram"]
+      };
+    });
+  };
+
+  const handleSelectAllChannels = () => {
+    const allIds = DEFAULT_BROADCAST_CHANNELS.map((c) => c.id);
+    setNewDealForm((prev) => ({
+      ...prev,
+      targetChannelIds: allIds,
+      targetChannels: ["whatsapp", "telegram"]
+    }));
+  };
+
+  const handleSelectPlatformOnly = (platform: "telegram" | "whatsapp") => {
+    const platformIds = DEFAULT_BROADCAST_CHANNELS.filter((c) => c.platform === platform).map((c) => c.id);
+    setNewDealForm((prev) => ({
+      ...prev,
+      targetChannelIds: platformIds,
+      targetChannels: [platform]
+    }));
+  };
 
   // Mensagem compilada para o Telegram do deal selecionado
   const compiledTelegramText = useMemo(() => {
@@ -190,6 +250,12 @@ export function OfferGroupDispatcher() {
       return;
     }
 
+    const channelValidation = validateChannelSelection(newDealForm.targetChannelIds);
+    if (!channelValidation.isValid) {
+      toast.error(channelValidation.error || "Selecione ao menos um canal ou comunidade VIP.");
+      return;
+    }
+
     addDeal({
       productName: newDealForm.productName.trim(),
       store: newDealForm.store,
@@ -200,6 +266,8 @@ export function OfferGroupDispatcher() {
       couponCode: newDealForm.couponCode.trim().toUpperCase() || undefined,
       affiliateUrl: newDealForm.affiliateUrl.trim(),
       targetChannels: newDealForm.targetChannels.length > 0 ? newDealForm.targetChannels : ["whatsapp", "telegram"],
+      targetChannelIds: newDealForm.targetChannelIds,
+      estimatedReach: selectedReachStats.totalMembers,
       scheduledTime: newDealForm.scheduledTime || "12:00",
       status: "pending",
       totalClicks: 0
@@ -214,6 +282,7 @@ export function OfferGroupDispatcher() {
       couponCode: "",
       affiliateUrl: "",
       targetChannels: ["whatsapp", "telegram"],
+      targetChannelIds: DEFAULT_BROADCAST_CHANNELS.map((c) => c.id),
       scheduledTime: "12:00"
     });
 
@@ -246,7 +315,7 @@ export function OfferGroupDispatcher() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Despachador de Ofertas & Grupos VIP</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Fase 8 • Etapa 074 (Calculadora de Desconto & Economia em Reais)
+              Fase 8 • Etapa 075 (Seletor de Canais de Destino VIP)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -393,7 +462,7 @@ export function OfferGroupDispatcher() {
               {/* Rodapé do Card: Canais, Status e Disparo */}
               <div className="space-y-3 pt-1 border-t border-zinc-800/60">
                 <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span>Canais:</span>
                     <div className="flex gap-1">
                       {deal.targetChannels.map((ch) => (
@@ -411,9 +480,19 @@ export function OfferGroupDispatcher() {
                     </div>
                   </div>
 
-                  {deal.totalClicks !== undefined && (
-                    <span className="text-zinc-500 text-[10px]">{deal.totalClicks} cliques</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
+                      <Users className="w-2.5 h-2.5" />
+                      <span>
+                        ~{(deal.estimatedReach ?? 56354) >= 1000 
+                          ? `${((deal.estimatedReach ?? 56354) / 1000).toFixed(1)}k` 
+                          : (deal.estimatedReach ?? 56354)}
+                      </span>
+                    </span>
+                    {deal.totalClicks !== undefined && (
+                      <span className="text-zinc-500 text-[10px]">{deal.totalClicks} cliques</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -656,37 +735,126 @@ export function OfferGroupDispatcher() {
                 </div>
               </div>
 
-              {/* Canais de Transmissão */}
-              <div>
-                <label className="text-[11px] text-zinc-400 block mb-1">
-                  Canais de Destino VIP:
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleChannel("whatsapp")}
-                    className={`flex-1 p-2 rounded-xl border flex items-center justify-center gap-1.5 transition ${
-                      newDealForm.targetChannels.includes("whatsapp")
-                        ? "bg-emerald-950/60 border-emerald-500 text-emerald-300 font-bold"
-                        : "bg-zinc-900 border-zinc-800 text-zinc-400"
-                    }`}
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Comunidades WhatsApp</span>
-                  </button>
+              {/* Canais & Comunidades de Transmissão VIP (Etapa 075) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] text-zinc-400 font-semibold flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Canais & Comunidades de Destino VIP:</span>
+                  </label>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleChannel("telegram")}
-                    className={`flex-1 p-2 rounded-xl border flex items-center justify-center gap-1.5 transition ${
-                      newDealForm.targetChannels.includes("telegram")
-                        ? "bg-blue-950/60 border-blue-500 text-blue-300 font-bold"
-                        : "bg-zinc-900 border-zinc-800 text-zinc-400"
-                    }`}
-                  >
-                    <Send className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Canais VIP Telegram</span>
-                  </button>
+                  {/* Seleção Rápida */}
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllChannels}
+                      className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 transition"
+                    >
+                      Todos ({DEFAULT_BROADCAST_CHANNELS.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPlatformOnly("telegram")}
+                      className="px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 hover:text-white border border-blue-500/40 transition"
+                    >
+                      Só Telegram
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPlatformOnly("whatsapp")}
+                      className="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 hover:text-white border border-emerald-500/40 transition"
+                    >
+                      Só WhatsApp
+                    </button>
+                  </div>
+                </div>
+
+                {/* Box de Alcance Estimado em Tempo Real */}
+                <div className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-400 text-[11px]">Alcance Estimado:</span>
+                    <span className="text-emerald-400 font-bold text-xs">
+                      👥 {selectedReachStats.totalMembers.toLocaleString()} membros
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono">
+                    <span className="text-blue-400">TG: {selectedReachStats.telegramMembersCount.toLocaleString()}</span>
+                    <span>•</span>
+                    <span className="text-emerald-400">WA: {selectedReachStats.whatsappMembersCount.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Listagem de Canais: Telegram e WhatsApp */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {/* Coluna Telegram */}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] uppercase font-bold text-blue-400 flex items-center gap-1 px-1">
+                      <Send className="w-3 h-3" />
+                      <span>Canais Telegram ({groupedChannels.telegram.length})</span>
+                    </div>
+                    {groupedChannels.telegram.map((ch) => {
+                      const isChecked = newDealForm.targetChannelIds.includes(ch.id);
+                      return (
+                        <div
+                          key={ch.id}
+                          onClick={() => handleToggleChannelId(ch.id)}
+                          className={`p-2 rounded-xl border text-[10px] cursor-pointer transition flex items-center justify-between ${
+                            isChecked
+                              ? "bg-blue-950/40 border-blue-500/60 text-blue-200"
+                              : "bg-zinc-900/50 border-zinc-800/80 text-zinc-500 hover:border-zinc-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className="rounded border-zinc-700 bg-zinc-800 text-blue-500"
+                            />
+                            <span className="truncate font-semibold">{ch.name}</span>
+                          </div>
+                          <span className="text-[9px] font-mono shrink-0 ml-1 opacity-75">
+                            {ch.memberCount >= 1000 ? `${(ch.memberCount / 1000).toFixed(1)}k` : ch.memberCount}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Coluna WhatsApp */}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1 px-1">
+                      <MessageCircle className="w-3 h-3" />
+                      <span>Comunidades WhatsApp ({groupedChannels.whatsapp.length})</span>
+                    </div>
+                    {groupedChannels.whatsapp.map((ch) => {
+                      const isChecked = newDealForm.targetChannelIds.includes(ch.id);
+                      return (
+                        <div
+                          key={ch.id}
+                          onClick={() => handleToggleChannelId(ch.id)}
+                          className={`p-2 rounded-xl border text-[10px] cursor-pointer transition flex items-center justify-between ${
+                            isChecked
+                              ? "bg-emerald-950/40 border-emerald-500/60 text-emerald-200"
+                              : "bg-zinc-900/50 border-zinc-800/80 text-zinc-500 hover:border-zinc-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className="rounded border-zinc-700 bg-zinc-800 text-emerald-500"
+                            />
+                            <span className="truncate font-semibold">{ch.name}</span>
+                          </div>
+                          <span className="text-[9px] font-mono shrink-0 ml-1 opacity-75">
+                            {ch.memberCount >= 1000 ? `${(ch.memberCount / 1000).toFixed(1)}k` : ch.memberCount}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

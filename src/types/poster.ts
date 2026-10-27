@@ -139,6 +139,8 @@ export interface GroupBroadcastDeal {
   couponCode?: string;
   affiliateUrl: string;
   targetChannels: Array<'whatsapp' | 'telegram'>;
+  targetChannelIds?: string[];
+  estimatedReach?: number;
   scheduledTime: string;
   status: 'pending' | 'sent' | 'failed';
   totalClicks?: number;
