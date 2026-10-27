@@ -101,7 +101,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 ---
 
 ### FASE 6: PONTA SOCIAL TEASERS (GANCHOS AUTOMÁTICOS MULTICANAL) (051 - 060)
-- [ ] **Etapa 051:** Motor de Síntese de Teasers (`compileSocialTeasers`) com adaptação automática de limites de caracteres.
+- [x] **Etapa 051:** Motor de Síntese de Teasers (`compileSocialTeasers`) com adaptação automática de limites de caracteres.
 - [ ] **Etapa 052:** Gerador de Teasers para X/Twitter (280 caracteres, ganchos visuais e emojis de destaque).
 - [ ] **Etapa 053:** Gerador de Teasers para Threads (Tom conversacional e chamada para a bio).
 - [ ] **Etapa 054:** Gerador de Legenda para Instagram (Parágrafos espaçados, hashtags estratégicas e gancho "Comente LINK").

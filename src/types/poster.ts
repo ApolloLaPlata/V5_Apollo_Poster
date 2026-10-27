@@ -383,3 +383,35 @@ export interface WordPressPostPayload {
   ping_status?: 'open' | 'closed';
   meta?: Record<string, string | number | boolean>;
 }
+
+// ==========================================
+// FASE 6: PONTA SOCIAL TEASERS (051 - 060)
+// ==========================================
+export type SocialTeaserPlatform = 'x_twitter' | 'threads' | 'instagram' | 'whatsapp' | 'telegram' | 'linkedin';
+
+export interface SingleSocialTeaser {
+  platform: SocialTeaserPlatform;
+  platformName: string;
+  text: string;
+  charCount: number;
+  charLimit: number;
+  remainingChars: number;
+  isWithinLimit: boolean;
+  utmUrl: string;
+  hashtags: string[];
+  hookUsed: string;
+}
+
+export interface CompiledSocialTeasers {
+  x_twitter: SingleSocialTeaser;
+  threads: SingleSocialTeaser;
+  instagram: SingleSocialTeaser;
+  whatsapp: SingleSocialTeaser;
+  telegram: SingleSocialTeaser;
+  linkedin: SingleSocialTeaser;
+  summary: {
+    totalPlatforms: number;
+    allWithinLimits: boolean;
+    generatedAt: string;
+  };
+}

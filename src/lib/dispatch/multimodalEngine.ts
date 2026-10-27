@@ -22,6 +22,16 @@ import {
   evaluateExcerptQuality 
 } from "@/lib/seo/excerptExtractor";
 import { analyzeContentTaxonomy } from "@/lib/seo/taxonomyEngine";
+import { 
+  compileSocialTeasers as compileSocialTeasersEngine,
+  generateTwitterTeaser,
+  generateThreadsTeaser,
+  generateInstagramCaption,
+  generateWhatsAppMessage,
+  generateTelegramMessage,
+  generateLinkedInTeaser,
+  SOCIAL_CHAR_LIMITS
+} from "@/lib/social/socialTeaserEngine";
 
 export function slugify(text: string): string {
   return text
@@ -892,20 +902,32 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
 }
 
 /**
- * Compila teasers adaptados para canais sociais e grupos
+ * Compila teasers adaptados para canais sociais e grupos com limites estritos (Etapa 051)
  */
 export function compileSocialTeasers(payload: MultimodalDispatchPayload) {
-  const slug = payload.slug || slugify(payload.title);
-  const canonicalUrl = `https://v5autoblog.com/artigo/${slug}?utm_source=v5poster&utm_medium=social_teaser`;
+  const structured = compileSocialTeasersEngine(payload);
 
   return {
-    x_twitter: `🔥 ${payload.title}\n\n${payload.summary || payload.emailOptions.previewText.substring(0, 160)}...\n\nLeia a análise completa:\n👉 ${canonicalUrl}\n\n#IA #Produtividade #Tech`,
-    threads: `⚡ Novo conteúdo publicado no ecossistema:\n\n"${payload.title}"\n\n${payload.summary || payload.emailOptions.previewText}\n\nO link completo está disponível na bio ou acesse: ${canonicalUrl}`,
-    instagram_caption: `🚀 ${payload.title}\n.\n${payload.summary || payload.emailOptions.previewText}\n.\nPrincipais pontos abordados:\n✅ Estratégia prática\n✅ Automação sem atrito\n✅ Aplicação imediata\n.\nComente "LINK" aqui embaixo que o nosso robô envia o artigo completo no seu Direct na mesma hora!\n.\n#v5apollo #produtividade #tecnologia #automacao`,
-    telegram_vip: `🔥 *NOVO ARTIGO PUBLICADO NO BLOG & NEWSLETTER*\n\n📌 *${payload.title}*\n\n_${payload.summary || payload.emailOptions.previewText}_\n\n👉 [Clique aqui para ler na íntegra no AutoBlog](${canonicalUrl})`,
-    whatsapp_community: `*${payload.title.toUpperCase()}*\n\n${payload.summary || payload.emailOptions.previewText}\n\nLeia o artigo completo com todas as dicas:\n👉 ${canonicalUrl}`
+    x_twitter: structured.x_twitter.text,
+    threads: structured.threads.text,
+    instagram_caption: structured.instagram.text,
+    telegram_vip: structured.telegram.text,
+    whatsapp_community: structured.whatsapp.text,
+    linkedin: structured.linkedin.text,
+    structured
   };
 }
+
+export { 
+  compileSocialTeasersEngine,
+  generateTwitterTeaser,
+  generateThreadsTeaser,
+  generateInstagramCaption,
+  generateWhatsAppMessage,
+  generateTelegramMessage,
+  generateLinkedInTeaser,
+  SOCIAL_CHAR_LIMITS
+};
 
 /**
  * Simula a execucao real de despacho multimodal em paralelo
