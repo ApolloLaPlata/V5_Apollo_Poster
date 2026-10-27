@@ -92,8 +92,9 @@ export function createBroadcastReceipt(
   const timestamp = Date.now();
   const randomHash = Math.random().toString(36).substring(2, 9);
 
-  const hasTelegram = deal.targetChannels.includes("telegram");
-  const hasWhatsApp = deal.targetChannels.includes("whatsapp");
+  const targetChannels = Array.isArray(deal.targetChannels) ? deal.targetChannels : [];
+  const hasTelegram = targetChannels.includes("telegram");
+  const hasWhatsApp = targetChannels.includes("whatsapp");
 
   return {
     receiptId: `${options.receiptIdPrefix || "RCPT"}-${timestamp}-${randomHash}`,
@@ -102,7 +103,7 @@ export function createBroadcastReceipt(
     telegramMessageId: hasTelegram ? `tg_msg_${timestamp}_${randomHash}` : undefined,
     whatsappMessageId: hasWhatsApp ? `wamid.HBgM${timestamp}${randomHash}==` : undefined,
     deliveryDurationMs: durationMs,
-    channelsSentCount: deal.targetChannels.length,
+    channelsSentCount: targetChannels.length,
     apiStatusCode: 200
   };
 }
@@ -187,10 +188,11 @@ export function calculateHistoryMetrics(
       byStore[entry.store] += 1;
     }
 
-    if (entry.targetChannels.includes("telegram")) {
+    const targetChannels = Array.isArray(entry.targetChannels) ? entry.targetChannels : [];
+    if (targetChannels.includes("telegram")) {
       telegramCount += 1;
     }
-    if (entry.targetChannels.includes("whatsapp")) {
+    if (targetChannels.includes("whatsapp")) {
       whatsappCount += 1;
     }
   });

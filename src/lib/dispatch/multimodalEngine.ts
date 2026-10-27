@@ -361,7 +361,16 @@ export function generateInvisiblePreheader(previewText?: string, fallbackText?: 
  * Compila Markdown simples para HTML inline seguro para clientes de e-mail (Gmail, Outlook, Apple Mail)
  */
 export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
-  const { title, contentMarkdown, emailOptions, slug } = payload;
+  const { title, contentMarkdown, slug } = payload;
+  const emailOptions = payload.emailOptions || {
+    enabled: true,
+    subject: title,
+    previewText: payload.summary || "",
+    fromName: "Apollo La Plata",
+    provider: "resend" as const,
+    audienceList: "default",
+    utmCampaign: slug
+  };
   
   // Configuração centralizada de parâmetros UTM industriais
   const utmConfig: UtmConfig = {
@@ -536,7 +545,7 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${payload.emailOptions.subject || title}</title>
+  <title>${emailOptions.subject || title}</title>
   <!--[if mso]>
   <noscript>
     <xml>

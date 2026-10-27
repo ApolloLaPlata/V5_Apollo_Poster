@@ -19,6 +19,8 @@ import { serializeQueue, deserializeQueue } from "../src/lib/queue/crossTabQueue
 import { matchCommentTrigger, compileTriggerRegex } from "../src/lib/comments/triggerMatcher";
 import { validateAntiSpamDiversity, getNextPublicReply } from "../src/lib/comments/publicReplyRotator";
 import { validateDmTemplate, compileDmMessage } from "../src/lib/comments/dmTemplateBuilder";
+import { calculateHistoryMetrics, createBroadcastReceipt } from "../src/lib/finders/broadcastHistoryManager";
+import { compileEmailHtml } from "../src/lib/dispatch/multimodalEngine";
 
 let passed = 0;
 let total = 0;
@@ -157,6 +159,59 @@ assert(emptyDmValidation.warnings.some(w => w.includes("vazio")), "Reporta aviso
 
 const compiledDm = compileDmMessage("Olá {{nome}}! Veja o link {{ctaUrl}}", { name: "Apollo", ctaUrl: "https://v5apollo.com" });
 assert(compiledDm.includes("Apollo") && compiledDm.includes("https://v5apollo.com"), "Compilação de DM substitui placeholders corretamente");
+
+// 9. Resiliência do Histórico de Transmissão e Compilador HTML de E-mail
+console.log("\n--- 9. Resiliência de Histórico VIP e Compilador E-mail ---");
+const emptyMetrics = calculateHistoryMetrics([]);
+assert(emptyMetrics.totalDispatchedDeals === 0, "calculateHistoryMetrics retorna 0 para array vazio");
+assert(emptyMetrics.successRatePercent === 100, "Taxa de sucesso segura 100% para histórico vazio");
+
+const mockEntryWithoutChannels = {
+  id: "hist-1",
+  dealId: "deal-1",
+  productName: "Item Teste",
+  store: "Shopee" as const,
+  originalPrice: 100,
+  promoPrice: 50,
+  savingsAmount: 50,
+  discountPercentage: 50,
+  affiliateUrl: "https://shopee.com.br",
+  shortUrl: "https://v5p.st/1",
+  targetChannels: undefined as any,
+  estimatedReach: 1000,
+  dispatchedAt: "2026-10-27T10:00:00Z",
+  status: "delivered" as const,
+  receipt: {} as any
+};
+const metricsWithUndefChannels = calculateHistoryMetrics([mockEntryWithoutChannels]);
+assert(metricsWithUndefChannels.totalDispatchedDeals === 1, "Processa entrada com targetChannels undefined sem crash");
+assert(metricsWithUndefChannels.byChannel.telegram === 0, "Contagem segura para canais omitidos");
+
+const mockDealWithoutChannels = {
+  id: "deal-mock-1",
+  productName: "Oferta Teste",
+  store: "Amazon" as const,
+  originalPrice: 200,
+  promoPrice: 100,
+  discountPercentage: 50,
+  affiliateUrl: "https://amazon.com.br",
+  targetChannels: undefined as any,
+  scheduledTime: "2026-10-27T12:00:00",
+  status: "pending" as const
+};
+const receiptUndef = createBroadcastReceipt(mockDealWithoutChannels);
+assert(receiptUndef.receiptId.startsWith("RCPT-"), "Gera comprovante mesmo com targetChannels undefined");
+assert(receiptUndef.channelsSentCount === 0, "Contagem de canais segura 0");
+
+const payloadWithoutEmailOptions = {
+  id: "art-1",
+  title: "Artigo Sem Email Options",
+  slug: "artigo-sem-email-options",
+  summary: "Resumo do artigo",
+  contentMarkdown: "# Titulo\n\nConteudo do post."
+} as any;
+const htmlResult = compileEmailHtml(payloadWithoutEmailOptions);
+assert(typeof htmlResult === "string" && htmlResult.includes("<!DOCTYPE html>"), "compileEmailHtml tolera payload sem emailOptions sem crash");
 
 console.log("\n=======================================================");
 console.log(`📊 RESULTADO FINAL: ${passed}/${total} TESTES APROVADOS!`);
