@@ -101,6 +101,8 @@ export interface CommentRule {
   name: string;
   platform: 'instagram' | 'tiktok';
   targetPostId: string;
+  targetPostTitle?: string;
+  matchMode?: 'contains' | 'exact' | 'regex';
   keywords: string[];
   publicReplyVariants: string[];
   dmMessageTemplate: string;
