@@ -43,6 +43,42 @@ export interface ScheduledPost {
   updatedAt?: string;
 }
 
+export type EmailProviderType = 'resend' | 'ses' | 'smtp';
+
+export interface ResendProviderConfig {
+  apiKey: string;
+  domain: string;
+  replyTo?: string;
+}
+
+export interface SesProviderConfig {
+  accessKeyId: string;
+  secretAccessKey: string;
+  region: string;
+  configurationSet?: string;
+}
+
+export interface SmtpProviderConfig {
+  host: string;
+  port: number;
+  user: string;
+  password?: string;
+  secure: boolean;
+}
+
+export interface EmailProviderProfile {
+  id: EmailProviderType;
+  name: string;
+  badge: string;
+  description: string;
+  speed: string;
+  quotaDaily: string;
+  isReady: boolean;
+  resend?: ResendProviderConfig;
+  ses?: SesProviderConfig;
+  smtp?: SmtpProviderConfig;
+}
+
 export interface NewsletterIssue {
   id: string;
   subject: string;
@@ -117,7 +153,7 @@ export interface MultimodalDispatchPayload {
     subject: string;
     previewText: string;
     fromName: string;
-    provider: 'resend' | 'ses' | 'smtp';
+    provider: EmailProviderType;
     audienceList: string;
     utmCampaign: string;
     footerAddress?: string;

@@ -50,9 +50,12 @@ import {
   Users,
   Plus,
   Table as TableIcon,
+  Server,
+  Cloud,
+  Activity,
   X
 } from "lucide-react";
-import { MultimodalDispatchPayload } from "@/types/poster";
+import { MultimodalDispatchPayload, EmailProviderType } from "@/types/poster";
 import { 
   compileEmailHtml, 
   compileBlogPayload, 
@@ -64,6 +67,12 @@ import {
   renderOutlookCtaButton,
   renderInstitutionalEmailFooter
 } from "@/lib/dispatch/multimodalEngine";
+import { 
+  EMAIL_PROVIDER_PRESETS, 
+  testEmailProviderConnection, 
+  getEmailProviderProfile, 
+  ProviderTestResult 
+} from "@/lib/dispatch/emailProviders";
 import { usePosterStore } from "@/store/usePosterStore";
 import { toast } from "@/lib/toast/useToast";
 import { dispatchEventBus } from "@/lib/events/dispatchEvents";
@@ -598,6 +607,28 @@ export function BeehiivNewsletterEditor() {
     setCopiedUtmKey(key);
     toast.success("Link UTM Copiado!", "URL rastreada pronta para compartilhamento.");
     setTimeout(() => setCopiedUtmKey(null), 2500);
+  };
+
+  // Seletor de Provedor de E-mail & Handshake Test (Etapa 036)
+  const [isTestingProvider, setIsTestingProvider] = useState(false);
+  const [providerTestResult, setProviderTestResult] = useState<ProviderTestResult | null>(null);
+
+  const handleTestProvider = async (providerId: EmailProviderType) => {
+    setIsTestingProvider(true);
+    setProviderTestResult(null);
+    try {
+      const result = await testEmailProviderConnection(providerId);
+      setProviderTestResult(result);
+      if (result.success) {
+        toast.success("Provedor Verificado!", `${result.message} (${result.latencyMs}ms)`);
+      } else {
+        toast.error("Falha na Conexão", result.message);
+      }
+    } catch (err: any) {
+      toast.error("Erro no Teste", err.message || "Falha inesperada ao testar conexão.");
+    } finally {
+      setIsTestingProvider(false);
+    }
   };
 
   // Auto-Save States & Handlers (Etapa 029)
@@ -1561,8 +1592,19 @@ export function BeehiivNewsletterEditor() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-mono">
-                          Resend API • Inline CSS
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1 ${
+                          payload.emailOptions.provider === "resend"
+                            ? "bg-purple-500/10 text-purple-300 border-purple-500/20"
+                            : payload.emailOptions.provider === "ses"
+                            ? "bg-amber-500/10 text-amber-300 border-amber-500/20"
+                            : "bg-blue-500/10 text-blue-300 border-blue-500/20"
+                        }`}>
+                          {payload.emailOptions.provider === "resend" && <Zap className="w-2.5 h-2.5 text-purple-400" />}
+                          {payload.emailOptions.provider === "ses" && <Cloud className="w-2.5 h-2.5 text-amber-400" />}
+                          {payload.emailOptions.provider === "smtp" && <Server className="w-2.5 h-2.5 text-blue-400" />}
+                          <span>
+                            {payload.emailOptions.provider === "resend" ? "Resend API • TLS 1.3" : payload.emailOptions.provider === "ses" ? "Amazon SES • SigV4" : "SMTP • STARTTLS"}
+                          </span>
                         </span>
                         <button
                           onClick={() => handleCopy(compiledHtml, "HTML E-mail")}
@@ -2053,24 +2095,149 @@ export function BeehiivNewsletterEditor() {
                       </select>
                     </div>
 
-                    {/* Provedor de Disparo */}
-                    <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Provedor de Infraestrutura</span>
-                      </label>
-                      <select
-                        value={payload.emailOptions.provider}
-                        onChange={(e) => setPayload(prev => ({
-                          ...prev,
-                          emailOptions: { ...prev.emailOptions, provider: e.target.value as any }
-                        }))}
-                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono"
-                      >
-                        <option value="resend">Resend API (Oficial Nuvem)</option>
-                        <option value="ses">Amazon SES (High Volume)</option>
-                        <option value="smtp">SMTP Corporativo Customizado</option>
-                      </select>
+                    {/* Seletor de Provedor de Infraestrutura de E-mail (Etapa 036) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Server className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Provedor de Disparo Onicanal</span>
+                        </label>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          {EMAIL_PROVIDER_PRESETS.length} opções disponíveis
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {EMAIL_PROVIDER_PRESETS.map((prov) => {
+                          const isSelected = payload.emailOptions.provider === prov.id;
+                          return (
+                            <div
+                              key={prov.id}
+                              onClick={() => setPayload(prev => ({
+                                ...prev,
+                                emailOptions: { ...prev.emailOptions, provider: prov.id }
+                              }))}
+                              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                                isSelected
+                                  ? "bg-amber-500/10 border-amber-500/60 shadow-md shadow-amber-500/5 ring-1 ring-amber-500/30"
+                                  : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <div className={`p-1.5 rounded-lg ${isSelected ? "bg-amber-500 text-black font-bold" : "bg-zinc-800 text-zinc-400"}`}>
+                                    {prov.id === "resend" ? (
+                                      <Zap className="w-3.5 h-3.5" />
+                                    ) : prov.id === "ses" ? (
+                                      <Cloud className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <Server className="w-3.5 h-3.5" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span className={`text-xs font-bold block ${isSelected ? "text-amber-300" : "text-white"}`}>
+                                      {prov.name}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-400 font-mono">
+                                      {prov.speed} • {prov.quotaDaily}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className={`text-[9px] font-mono px-2 py-0.5 rounded-md border ${
+                                  isSelected 
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold"
+                                    : "bg-zinc-950 text-zinc-500 border-zinc-800"
+                                }`}>
+                                  {prov.badge}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-400 leading-relaxed mt-2">
+                                {prov.description}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Configurações & Handshake Test do Provedor Selecionado */}
+                      {(() => {
+                        const currentProfile = getEmailProviderProfile(payload.emailOptions.provider);
+                        return (
+                          <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+                                Credenciais Ativas • {currentProfile.name}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={isTestingProvider}
+                                onClick={() => handleTestProvider(payload.emailOptions.provider)}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-amber-400 hover:text-amber-300 border border-zinc-700/80 text-[10px] font-mono font-bold transition disabled:opacity-50"
+                              >
+                                <Activity className={`w-3 h-3 ${isTestingProvider ? "animate-spin text-amber-400" : ""}`} />
+                                <span>{isTestingProvider ? "Testando Handshake..." : "Ping / Testar Conexão"}</span>
+                              </button>
+                            </div>
+
+                            {/* Informações detalhadas do provedor */}
+                            <div className="text-[10px] font-mono bg-zinc-900/60 p-2 rounded-lg border border-zinc-800 space-y-1">
+                              {payload.emailOptions.provider === "resend" && (
+                                <>
+                                  <div className="flex justify-between text-zinc-400">
+                                    <span>API Key:</span>
+                                    <span className="text-amber-300 font-mono">re_apollo_v5_live_•••••••</span>
+                                  </div>
+                                  <div className="flex justify-between text-zinc-400">
+                                    <span>Domínio Verificado:</span>
+                                    <span className="text-emerald-400">newsletter.v5apollo.com (DKIM OK)</span>
+                                  </div>
+                                </>
+                              )}
+                              {payload.emailOptions.provider === "ses" && (
+                                <>
+                                  <div className="flex justify-between text-zinc-400">
+                                    <span>AWS Region:</span>
+                                    <span className="text-amber-300">us-east-1 (N. Virginia)</span>
+                                  </div>
+                                  <div className="flex justify-between text-zinc-400">
+                                    <span>Configuration Set:</span>
+                                    <span className="text-emerald-400">v5-poster-tracking</span>
+                                  </div>
+                                </>
+                              )}
+                              {payload.emailOptions.provider === "smtp" && (
+                                <>
+                                  <div className="flex justify-between text-zinc-400">
+                                    <span>Host SMTP:</span>
+                                    <span className="text-amber-300">smtp.v5apollo.com:587</span>
+                                  </div>
+                                  <div className="flex justify-between text-zinc-400">
+                                    <span>Criptografia:</span>
+                                    <span className="text-emerald-400">STARTTLS Obrigatório</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Resultado do Teste de Conexão */}
+                            {providerTestResult && (
+                              <div className={`p-2 rounded-lg border text-[10px] space-y-0.5 ${
+                                providerTestResult.success
+                                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                                  : "bg-red-500/10 border-red-500/30 text-red-300"
+                              }`}>
+                                <div className="flex items-center justify-between font-bold">
+                                  <span>{providerTestResult.success ? "✅ Handshake Concluído" : "❌ Falha no Handshake"}</span>
+                                  <span className="font-mono">{providerTestResult.latencyMs}ms • {providerTestResult.verifiedAt}</span>
+                                </div>
+                                <div className="text-[9px] text-zinc-300 leading-tight">
+                                  {providerTestResult.message}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Nome do Remetente */}
