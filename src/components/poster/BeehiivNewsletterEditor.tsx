@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Send, 
   Mail, 
@@ -27,7 +27,17 @@ import {
   ChevronDown,
   SlidersHorizontal,
   RefreshCw,
-  Hash
+  Hash,
+  Heading1,
+  Heading2,
+  Heading3,
+  Bold,
+  Italic,
+  Strikethrough,
+  Quote,
+  List,
+  ListOrdered,
+  Link2
 } from "lucide-react";
 import { MultimodalDispatchPayload } from "@/types/poster";
 import { 
@@ -96,13 +106,28 @@ Nos vemos na próxima transmissão!`,
 };
 
 function formatInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g);
+  const regex = /(\*\*.*?\*\*|~~.*?~~|`.*?`|\[.*?\]\(.*?\))/g;
+  const parts = text.split(regex);
   return parts.map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
         <strong key={index} className="text-white font-bold">
           {part.slice(2, -2)}
         </strong>
+      );
+    }
+    if (part.startsWith("~~") && part.endsWith("~~")) {
+      return (
+        <span key={index} className="line-through text-zinc-500">
+          {part.slice(2, -2)}
+        </span>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={index} className="bg-zinc-800 text-amber-300 px-1.5 py-0.5 rounded text-[11px] font-mono border border-zinc-700/60">
+          {part.slice(1, -1)}
+        </code>
       );
     }
     const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/);
@@ -113,7 +138,7 @@ function formatInline(text: string): React.ReactNode {
           href={linkMatch[2]} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-amber-400 underline hover:text-amber-300"
+          className="text-amber-400 underline hover:text-amber-300 font-medium"
         >
           {linkMatch[1]}
         </a>
@@ -193,6 +218,7 @@ function renderMarkdownToHtml(markdown: string) {
 }
 
 export function BeehiivNewsletterEditor() {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { newsletterDraft, updateNewsletterDraft } = usePosterStore();
   const [payload, setPayload] = useState<MultimodalDispatchPayload>(() => {
     if (newsletterDraft && newsletterDraft.contentMarkdown) {
@@ -291,6 +317,74 @@ export function BeehiivNewsletterEditor() {
       emailOptions: { ...prev.emailOptions, previewText: newPreview }
     }));
     updateNewsletterDraft({ previewText: newPreview });
+  };
+
+  const applyMarkdownFormat = (prefix: string, suffix: string = "", defaultText: string = "texto") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = payload.contentMarkdown;
+
+    const selectedText = text.substring(start, end) || defaultText;
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+
+    const replacement = `${prefix}${selectedText}${suffix}`;
+    const newContent = `${before}${replacement}${after}`;
+
+    handleContentChange(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + prefix.length,
+        start + prefix.length + selectedText.length
+      );
+    }, 0);
+  };
+
+  const applyBlockFormat = (prefix: string, defaultText: string = "Título da Seção") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = payload.contentMarkdown;
+
+    const selectedText = text.substring(start, end) || defaultText;
+    const isStartOfLine = start === 0 || text[start - 1] === "\n";
+    const linePrefix = isStartOfLine ? "" : "\n";
+    
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+
+    const replacement = `${linePrefix}${prefix} ${selectedText}\n`;
+    const newContent = `${before}${replacement}${after}`;
+
+    handleContentChange(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursor = start + linePrefix.length + prefix.length + 1 + selectedText.length;
+      textarea.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        applyMarkdownFormat("**", "**", "texto em negrito");
+      } else if (e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        applyMarkdownFormat("*", "*", "texto em itálico");
+      } else if (e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        applyMarkdownFormat("[", "](https://seulink.com)", "Texto do Link");
+      }
+    }
   };
 
   return (
@@ -438,11 +532,137 @@ export function BeehiivNewsletterEditor() {
               </div>
             </div>
 
+            {/* Quick Formatting Toolbar Ribbon */}
+            <div className="px-3 py-2 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between gap-1 flex-wrap text-xs text-zinc-300">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Headings */}
+                <div className="flex items-center gap-0.5 bg-zinc-950/70 p-0.5 rounded-lg border border-zinc-800/80">
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat("#", "Título Principal")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Título H1 (#)"
+                  >
+                    <Heading1 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat("##", "Subtítulo")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Subtítulo H2 (##)"
+                  >
+                    <Heading2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat("###", "Seção")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Seção H3 (###)"
+                  >
+                    <Heading3 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Text Styles */}
+                <div className="flex items-center gap-0.5 bg-zinc-950/70 p-0.5 rounded-lg border border-zinc-800/80">
+                  <button
+                    type="button"
+                    onClick={() => applyMarkdownFormat("**", "**", "texto em negrito")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Negrito (**Ctrl+B**)"
+                  >
+                    <Bold className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMarkdownFormat("*", "*", "texto em itálico")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Itálico (*Ctrl+I*)"
+                  >
+                    <Italic className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMarkdownFormat("~~", "~~", "texto tachado")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Tachado (~~texto~~)"
+                  >
+                    <Strikethrough className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMarkdownFormat("`", "`", "código")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Código Inline (`código`)"
+                  >
+                    <Code className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Blocks & Lists */}
+                <div className="flex items-center gap-0.5 bg-zinc-950/70 p-0.5 rounded-lg border border-zinc-800/80">
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat(">", "Citação inspiradora")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 rounded transition"
+                    title="Citação / Quote (>)"
+                  >
+                    <Quote className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat("-", "Item de lista")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Lista com Marcadores (-)"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyBlockFormat("1.", "Passo da metodologia")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded transition"
+                    title="Lista Numerada (1.)"
+                  >
+                    <ListOrdered className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMarkdownFormat("[", "](https://seulink.com)", "Texto do Link")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 rounded transition"
+                    title="Inserir Link ([Texto](url)) - Ctrl+K"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Quick Callout Action */}
+                <button
+                  type="button"
+                  onClick={() => applyBlockFormat("> 💡 **Destaque:**", "Instrução de alto valor para o leitor.")}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-medium transition"
+                  title="Inserir Callout Box com Dica"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span className="hidden sm:inline">Callout Box</span>
+                </button>
+              </div>
+
+              <div className="hidden xl:flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono">
+                <span>Ctrl+B (Bold)</span>
+                <span>•</span>
+                <span>Ctrl+I (Italic)</span>
+                <span>•</span>
+                <span>Ctrl+K (Link)</span>
+              </div>
+            </div>
+
             {/* Markdown Textarea */}
             <div className="flex-1 p-3 bg-zinc-950/40">
               <textarea
+                ref={textareaRef}
                 value={payload.contentMarkdown}
                 onChange={(e) => handleContentChange(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="w-full min-h-[540px] h-[calc(100vh-380px)] bg-zinc-950/70 border border-zinc-800 focus:border-amber-500/80 rounded-xl p-4 text-xs md:text-sm text-zinc-100 font-mono leading-relaxed resize-none focus:outline-none"
                 placeholder="Escreva seu artigo em Markdown aqui..."
                 spellCheck={false}
