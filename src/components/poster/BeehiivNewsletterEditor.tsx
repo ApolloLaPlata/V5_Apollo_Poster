@@ -128,6 +128,12 @@ import {
   cleanMarkdownForExcerpt,
   ExcerptQualityScore 
 } from "@/lib/seo/excerptExtractor";
+import { 
+  analyzeContentTaxonomy, 
+  V5_TAXONOMIES, 
+  TaxonomySuggestion, 
+  normalizeTagName 
+} from "@/lib/seo/taxonomyEngine";
 
 export const IMAGE_PRESETS = [
   {
@@ -553,6 +559,9 @@ export function BeehiivNewsletterEditor() {
   const [showWpPassword, setShowWpPassword] = useState(false);
   const [connectorViewTarget, setConnectorViewTarget] = useState<"autoblog" | "wordpress">("autoblog");
 
+  // Taxonomy Engine State (Etapa 047)
+  const [taxonomySuggestion, setTaxonomySuggestion] = useState<TaxonomySuggestion | null>(null);
+
   // Media & Cover Image Modal States
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [mediaTarget, setMediaTarget] = useState<"cover" | "inline">("cover");
@@ -873,14 +882,51 @@ export function BeehiivNewsletterEditor() {
   const linesCount = payload.contentMarkdown.split("\n").length;
 
   const handleInjectKeywordsAsTags = () => {
-    const newTags = Array.from(
-      new Set([...payload.blogOptions.tags, ...metadata.topKeywords.map(k => k.word)])
-    );
+    handleAutoSuggestTaxonomy();
+  };
+
+  const handleAutoSuggestTaxonomy = () => {
+    const suggestion = analyzeContentTaxonomy(payload.contentMarkdown, payload.title);
+    setTaxonomySuggestion(suggestion);
+
+    // Mescla tags normalizadas sem duplicar
+    const currentTagsLower = new Set(payload.blogOptions.tags.map(t => t.toLowerCase()));
+    const newTags = [...payload.blogOptions.tags];
+    for (const tagObj of suggestion.suggestedTags) {
+      if (!currentTagsLower.has(tagObj.tag.toLowerCase())) {
+        newTags.push(tagObj.tag);
+        currentTagsLower.add(tagObj.tag.toLowerCase());
+      }
+    }
+
     setPayload(prev => ({
       ...prev,
-      blogOptions: { ...prev.blogOptions, tags: newTags }
+      blogOptions: {
+        ...prev.blogOptions,
+        category: suggestion.recommendedCategory,
+        tags: newTags
+      }
     }));
-    toast.success("Tags Atualizadas!", "Top palavras-chave injetadas nas tags do AutoBlog.");
+
+    toast.success(
+      "Taxonomia IA Aplicada!",
+      `Categoria: ${suggestion.recommendedCategory} (${suggestion.categoryConfidence}% afinidade) • ${suggestion.suggestedTags.length} tags mapeadas.`
+    );
+  };
+
+  const handleQuickAddTag = (tagToAdd: string) => {
+    const cleanTag = normalizeTagName(tagToAdd);
+    if (!cleanTag) return;
+    if (!payload.blogOptions.tags.some(t => t.toLowerCase() === cleanTag.toLowerCase())) {
+      setPayload(prev => ({
+        ...prev,
+        blogOptions: {
+          ...prev.blogOptions,
+          tags: [...prev.blogOptions.tags, cleanTag]
+        }
+      }));
+      toast.info("Tag Adicionada", `#${cleanTag}`);
+    }
   };
 
   const handleSanitizeContent = () => {
@@ -2962,12 +3008,23 @@ export function BeehiivNewsletterEditor() {
                       </select>
                     </div>
 
-                    {/* Categoria */}
+                    {/* Categoria com Sugestão de Taxonomia IA (Etapa 047) */}
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                        <Folder className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Categoria Editorial</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Folder className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Categoria Editorial</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleAutoSuggestTaxonomy}
+                          className="text-[10px] text-amber-400 hover:underline font-mono flex items-center gap-1"
+                          title="Analisar semanticamente o texto e sugerir a melhor categoria e tags"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>IA: Analisar Taxonomia</span>
+                        </button>
+                      </div>
                       <select
                         value={payload.blogOptions.category}
                         onChange={(e) => setPayload(prev => ({
@@ -2980,6 +3037,18 @@ export function BeehiivNewsletterEditor() {
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
+
+                      {/* Feedback de Afinidade Taxonômica */}
+                      {taxonomySuggestion && (
+                        <div className="mt-1.5 p-2 rounded-lg bg-zinc-900/80 border border-amber-500/20 text-[10px] font-mono flex items-center justify-between">
+                          <span className="text-zinc-400">
+                            Cluster: <strong className="text-amber-300">{taxonomySuggestion.topicCluster}</strong>
+                          </span>
+                          <span className="text-emerald-400 font-bold">
+                            {taxonomySuggestion.categoryConfidence}% afinidade
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Autor */}
@@ -3002,7 +3071,7 @@ export function BeehiivNewsletterEditor() {
                       </select>
                     </div>
 
-                    {/* Gerenciador Dinâmico de Tags */}
+                    {/* Gerenciador Dinâmico de Tags (Etapa 047) */}
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -3011,14 +3080,41 @@ export function BeehiivNewsletterEditor() {
                         </label>
                         <button
                           type="button"
-                          onClick={handleInjectKeywordsAsTags}
-                          className="text-[10px] text-amber-400 hover:underline font-mono"
+                          onClick={handleAutoSuggestTaxonomy}
+                          className="text-[10px] text-amber-400 hover:underline font-mono flex items-center gap-1"
                         >
-                          Sugerir do Texto
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>Sugerir IA</span>
                         </button>
                       </div>
 
-                      {/* Tag Chips */}
+                      {/* Sugestões Rápidas de Tags */}
+                      {taxonomySuggestion && taxonomySuggestion.suggestedTags.length > 0 && (
+                        <div className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800 space-y-1">
+                          <span className="text-[9px] font-mono text-zinc-500 uppercase block font-semibold">
+                            Sugestões de Taxonomia (Clique para adicionar):
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {taxonomySuggestion.suggestedTags
+                              .filter(st => !payload.blogOptions.tags.some(t => t.toLowerCase() === st.tag.toLowerCase()))
+                              .slice(0, 6)
+                              .map(st => (
+                                <button
+                                  key={st.tag}
+                                  type="button"
+                                  onClick={() => handleQuickAddTag(st.tag)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-amber-500/20 hover:text-amber-300 text-zinc-300 border border-zinc-700 text-[10px] font-mono transition"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                  <span>{st.tag}</span>
+                                </button>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tag Chips Ativas */}
                       <div className="flex flex-wrap items-center gap-1.5 min-h-[42px] p-2 bg-zinc-900/60 rounded-xl border border-zinc-800">
                         {payload.blogOptions.tags.length === 0 ? (
                           <span className="text-[11px] text-zinc-500 italic">Nenhuma tag associada ainda...</span>

@@ -21,6 +21,7 @@ import {
   cleanMarkdownForExcerpt,
   evaluateExcerptQuality 
 } from "@/lib/seo/excerptExtractor";
+import { analyzeContentTaxonomy } from "@/lib/seo/taxonomyEngine";
 
 export function slugify(text: string): string {
   return text
@@ -769,6 +770,19 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
   const featuredImageUrl = payload.coverImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200";
   const featuredImageAlt = payload.coverImageAlt || payload.title;
 
+  // Taxonomia Editorial Inteligente (Etapa 047)
+  let finalCategory = payload.blogOptions.category;
+  let finalTags = payload.blogOptions.tags || [];
+  if (!finalCategory || finalTags.length === 0) {
+    const taxonomy = analyzeContentTaxonomy(cleanMarkdown, payload.title);
+    if (!finalCategory) {
+      finalCategory = taxonomy.recommendedCategory;
+    }
+    if (finalTags.length === 0) {
+      finalTags = taxonomy.suggestedTags.slice(0, 5).map(t => t.tag);
+    }
+  }
+
   // Schema.org BlogPosting Completo (Google Rich Results Compliant - Etapa 042)
   const schemaOrg = generateBlogPostingSchema({
     title: payload.title,
@@ -780,8 +794,8 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
     coverImageAlt: featuredImageAlt,
     authorName: payload.blogOptions.author || "Apollo La Plata",
     authorRole: "Editor Chefe & Arquiteto de Sistemas",
-    category: payload.blogOptions.category || "Tecnologia",
-    tags: payload.blogOptions.tags,
+    category: finalCategory,
+    tags: finalTags,
     datePublished: nowIso,
     dateModified: nowIso,
     hasPaywall,
@@ -796,8 +810,8 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
     imageUrl: featuredImageUrl,
     imageAlt: featuredImageAlt,
     authorName: payload.blogOptions.author || "Apollo La Plata",
-    category: payload.blogOptions.category || "Tecnologia",
-    tags: payload.blogOptions.tags,
+    category: finalCategory,
+    tags: finalTags,
     publishedAt: nowIso,
     modifiedAt: nowIso,
     siteName: "V5 AutoBlog"
@@ -817,7 +831,7 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
   // AI Search & AEO Readiness (Perplexity, ChatGPT, Gemini Citations)
   const keyTakeaways = extractKeyTakeaways(cleanMarkdown, payload.title);
   const aiSearch: AiSearchReadiness = {
-    topic_cluster: payload.blogOptions.category || "Tecnologia",
+    topic_cluster: finalCategory,
     key_takeaways: keyTakeaways,
     content_freshness: "evergreen",
     citation_anchor: `${payload.title} - Análise por ${payload.blogOptions.author || "Equipe V5 Apollo"}`,
@@ -829,7 +843,7 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
     meta_title: `${payload.title} | V5 AutoBlog`,
     meta_description: excerpt,
     canonical_url: canonicalUrl,
-    focus_keywords: payload.blogOptions.tags.slice(0, 5),
+    focus_keywords: finalTags.slice(0, 5),
     reading_time_minutes: readingTimeMinutes,
     word_count: wordCount,
     robots: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
@@ -847,8 +861,8 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
     content: cleanMarkdown,
     content_html: contentHtml,
     excerpt,
-    category: payload.blogOptions.category || "Tecnologia",
-    tags: payload.blogOptions.tags || [],
+    category: finalCategory,
+    tags: finalTags,
     status: "publish",
     published_at: nowIso,
     updated_at: nowIso,
