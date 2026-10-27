@@ -471,8 +471,84 @@ export function BeehiivNewsletterEditor() {
   const handleRegenerateSlug = () => {
     const freshSlug = slugify(payload.title);
     setPayload(prev => ({ ...prev, slug: freshSlug }));
+    setIsDirty(true);
     toast.info("Slug Atualizado!", `URL canônica baseada no título: ${freshSlug}`);
   };
+
+  // Auto-Save States & Handlers (Etapa 029)
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(() => {
+    const now = new Date();
+    return now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  });
+  const [isDirty, setIsDirty] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const performAutoSave = React.useCallback(() => {
+    setSaveStatus("saving");
+
+    // Persiste no Zustand
+    updateNewsletterDraft({
+      subject: payload.title,
+      previewText: payload.emailOptions.previewText,
+      contentMarkdown: payload.contentMarkdown,
+      coverImageUrl: payload.coverImageUrl,
+      coverImageAlt: payload.coverImageAlt
+    });
+
+    // Salva snapshot no localStorage para recuperação instantânea
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("v5_poster_autosave_payload", JSON.stringify({
+          payload,
+          savedAt: new Date().toISOString()
+        }));
+      } catch (err) {
+        console.warn("Falha ao salvar no localStorage", err);
+      }
+    }
+
+    setTimeout(() => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastSavedTime(timeStr);
+      setSaveStatus("saved");
+      setIsDirty(false);
+    }, 350);
+  }, [payload, updateNewsletterDraft]);
+
+  // Efeito de Auto-Save a cada 3 segundos com Debounce
+  useEffect(() => {
+    if (!isDirty) return;
+
+    setSaveStatus("unsaved");
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      performAutoSave();
+    }, 3000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [isDirty, payload, performAutoSave]);
+
+  // Atalho global Ctrl+S / Cmd+S para forçar salvamento imediato
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        performAutoSave();
+        toast.success("Rascunho Salvo!", "Todas as alterações foram preservadas no armazenamento local (Ctrl+S).");
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [performAutoSave]);
 
   const compiledHtml = compileEmailHtml(payload);
   const compiledBlogJson = compileBlogPayload(payload);
@@ -556,6 +632,7 @@ export function BeehiivNewsletterEditor() {
   const handleContentChange = (newContent: string) => {
     setPayload(prev => ({ ...prev, contentMarkdown: newContent }));
     updateNewsletterDraft({ contentMarkdown: newContent });
+    setIsDirty(true);
   };
 
   const handleTitleChange = (newTitle: string) => {
@@ -567,6 +644,7 @@ export function BeehiivNewsletterEditor() {
       emailOptions: { ...prev.emailOptions, subject: newTitle }
     }));
     updateNewsletterDraft({ subject: newTitle });
+    setIsDirty(true);
   };
 
   const handlePreviewTextChange = (newPreview: string) => {
@@ -576,6 +654,7 @@ export function BeehiivNewsletterEditor() {
       emailOptions: { ...prev.emailOptions, previewText: newPreview }
     }));
     updateNewsletterDraft({ previewText: newPreview });
+    setIsDirty(true);
   };
 
   const applyMarkdownFormat = (prefix: string, suffix: string = "", defaultText: string = "texto") => {
@@ -642,6 +721,10 @@ export function BeehiivNewsletterEditor() {
       } else if (e.key.toLowerCase() === "k") {
         e.preventDefault();
         applyMarkdownFormat("[", "](https://seulink.com)", "Texto do Link");
+      } else if (e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        performAutoSave();
+        toast.success("Rascunho Salvo!", "Preservado com sucesso no armazenamento local (Ctrl+S).");
       }
     }
   };
@@ -691,6 +774,43 @@ export function BeehiivNewsletterEditor() {
               <span>{metadata.readabilityScore}/100</span>
             </span>
           </button>
+
+          {/* Status Discreto de Auto-Save (Etapa 029) */}
+          <div className="flex items-center">
+            {saveStatus === "saving" && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-mono shadow-sm animate-pulse">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                <span>Salvando...</span>
+              </div>
+            )}
+
+            {saveStatus === "saved" && (
+              <button
+                type="button"
+                onClick={() => {
+                  performAutoSave();
+                  toast.info("Rascunho Atualizado", "Todas as alterações estão preservadas.");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-mono hover:bg-emerald-500/20 transition cursor-pointer"
+                title="Rascunho salvo automaticamente a cada 3s (Clique ou Ctrl+S para salvar)"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Salvo {lastSavedTime ? `às ${lastSavedTime}` : ""}</span>
+              </button>
+            )}
+
+            {saveStatus === "unsaved" && (
+              <button
+                type="button"
+                onClick={performAutoSave}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 text-amber-300 border border-amber-500/40 text-[11px] font-mono hover:bg-amber-500/10 transition cursor-pointer"
+                title="Alterações pendentes. Salvando em 3s ou clique para salvar agora"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span>Alterações pendentes...</span>
+              </button>
+            )}
+          </div>
 
           {/* Main View Mode Switcher */}
           <div className="flex items-center bg-zinc-800/90 p-1 rounded-xl border border-zinc-700/60 text-xs">
@@ -958,6 +1078,11 @@ export function BeehiivNewsletterEditor() {
                 <span className="font-bold text-zinc-200 text-xs">Editor Markdown Nativo</span>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-mono text-zinc-500">
+                <span className="text-[10px] text-zinc-400 flex items-center gap-1.5 font-mono">
+                  <span className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'saved' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                  Auto-save 3s
+                </span>
+                <span>•</span>
                 <span>{linesCount} linhas</span>
                 <span>•</span>
                 <span>{words} palavras</span>
