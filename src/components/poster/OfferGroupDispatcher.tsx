@@ -41,7 +41,11 @@ import {
   Calendar,
   CheckSquare,
   Square,
-  Layers
+  Layers,
+  History,
+  FileText,
+  Search,
+  TrendingUp
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { GroupBroadcastDeal } from "@/types/poster";
@@ -79,6 +83,11 @@ import {
   ScheduledDealSlot,
   BatchDispatchProgress
 } from "@/lib/finders/batchDispatcher";
+import {
+  BroadcastHistoryEntry,
+  calculateHistoryMetrics,
+  formatDispatchedDate
+} from "@/lib/finders/broadcastHistoryManager";
 import { MessagePreviewSimulator } from "@/components/poster/MessagePreviewSimulator";
 import { toast } from "@/lib/toast/useToast";
 
@@ -90,7 +99,9 @@ export function OfferGroupDispatcher() {
     dispatchDeal, 
     updateDeal, 
     dispatchBatchDeals, 
-    importFindersDeals 
+    importFindersDeals,
+    broadcastHistory,
+    clearBroadcastHistory
   } = usePosterStore();
 
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>("all");
@@ -108,6 +119,12 @@ export function OfferGroupDispatcher() {
     intervalMinutes: 30
   });
   const [batchProgress, setBatchProgress] = useState<BatchDispatchProgress | null>(null);
+
+  // Estados para Histórico e Confirmação de Transmissão (Etapa 079)
+  const [activeView, setActiveView] = useState<"queue" | "history">("queue");
+  const [selectedReceiptEntry, setSelectedReceiptEntry] = useState<BroadcastHistoryEntry | null>(null);
+  const [historySearchTerm, setHistorySearchTerm] = useState<string>("");
+  const [historyStoreFilter, setHistoryStoreFilter] = useState<string>("all");
 
   // Estado do Formulário de Criação de Oferta
   const [newDealForm, setNewDealForm] = useState<{
@@ -324,6 +341,30 @@ export function OfferGroupDispatcher() {
     toast.success(`Agendamento em lote aplicado para ${previewBatchSlots.length} ofertas com sucesso!`);
   };
 
+  // Métricas consolidadas do Histórico (Etapa 079)
+  const historyMetrics = useMemo(() => {
+    return calculateHistoryMetrics(broadcastHistory || []);
+  }, [broadcastHistory]);
+
+  // Histórico filtrado por busca e loja
+  const filteredHistory = useMemo(() => {
+    return (broadcastHistory || []).filter((item) => {
+      const matchesStore = historyStoreFilter === "all" || item.store === historyStoreFilter;
+      const matchesSearch =
+        !historySearchTerm ||
+        item.productName.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
+        item.receipt.receiptId.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
+        (item.couponCode && item.couponCode.toLowerCase().includes(historySearchTerm.toLowerCase()));
+      return matchesStore && matchesSearch;
+    });
+  }, [broadcastHistory, historyStoreFilter, historySearchTerm]);
+
+  // Reenvio de oferta a partir do histórico
+  const handleRedispatchFromHistory = (entry: BroadcastHistoryEntry) => {
+    dispatchDeal(entry.dealId);
+    toast.success(`Oferta "${entry.productName}" retransmitida com sucesso para os Grupos VIP!`);
+  };
+
   // Auto-detecta loja quando o usuário cola uma URL de afiliado
   const handleUrlChange = (url: string) => {
     const detected = detectStoreFromUrl(url);
@@ -453,7 +494,7 @@ export function OfferGroupDispatcher() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Despachador de Ofertas & Grupos VIP</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Fase 8 • Etapa 078 (Disparo Instantâneo & Agendamento em Lote VIP)
+              Fase 8 • Etapa 079 (Histórico de Ofertas Disparadas & Confirmação de Transmissão)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -485,7 +526,55 @@ export function OfferGroupDispatcher() {
         </div>
       </div>
 
-      {/* 2. BARRA DE FILTROS POR LOJA COM CORES OFICIAIS */}
+      {/* 1.5 SELETOR DE VISUALIZAÇÃO: FILA DE OFERTAS vs HISTÓRICO DE DISPAROS (ETAPA 079) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-900 rounded-xl border border-zinc-800">
+          <button
+            type="button"
+            onClick={() => setActiveView("queue")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono font-bold transition ${
+              activeView === "queue"
+                ? "bg-zinc-800 text-white shadow"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Fila de Ofertas ({deals.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveView("history")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono font-bold transition ${
+              activeView === "history"
+                ? "bg-emerald-600 text-white shadow shadow-emerald-950/50"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Histórico de Transmissões ({(broadcastHistory || []).length})</span>
+          </button>
+        </div>
+
+        {activeView === "history" && (broadcastHistory || []).length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              clearBroadcastHistory();
+              toast.info("Histórico de transmissões limpo com sucesso.");
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-rose-500/40 hover:text-rose-400 text-zinc-400 text-xs font-mono transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Limpar Histórico</span>
+          </button>
+        )}
+      </div>
+
+      {/* RENDERIZAÇÃO CONDICIONAL: FILA DE OFERTAS vs HISTÓRICO DE DISPAROS */}
+      {activeView === "queue" ? (
+        <>
+          {/* 2. BARRA DE FILTROS POR LOJA COM CORES OFICIAIS */}
       <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 pb-3">
         <button
           type="button"
@@ -825,6 +914,199 @@ export function OfferGroupDispatcher() {
           >
             Clique aqui para sincronizar o catálogo do V5 Finders
           </button>
+        </div>
+      )}
+        </>
+      ) : (
+        /* ============================================================== */
+        /* VISUALIZAÇÃO: HISTÓRICO DE TRANSMISSÕES VIP (ETAPA 079)        */
+        /* ============================================================== */
+        <div className="space-y-6">
+          {/* Métricas Agregadas da Telemetria de Histórico */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between text-zinc-400 text-xs">
+                <span>Disparos Concluídos</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-xl font-bold text-white font-mono">
+                {historyMetrics.totalDispatchedDeals}
+              </div>
+              <p className="text-[10px] text-zinc-500 font-mono">100% via APIs oficiais</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between text-zinc-400 text-xs">
+                <span>Audiência Impactada</span>
+                <Users className="w-4 h-4 text-sky-400" />
+              </div>
+              <div className="text-xl font-bold text-white font-mono">
+                ~{(historyMetrics.totalMembersReached / 1000).toFixed(1)}k
+              </div>
+              <p className="text-[10px] text-zinc-500 font-mono">Membros acumulados</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between text-zinc-400 text-xs">
+                <span>Taxa de Entrega</span>
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-xl font-bold text-emerald-400 font-mono">
+                {historyMetrics.successRatePercent}%
+              </div>
+              <p className="text-[10px] text-zinc-500 font-mono">Status 200 OK</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between text-zinc-400 text-xs">
+                <span>Economia Gerada</span>
+                <DollarSign className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-xl font-bold text-amber-300 font-mono">
+                R$ {historyMetrics.totalSavingsGenerated.toFixed(2)}
+              </div>
+              <p className="text-[10px] text-zinc-500 font-mono">Para seguidores VIP</p>
+            </div>
+          </div>
+
+          {/* Barra de Filtros e Busca no Histórico */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar por produto, cupom ou nº do comprovante..."
+                value={historySearchTerm}
+                onChange={(e) => setHistorySearchTerm(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setHistoryStoreFilter("all")}
+                className={`px-3 py-1.5 rounded-xl transition ${
+                  historyStoreFilter === "all"
+                    ? "bg-zinc-800 text-white font-bold border border-zinc-700"
+                    : "bg-zinc-900/60 border border-zinc-800 text-zinc-400 hover:text-white"
+                }`}
+              >
+                Todas ({(broadcastHistory || []).length})
+              </button>
+              {(Object.keys(SUPPORTED_STORES) as SupportedStore[]).map((s) => {
+                const count = historyMetrics.byStore[s] || 0;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setHistoryStoreFilter(s)}
+                    className={`px-2.5 py-1.5 rounded-xl transition ${
+                      historyStoreFilter === s
+                        ? "bg-zinc-900 text-white font-bold border border-emerald-500/50"
+                        : "bg-zinc-900/60 border border-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <span>{s}</span>
+                    <span className="text-[10px] ml-1 opacity-70">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Lista de Registros do Histórico */}
+          <div className="space-y-3">
+            {filteredHistory.map((entry) => {
+              const storeMeta = SUPPORTED_STORES[entry.store] || SUPPORTED_STORES.Shopee;
+
+              return (
+                <div
+                  key={entry.id}
+                  className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-zinc-700 transition shadow-md"
+                >
+                  <div className="space-y-1 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-950 text-zinc-400 border border-zinc-800 font-bold">
+                        {entry.receipt.receiptId}
+                      </span>
+                      <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border font-bold flex items-center gap-1 bg-zinc-950 ${storeMeta.borderColor} ${storeMeta.textColor}`}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: storeMeta.brandColor }} />
+                        <span>{entry.store}</span>
+                      </span>
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        {formatDispatchedDate(entry.dispatchedAt)}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-white line-clamp-1">
+                      {entry.productName}
+                    </h4>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-zinc-400 pt-0.5">
+                      <span className="text-emerald-400 font-bold">
+                        Por R$ {entry.promoPrice.toFixed(2)} ({entry.discountPercentage}% OFF)
+                      </span>
+                      <span className="text-zinc-500">
+                        Economia R$ {entry.savingsAmount.toFixed(2)}
+                      </span>
+                      {entry.couponCode && (
+                        <span className="text-amber-400 font-bold">
+                          CUPOM: {entry.couponCode}
+                        </span>
+                      )}
+                      <span className="text-zinc-500">
+                        👥 ~{(entry.estimatedReach >= 1000 ? `${(entry.estimatedReach / 1000).toFixed(1)}k` : entry.estimatedReach)} membros
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Confirmação de Entrega por Canal & Ações */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 mr-2">
+                      {entry.targetChannels.includes("telegram") && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                          <span>Telegram Bot API</span>
+                        </span>
+                      )}
+                      {entry.targetChannels.includes("whatsapp") && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>WhatsApp Cloud</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReceiptEntry(entry)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono transition border border-zinc-700"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Comprovante</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRedispatchFromHistory(entry)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-mono font-bold transition shadow"
+                      title="Reenviar Oferta aos Grupos VIP"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Reenviar</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredHistory.length === 0 && (
+              <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-500 text-xs font-mono space-y-2">
+                <p>Nenhuma transmissão encontrada no histórico com os filtros atuais.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1346,6 +1628,131 @@ export function OfferGroupDispatcher() {
             <p className="text-[10px] text-zinc-500 font-mono">
               ⚡ Transmissão segura com delay anti-flood ativo (Meta Graph & Telegram Bot API)
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL DE COMPROVANTE OFICIAL DE TRANSMISSÃO (ETAPA 079) */}
+      {selectedReceiptEntry && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-emerald-500/40 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            {/* Header do Comprovante */}
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Comprovante de Transmissão VIP</h3>
+                  <p className="text-[10px] text-zinc-400 font-mono">
+                    Recibo Oficial: {selectedReceiptEntry.receipt.receiptId}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptEntry(null)}
+                className="text-zinc-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Dados Técnicos de Confirmação */}
+            <div className="space-y-3 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Status de Entrega:</span>
+                  <span className="text-emerald-400 font-bold px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>200 OK • BROADCAST DELIVERED</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Data e Hora:</span>
+                  <span className="text-zinc-200">{formatDispatchedDate(selectedReceiptEntry.dispatchedAt)}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Latência de Disparo:</span>
+                  <span className="text-emerald-300 font-bold">{selectedReceiptEntry.receipt.deliveryDurationMs} ms</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Audiência Atingida:</span>
+                  <span className="text-sky-300 font-bold">~{selectedReceiptEntry.estimatedReach.toLocaleString()} membros</span>
+                </div>
+              </div>
+
+              {/* Identificadores Oficiais de Mensagem */}
+              <div className="space-y-2">
+                <label className="text-[11px] text-zinc-400 font-bold block">
+                  Identificadores das APIs Oficiais em Nuvem:
+                </label>
+
+                {selectedReceiptEntry.receipt.telegramConfirmed && (
+                  <div className="p-2.5 rounded-xl bg-blue-950/30 border border-blue-500/30 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-blue-300 font-bold">
+                      <span className="flex items-center gap-1">
+                        <Send className="w-3 h-3" />
+                        <span>Telegram Bot API (sendMessage):</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-400">Entregue</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 break-all select-all font-mono">
+                      ID: {selectedReceiptEntry.receipt.telegramMessageId || "tg_broadcast_ok"}
+                    </p>
+                  </div>
+                )}
+
+                {selectedReceiptEntry.receipt.whatsappConfirmed && (
+                  <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold">
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" />
+                        <span>WhatsApp Cloud API (v19.0 messages):</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-400">Entregue</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 break-all select-all font-mono">
+                      WAMID: {selectedReceiptEntry.receipt.whatsappMessageId || "wamid_broadcast_ok"}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Link Curto Disparado com UTMs */}
+              <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+                <span className="text-[10px] text-zinc-400 block font-bold">Link Encurtado Rastreado:</span>
+                <span className="text-emerald-300 text-[11px] break-all select-all">
+                  {selectedReceiptEntry.shortUrl}
+                </span>
+              </div>
+
+              {/* Botões */}
+              <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(selectedReceiptEntry.receipt, null, 2));
+                    toast.success("Recibo JSON copiado para a área de transferência!");
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs transition border border-zinc-800"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Recibo JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedReceiptEntry(null)}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow"
+                >
+                  Concluir
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

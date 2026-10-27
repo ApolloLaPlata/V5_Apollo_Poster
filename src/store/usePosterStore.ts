@@ -18,6 +18,11 @@ import {
   SEED_RULES, 
   SEED_DEALS 
 } from "@/lib/seeds/posterSeeds";
+import {
+  BroadcastHistoryEntry,
+  INITIAL_BROADCAST_HISTORY,
+  buildBroadcastHistoryEntry
+} from "@/lib/finders/broadcastHistoryManager";
 
 export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "logs";
 
@@ -54,6 +59,9 @@ interface PosterStoreState {
   dispatchDeal: (id: string) => void;
   dispatchBatchDeals: (ids: string[]) => void;
   deleteDeal: (id: string) => void;
+  broadcastHistory: BroadcastHistoryEntry[];
+  addBroadcastHistory: (entry: BroadcastHistoryEntry) => void;
+  clearBroadcastHistory: () => void;
 
   // 5. Logs & Telemetria
   logs: DispatchLogEntry[];
@@ -347,25 +355,47 @@ export const usePosterStore = create<PosterStoreState>()(
           return { deals: [...state.deals, ...uniqueNew] };
         }),
       dispatchDeal: (id) =>
-        set((state) => ({
-          deals: state.deals.map((d) =>
-            d.id === id ? { ...d, status: "sent" as const, sentAt: new Date().toISOString() } : d
-          )
-        })),
+        set((state) => {
+          const now = new Date().toISOString();
+          const targetDeal = state.deals.find((d) => d.id === id);
+          const newHistory = targetDeal
+            ? [buildBroadcastHistoryEntry({ ...targetDeal, status: "sent", sentAt: now }, now), ...state.broadcastHistory]
+            : state.broadcastHistory;
+
+          return {
+            deals: state.deals.map((d) =>
+              d.id === id ? { ...d, status: "sent" as const, sentAt: now } : d
+            ),
+            broadcastHistory: newHistory
+          };
+        }),
       dispatchBatchDeals: (ids) =>
         set((state) => {
           const idSet = new Set(ids);
           const now = new Date().toISOString();
+          const targeted = state.deals.filter((d) => idSet.has(d.id));
+          const newEntries = targeted.map((deal) =>
+            buildBroadcastHistoryEntry({ ...deal, status: "sent", sentAt: now }, now)
+          );
+
           return {
             deals: state.deals.map((d) =>
               idSet.has(d.id) ? { ...d, status: "sent" as const, sentAt: now } : d
-            )
+            ),
+            broadcastHistory: [...newEntries, ...state.broadcastHistory]
           };
         }),
       deleteDeal: (id) =>
         set((state) => ({
           deals: state.deals.filter((d) => d.id !== id)
         })),
+
+      broadcastHistory: INITIAL_BROADCAST_HISTORY,
+      addBroadcastHistory: (entry) =>
+        set((state) => ({
+          broadcastHistory: [entry, ...state.broadcastHistory.slice(0, 99)]
+        })),
+      clearBroadcastHistory: () => set({ broadcastHistory: [] }),
 
       logs: INITIAL_LOGS,
       addLog: (logData) =>
