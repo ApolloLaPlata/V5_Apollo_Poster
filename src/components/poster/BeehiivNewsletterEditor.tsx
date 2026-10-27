@@ -25,6 +25,7 @@ import {
   Clock,
   Check,
   ChevronDown,
+  ChevronRight,
   SlidersHorizontal,
   RefreshCw,
   Hash,
@@ -42,6 +43,8 @@ import {
   Minus,
   BarChart2,
   ShieldCheck,
+  ShieldAlert,
+  AlertOctagon,
   Image as ImageIcon,
   Trash2,
   Settings,
@@ -87,6 +90,8 @@ import { dispatchEventBus } from "@/lib/events/dispatchEvents";
 import { countWords, calculateReadingTimeMinutes } from "@/lib/utils/formatters";
 import { extractContentMetadata } from "@/lib/utils/metadataExtractor";
 import { sanitizeMarkdownAdvanced } from "@/lib/utils/markdownSanitizer";
+import { auditEmailSpamScore, SpamAuditResult } from "@/lib/dispatch/spamAuditor";
+import { SpamAuditModal } from "@/components/poster/SpamAuditModal";
 
 export const IMAGE_PRESETS = [
   {
@@ -699,6 +704,30 @@ export function BeehiivNewsletterEditor() {
     }
   };
 
+  // Auditoria de Spam Score e Entregabilidade em Tempo Real (Etapa 039)
+  const [isSpamModalOpen, setIsSpamModalOpen] = useState(false);
+  const [lastAuditTimestamp, setLastAuditTimestamp] = useState<string>(() => {
+    return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  });
+
+  const spamAudit: SpamAuditResult = React.useMemo(() => {
+    return auditEmailSpamScore({
+      subject: payload.emailOptions.subject || payload.title,
+      contentMarkdown: payload.contentMarkdown,
+      previewText: payload.emailOptions.previewText,
+      fromName: payload.emailOptions.fromName,
+      includeFooterNotice: true
+    });
+  }, [payload.title, payload.contentMarkdown, payload.emailOptions]);
+
+  const handleReauditSpam = () => {
+    setLastAuditTimestamp(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    toast.info(
+      "Auditoria Atualizada", 
+      `Spam Score: ${spamAudit.score.toFixed(1)}/10 • Entregabilidade Estimada: ${spamAudit.deliverabilityEstimate}%`
+    );
+  };
+
   // Auto-Save States & Handlers (Etapa 029)
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(() => {
@@ -997,6 +1026,27 @@ export function BeehiivNewsletterEditor() {
               <BarChart2 className="w-3 h-3" />
               <span>{metadata.readabilityScore}/100</span>
             </span>
+          </button>
+
+          {/* Badge Interativo de Spam Score em Tempo Real (Etapa 039) */}
+          <button
+            type="button"
+            onClick={() => setIsSpamModalOpen(true)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-mono transition cursor-pointer shadow-sm ${
+              spamAudit.rating === "safe"
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                : spamAudit.rating === "moderate"
+                ? "bg-amber-500/10 text-amber-300 border-amber-500/40 hover:bg-amber-500/20"
+                : "bg-rose-500/10 text-rose-400 border-rose-500/40 hover:bg-rose-500/20"
+            }`}
+            title="Clique para auditar Spam Score, Entregabilidade e Gatilhos"
+          >
+            {spamAudit.rating === "safe" && <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}
+            {spamAudit.rating === "moderate" && <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />}
+            {spamAudit.rating === "risky" && <AlertOctagon className="w-3.5 h-3.5 text-rose-400" />}
+            <span>Spam: <strong className="font-bold">{spamAudit.score.toFixed(1)}</strong></span>
+            <span className="text-zinc-600 hidden xl:inline">•</span>
+            <span className="hidden xl:inline font-sans font-medium">{spamAudit.deliverabilityEstimate}% Inbox</span>
           </button>
 
           {/* Status Discreto de Auto-Save (Etapa 029) */}
@@ -1730,6 +1780,22 @@ export function BeehiivNewsletterEditor() {
                           <Send className="w-3 h-3" />
                           <span>Enviar Prova</span>
                         </button>
+                        <button
+                          onClick={() => setIsSpamModalOpen(true)}
+                          className={`flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded border transition ${
+                            spamAudit.rating === "safe"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                              : spamAudit.rating === "moderate"
+                              ? "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+                              : "bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20"
+                          }`}
+                          title="Auditar Spam Score e Entregabilidade deste E-mail"
+                        >
+                          {spamAudit.rating === "safe" && <ShieldCheck className="w-3 h-3 text-emerald-400" />}
+                          {spamAudit.rating === "moderate" && <ShieldAlert className="w-3 h-3 text-amber-400" />}
+                          {spamAudit.rating === "risky" && <AlertOctagon className="w-3 h-3 text-rose-400" />}
+                          <span>Spam: {spamAudit.score.toFixed(1)}</span>
+                        </button>
                       </div>
                     </div>
                     <div className="text-[12px] text-zinc-200">
@@ -1750,9 +1816,20 @@ export function BeehiivNewsletterEditor() {
                         <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
                           Anti-Spill Padding Ativo
                         </span>
-                        <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-bold">
-                          🛡️ CAN-SPAM & LGPD Ok
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsSpamModalOpen(true)}
+                          className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition ${
+                            spamAudit.rating === "safe"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                              : spamAudit.rating === "moderate"
+                              ? "bg-amber-500/10 text-amber-300 border-amber-500/20 hover:bg-amber-500/20"
+                              : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+                          }`}
+                          title="Auditar Spam Score e Requisitos de Entrega"
+                        >
+                          🛡️ Spam: {spamAudit.score.toFixed(1)}/10 ({spamAudit.deliverabilityEstimate}% Inbox)
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2660,6 +2737,43 @@ export function BeehiivNewsletterEditor() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Auditoria de Spam Score e Entregabilidade (Etapa 039) */}
+                    <div className="p-3.5 bg-zinc-900/70 rounded-xl border border-zinc-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Auditoria de Spam Score & Inbox Rate</span>
+                        </span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md border font-bold ${
+                          spamAudit.rating === "safe"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                            : spamAudit.rating === "moderate"
+                            ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                            : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                        }`}>
+                          {spamAudit.score.toFixed(1)}/10 • {spamAudit.deliverabilityEstimate}% Inbox
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-zinc-300">
+                        {spamAudit.ratingLabel}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-zinc-800/80">
+                        <div className="text-[10px] text-zinc-400 font-mono">
+                          {spamAudit.detectedTriggers.length} gatilhos • {spamAudit.textToLinkRatio} pal/link
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsSpamModalOpen(true)}
+                          className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          <span>Ver Diagnóstico Completo</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -3097,6 +3211,14 @@ export function BeehiivNewsletterEditor() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE AUDITORIA DE SPAM SCORE & ENTREGABILIDADE (Etapa 039) */}
+      <SpamAuditModal
+        isOpen={isSpamModalOpen}
+        onClose={() => setIsSpamModalOpen(false)}
+        audit={spamAudit}
+        onReaudit={handleReauditSpam}
+      />
     </div>
   );
 }
