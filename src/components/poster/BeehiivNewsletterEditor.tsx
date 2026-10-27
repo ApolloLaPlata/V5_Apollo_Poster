@@ -137,6 +137,7 @@ import {
 import { V5AutoBlogWebSimulator } from "@/components/poster/V5AutoBlogWebSimulator";
 import { GoogleRichResultsInspector } from "@/components/poster/GoogleRichResultsInspector";
 import { TwitterTeaserCard } from "@/components/poster/TwitterTeaserCard";
+import { ThreadsTeaserCard } from "@/components/poster/ThreadsTeaserCard";
 
 export const IMAGE_PRESETS = [
   {
@@ -2775,6 +2776,9 @@ export function BeehiivNewsletterEditor() {
 
                   {/* Gerador e Card de Preview para X/Twitter (Etapa 052) */}
                   <TwitterTeaserCard payload={payload} />
+
+                  {/* Gerador e Card de Preview para Threads (Etapa 053) */}
+                  <ThreadsTeaserCard payload={payload} />
                 </div>
               )}
 
