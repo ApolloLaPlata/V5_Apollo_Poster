@@ -171,7 +171,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 ---
 
 ### FASE 11: AUDITORIA, QA, HIGIENIZAÇÃO E HOMOLOGAÇÃO FINAL (101 - 110)
-- [ ] **Etapa 101:** Teste E2E de Fluxo do Calendário Mestre (Criação, Edição, Reagendamento e Exclusão de Posts).
+- [x] **Etapa 101:** Teste E2E de Fluxo do Calendário Mestre (Criação, Edição, Reagendamento e Exclusão de Posts).
 - [ ] **Etapa 102:** Teste E2E de Fluxo Dual (Criação de Artigo no Editor Markdown e validação simultânea de E-mail HTML + AutoBlog JSON).
 - [ ] **Etapa 103:** Teste E2E de Fluxo Comment-to-DM (Criação de regra, acionamento de simulação e geração de DM).
 - [ ] **Etapa 104:** Teste E2E de Fluxo Grupos VIP (Seleção de ofertas, cálculo de desconto e disparo para WhatsApp/Telegram).
