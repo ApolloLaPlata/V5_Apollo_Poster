@@ -144,7 +144,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 
 ### FASE 9: FILA DE AGENDAMENTO EM BACKGROUND (081 - 090)
 - [x] **Etapa 081:** Arquitetura da Fila de Agendamento (`src/lib/queue/dispatchQueue.ts`) baseada no padrão FIFO com timestamp de execução.
-- [ ] **Etapa 082:** Motor de Verificação de Posts Vencidos (Polling / Intervalo de 60 segundos que detecta itens prontos para disparo).
+- [x] **Etapa 082:** Motor de Verificação de Posts Vencidos (Polling / Intervalo de 60 segundos que detecta itens prontos para disparo).
 - [ ] **Etapa 083:** Transição de Estados de Tarefa (`scheduled` -> `processing` -> `published` / `failed`).
 - [ ] **Etapa 084:** Sistema de Retentativas Automáticas com Backoff Exponencial (Até 3 tentativas em caso de erro 5xx de API).
 - [ ] **Etapa 085:** Simulador de Execução de Rede em Lote (Disparo em paralelo de posts vencidos com status individual).
