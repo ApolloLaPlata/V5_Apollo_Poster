@@ -1,4 +1,5 @@
 import { MultimodalDispatchPayload } from "@/types/poster";
+import { sanitizeMarkdown } from "@/lib/utils/markdownSanitizer";
 
 export function slugify(text: string): string {
   return text
@@ -19,8 +20,9 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   const { title, contentMarkdown, emailOptions, slug } = payload;
   const utmSuffix = `utm_source=v5poster&utm_medium=email_newsletter&utm_campaign=${emailOptions.utmCampaign || slug}`;
 
-  // Conversao simples de markdown para HTML inline estilizado para e-mail
-  const lines = contentMarkdown.split("\n");
+  // Saneamento profundo e conversão segura para HTML inline
+  const sanitizedMarkdown = sanitizeMarkdown(contentMarkdown);
+  const lines = sanitizedMarkdown.split("\n");
   const htmlBodyLines: string[] = [];
 
   for (const rawLine of lines) {
@@ -189,7 +191,7 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload) {
   return {
     title: payload.title,
     slug: slug,
-    content: payload.contentMarkdown,
+    content: sanitizeMarkdown(payload.contentMarkdown),
     excerpt: payload.summary || payload.emailOptions.previewText,
     category: payload.blogOptions.category,
     tags: payload.blogOptions.tags,

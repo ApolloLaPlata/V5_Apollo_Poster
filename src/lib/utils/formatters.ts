@@ -40,15 +40,7 @@ export function truncateText(text: string, maxLength: number): string {
   return (lastSpace > 0 ? sub.substring(0, lastSpace) : sub) + "...";
 }
 
-export function sanitizeMarkdown(markdown: string): string {
-  if (!markdown) return "";
-  return markdown
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/javascript:/gi, "")
-    .replace(/onload=/gi, "")
-    .replace(/onerror=/gi, "");
-}
+export { sanitizeMarkdown, sanitizeMarkdownAdvanced } from "./markdownSanitizer";
 
 export function formatRelativeDate(isoDateString: string): string {
   if (!isoDateString) return "";
