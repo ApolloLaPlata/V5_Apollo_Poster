@@ -363,12 +363,17 @@ export interface DispatchLogEntry {
   id: string;
   timestamp: string;
   channel: SocialPlatform;
-  action: 'publish' | 'schedule' | 'comment_reply' | 'dm_dispatch' | 'group_broadcast';
+  action: 'publish' | 'schedule' | 'comment_reply' | 'dm_dispatch' | 'group_broadcast' | 'manual_forced_dispatch' | 'manual_forced_batch_dispatch';
   status: 'success' | 'failed' | 'in_progress';
   statusCode: number;
   message: string;
   payloadSummary: string;
   latencyMs?: number;
+  remoteMessageId?: string;
+  responsePayload?: Record<string, unknown>;
+  requestPayload?: Record<string, unknown>;
+  ipAddress?: string;
+  retryAttempt?: number;
 }
 
 export interface DispatchAnalyticsSummary {
