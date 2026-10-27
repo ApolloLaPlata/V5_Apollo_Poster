@@ -34,8 +34,10 @@ import {
   Instagram,
   Video,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  BarChart3
 } from "lucide-react";
+import { DmEngagementMetricsPanel } from "./DmEngagementMetricsPanel";
 import { usePosterStore } from "@/store/usePosterStore";
 import { CommentRule, CommentTriggerEvent } from "@/types/poster";
 import { toast } from "@/lib/toast/useToast";
@@ -94,6 +96,9 @@ export function CommentToDmManager() {
   const [selectedRuleId, setSelectedRuleId] = useState<string>(() => {
     return commentRules[0]?.id || "";
   });
+
+  // Seletor de Seção: Regras & Simulador vs. Métricas & Analytics
+  const [activeSection, setActiveSection] = useState<"rules" | "analytics">("rules");
 
   // Estado do Modal de Nova Regra
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -518,8 +523,8 @@ export function CommentToDmManager() {
           </div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 068 (Links Rastreados com UTM Dedicado & Cupom)
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Etapa 069 (Métricas de Engajamento & Conversão de DM)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -552,8 +557,48 @@ export function CommentToDmManager() {
         </div>
       </div>
 
-      {/* 2. GRADE PRINCIPAL: LISTA DE REGRAS, CONFIGURAÇÃO E SIMULADOR */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* 2. BARRA DE NAVEGAÇÃO DA SEÇÃO (REGRAS & SIMULADOR VS ANALYTICS) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveSection("rules")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeSection === "rules"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-950/40"
+                : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Regras & Simulador Onicanal</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSection("analytics")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeSection === "analytics"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-950/40"
+                : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Painel de Métricas & Conversão (Analytics)</span>
+          </button>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-500">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Meta Graph & TikTok APIs Homologadas</span>
+        </div>
+      </div>
+
+      {/* 3. CONTEÚDO CONDICIONAL DA SEÇÃO */}
+      {activeSection === "analytics" ? (
+        <DmEngagementMetricsPanel />
+      ) : (
+        /* GRADE PRINCIPAL: LISTA DE REGRAS, CONFIGURAÇÃO E SIMULADOR */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* COLUNA ESQUERDA: LISTA DE REGRAS NO ZUSTAND (4 cols) */}
         <div className="lg:col-span-4 space-y-3">
           <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
@@ -1325,8 +1370,9 @@ export function CommentToDmManager() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* 3. MODAL DE NOVA REGRA */}
+      {/* 4. MODAL DE NOVA REGRA */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200">
