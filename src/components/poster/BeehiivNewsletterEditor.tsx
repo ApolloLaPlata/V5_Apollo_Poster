@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Send, 
   Mail, 
@@ -14,7 +14,20 @@ import {
   Terminal,
   ExternalLink,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Columns2,
+  Edit3,
+  Eye,
+  Monitor,
+  Smartphone,
+  BookOpen,
+  FileText,
+  Clock,
+  Check,
+  ChevronDown,
+  SlidersHorizontal,
+  RefreshCw,
+  Hash
 } from "lucide-react";
 import { MultimodalDispatchPayload } from "@/types/poster";
 import { 
@@ -24,6 +37,10 @@ import {
   executeMockDispatch,
   slugify 
 } from "@/lib/dispatch/multimodalEngine";
+import { usePosterStore } from "@/store/usePosterStore";
+import { toast } from "@/lib/toast/useToast";
+import { dispatchEventBus } from "@/lib/events/dispatchEvents";
+import { countWords, calculateReadingTimeMinutes } from "@/lib/utils/formatters";
 
 const DEFAULT_PAYLOAD: MultimodalDispatchPayload = {
   id: "dispatch-001",
@@ -41,6 +58,8 @@ Não estamos mais falando apenas de chats de conversação. Estamos falando de e
 3. **Micro-serviços Desacoplados:** Cada robô com seu propósito único e bem definido.
 
 > *"A produtividade real não é fazer mais tarefas manuais, é eliminar totalmente o atrito entre a produção da ideia e a distribuição em massa."*
+
+---
 
 ### O que isso significa na prática?
 Quando você une um motor de escrita inteligente a uma esteira de despacho automatizada, você ganha velocidade de mídia de grandes portais com uma equipe enxuta.
@@ -76,9 +95,128 @@ Nos vemos na próxima transmissão!`,
   }
 };
 
+function formatInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g);
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="text-white font-bold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/);
+    if (linkMatch) {
+      return (
+        <a 
+          key={index} 
+          href={linkMatch[2]} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-amber-400 underline hover:text-amber-300"
+        >
+          {linkMatch[1]}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
+function renderMarkdownToHtml(markdown: string) {
+  const lines = markdown.split("\n");
+  const elements: React.ReactNode[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    if (!line) {
+      elements.push(<div key={`sp-${i}`} className="h-4" />);
+      continue;
+    }
+
+    if (line.startsWith("# ")) {
+      elements.push(
+        <h1 key={i} className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-6 mb-3 font-sans">
+          {line.replace("# ", "")}
+        </h1>
+      );
+    } else if (line.startsWith("## ")) {
+      elements.push(
+        <h2 key={i} className="text-xl md:text-2xl font-bold text-zinc-100 tracking-tight mt-5 mb-2.5 font-sans">
+          {line.replace("## ", "")}
+        </h2>
+      );
+    } else if (line.startsWith("### ")) {
+      elements.push(
+        <h3 key={i} className="text-base md:text-lg font-semibold text-amber-300 mt-4 mb-2 font-sans">
+          {line.replace("### ", "")}
+        </h3>
+      );
+    } else if (line.startsWith("> ")) {
+      elements.push(
+        <blockquote key={i} className="border-l-4 border-amber-500 pl-4 py-2 my-4 bg-amber-500/10 text-amber-200 italic rounded-r-lg text-sm leading-relaxed">
+          {line.replace("> ", "").replace(/^"(.*)"$/, "$1")}
+        </blockquote>
+      );
+    } else if (line === "---" || line === "***") {
+      elements.push(
+        <div key={i} className="my-6 border-t border-zinc-800 flex items-center justify-center">
+          <span className="bg-zinc-900 px-3 text-[10px] text-zinc-500 font-mono tracking-widest uppercase">
+            Linha de Assinatura • Divisor
+          </span>
+        </div>
+      );
+    } else if (line.startsWith("- ") || line.startsWith("* ")) {
+      elements.push(
+        <li key={i} className="text-sm text-zinc-300 ml-4 list-disc mb-1 leading-relaxed">
+          {formatInline(line.substring(2))}
+        </li>
+      );
+    } else if (/^\d+\.\s/.test(line)) {
+      elements.push(
+        <li key={i} className="text-sm text-zinc-300 ml-4 list-decimal mb-1 leading-relaxed">
+          {formatInline(line.replace(/^\d+\.\s/, ""))}
+        </li>
+      );
+    } else {
+      elements.push(
+        <p key={i} className="text-sm text-zinc-300 leading-relaxed mb-3">
+          {formatInline(line)}
+        </p>
+      );
+    }
+  }
+
+  return elements;
+}
+
 export function BeehiivNewsletterEditor() {
-  const [payload, setPayload] = useState<MultimodalDispatchPayload>(DEFAULT_PAYLOAD);
-  const [activeTab, setActiveTab] = useState<"input" | "email" | "blog" | "social" | "raw_html">("input");
+  const { newsletterDraft, updateNewsletterDraft } = usePosterStore();
+  const [payload, setPayload] = useState<MultimodalDispatchPayload>(() => {
+    if (newsletterDraft && newsletterDraft.contentMarkdown) {
+      return {
+        ...DEFAULT_PAYLOAD,
+        title: newsletterDraft.subject || DEFAULT_PAYLOAD.title,
+        slug: slugify(newsletterDraft.subject || DEFAULT_PAYLOAD.title),
+        summary: newsletterDraft.previewText || DEFAULT_PAYLOAD.summary,
+        contentMarkdown: newsletterDraft.contentMarkdown || DEFAULT_PAYLOAD.contentMarkdown,
+        emailOptions: {
+          ...DEFAULT_PAYLOAD.emailOptions,
+          subject: newsletterDraft.subject || DEFAULT_PAYLOAD.emailOptions.subject,
+          previewText: newsletterDraft.previewText || DEFAULT_PAYLOAD.emailOptions.previewText
+        }
+      };
+    }
+    return DEFAULT_PAYLOAD;
+  });
+
+  // Split-Pane View States
+  const [splitMode, setSplitMode] = useState<"split" | "editor" | "preview">("split");
+  const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
@@ -87,9 +225,15 @@ export function BeehiivNewsletterEditor() {
   const compiledBlogJson = compileBlogPayload(payload);
   const compiledTeasers = compileSocialTeasers(payload);
 
+  const words = countWords(payload.contentMarkdown);
+  const chars = payload.contentMarkdown.length;
+  const readingTime = calculateReadingTimeMinutes(payload.contentMarkdown);
+  const linesCount = payload.contentMarkdown.split("\n").length;
+
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopiedSnippet(label);
+    toast.info("Copiado!", `${label} transferido para a área de transferência.`);
     setTimeout(() => setCopiedSnippet(null), 2500);
   };
 
@@ -110,408 +254,518 @@ export function BeehiivNewsletterEditor() {
         social: { status: "sent", deliveredChannels: result.socialResult.deliveredChannels }
       }
     }));
+
+    toast.success(
+      "Despacho Concluído!",
+      `Enviado para ${result.emailResult.sentCount} e-mails, AutoBlog HTTP ${result.blogResult.statusCode} e redes sociais.`
+    );
+
+    dispatchEventBus.emit("POST_DISPATCHED", {
+      postId: payload.id,
+      title: payload.title,
+      platforms: ["newsletter", "autoblog", "whatsapp", "telegram"],
+      status: "success"
+    });
+  };
+
+  const handleContentChange = (newContent: string) => {
+    setPayload(prev => ({ ...prev, contentMarkdown: newContent }));
+    updateNewsletterDraft({ contentMarkdown: newContent });
+  };
+
+  const handleTitleChange = (newTitle: string) => {
+    const newSlug = slugify(newTitle);
+    setPayload(prev => ({
+      ...prev,
+      title: newTitle,
+      slug: newSlug,
+      emailOptions: { ...prev.emailOptions, subject: newTitle }
+    }));
+    updateNewsletterDraft({ subject: newTitle });
+  };
+
+  const handlePreviewTextChange = (newPreview: string) => {
+    setPayload(prev => ({
+      ...prev,
+      summary: newPreview,
+      emailOptions: { ...prev.emailOptions, previewText: newPreview }
+    }));
+    updateNewsletterDraft({ previewText: newPreview });
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-950/40 via-zinc-900 to-zinc-900 p-5 rounded-2xl border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* Top Header & Split-Pane Controls Bar */}
+      <div className="bg-zinc-900/70 p-4 md:p-5 rounded-2xl border border-zinc-800 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-1">
             <Layers className="w-4 h-4" />
-            <span>Esteira de Distribuição Multimodal Simultânea</span>
+            <span>Motor Dual Beehiiv / Substack • Split-Pane Editor</span>
           </div>
-          <h2 className="text-xl font-bold text-white">Central de Despacho: E-mail + AutoBlog + Redes</h2>
-          <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
-            O V5 Apollo Poster não hospeda nem gerencia conteúdo. Ele recebe a matéria-prima e distribui simultaneamente: compila o HTML inline responsivo para envio de newsletter por e-mail, formata o JSON estruturado para a API do AutoBlog e extrai teasers para redes e canais VIP.
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span>Redação Unificada & Despacho Multimodal</span>
+          </h2>
+          <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
+            Edite o texto uma única vez com renderização simultânea no leitor, e-mail HTML e payload do AutoBlog.
           </p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-zinc-800/80 p-1 rounded-xl border border-zinc-700/60 text-xs">
+        {/* Action Controls: Split Modes + Settings + Telemetry */}
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
+          {/* Telemetry pill */}
+          <div className="hidden sm:flex items-center gap-3 bg-zinc-950/80 px-3 py-1.5 rounded-xl border border-zinc-800 text-[11px] font-mono text-zinc-400">
+            <span className="flex items-center gap-1">
+              <FileText className="w-3 h-3 text-amber-400" />
+              <strong className="text-zinc-200">{words}</strong> pal.
+            </span>
+            <span className="text-zinc-600">•</span>
+            <span><strong className="text-zinc-200">{chars}</strong> carac.</span>
+            <span className="text-zinc-600">•</span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3 text-cyan-400" />
+              <strong className="text-zinc-200">{readingTime}</strong> min leitura
+            </span>
+          </div>
+
+          {/* Split Mode Switcher */}
+          <div className="flex items-center bg-zinc-800/90 p-1 rounded-xl border border-zinc-700/60 text-xs">
+            <button
+              onClick={() => setSplitMode("split")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
+                splitMode === "split" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
+              }`}
+              title="Dividir tela (50% Editor / 50% Preview)"
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Split 50/50</span>
+            </button>
+            <button
+              onClick={() => setSplitMode("editor")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
+                splitMode === "editor" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
+              }`}
+              title="Apenas Editor de Markdown"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Editor</span>
+            </button>
+            <button
+              onClick={() => setSplitMode("preview")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
+                splitMode === "preview" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
+              }`}
+              title="Apenas Pré-visualização"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Preview</span>
+            </button>
+          </div>
+
+          {/* Toggle Destination Settings */}
           <button
-            onClick={() => setActiveTab("input")}
-            className={`px-3 py-1.5 rounded-lg transition font-medium ${
-              activeTab === "input" ? "bg-amber-500 text-black font-bold" : "text-zinc-300 hover:text-white"
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+              isSettingsOpen 
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40" 
+                : "bg-zinc-800/80 text-zinc-300 border-zinc-700/60 hover:text-white"
             }`}
           >
-            Conteúdo Base
-          </button>
-          <button
-            onClick={() => setActiveTab("email")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
-              activeTab === "email" ? "bg-amber-500 text-black font-bold" : "text-zinc-300 hover:text-white"
-            }`}
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>Ponta E-mail</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("blog")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
-              activeTab === "blog" ? "bg-amber-500 text-black font-bold" : "text-zinc-300 hover:text-white"
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Ponta AutoBlog</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("social")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
-              activeTab === "social" ? "bg-amber-500 text-black font-bold" : "text-zinc-300 hover:text-white"
-            }`}
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Ponta Social & VIP</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("raw_html")}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition font-mono text-[11px] ${
-              activeTab === "raw_html" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Code className="w-3 h-3" />
-            <span>Raw HTML</span>
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Matriz Despacho</span>
           </button>
         </div>
       </div>
 
-      {/* Main Panel Content */}
-      {activeTab === "input" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-zinc-300 block mb-1">
-                  Título Principal do Conteúdo
-                </label>
-                <input
-                  type="text"
-                  value={payload.title}
-                  onChange={(e) => {
-                    const title = e.target.value;
-                    setPayload(prev => ({
-                      ...prev,
-                      title,
-                      slug: slugify(title),
-                      emailOptions: { ...prev.emailOptions, subject: title }
-                    }));
-                  }}
-                  className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-medium"
-                />
-              </div>
+      {/* Article Meta Bar (Title, Slug, Preheader) */}
+      <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 space-y-3">
+        <div>
+          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+            Título do Artigo / Assunto do E-mail
+          </label>
+          <input
+            type="text"
+            value={payload.title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            className="w-full bg-zinc-950/80 border border-zinc-700/80 focus:border-amber-500 rounded-lg px-3.5 py-2 text-sm text-white font-semibold focus:outline-none"
+            placeholder="Digite o título principal..."
+          />
+        </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-zinc-300 block mb-1">
-                    Slug Canônico (URL do Blog)
-                  </label>
-                  <input
-                    type="text"
-                    value={payload.slug}
-                    onChange={(e) => setPayload(prev => ({ ...prev, slug: e.target.value }))}
-                    className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-amber-400 font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-zinc-300 block mb-1">
-                    Preheader E-mail & Resumo Social
-                  </label>
-                  <input
-                    type="text"
-                    value={payload.emailOptions.previewText}
-                    onChange={(e) => setPayload(prev => ({
-                      ...prev,
-                      summary: e.target.value,
-                      emailOptions: { ...prev.emailOptions, previewText: e.target.value }
-                    }))}
-                    className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+              Slug Canônico (URL do Blog)
+            </label>
+            <input
+              type="text"
+              value={payload.slug}
+              onChange={(e) => setPayload(prev => ({ ...prev, slug: e.target.value }))}
+              className="w-full bg-zinc-950/80 border border-zinc-700/80 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-amber-400 font-mono focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+              Preheader (E-mail) & Resumo Social
+            </label>
+            <input
+              type="text"
+              value={payload.emailOptions.previewText}
+              onChange={(e) => handlePreviewTextChange(e.target.value)}
+              className="w-full bg-zinc-950/80 border border-zinc-700/80 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none"
+              placeholder="Linha de abertura que instiga a leitura..."
+            />
+          </div>
+        </div>
+      </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-zinc-300">
-                    Corpo do Artigo (Markdown Nativo)
-                  </label>
-                  <span className="text-[11px] text-zinc-500 font-mono">
-                    {payload.contentMarkdown.length} caracteres
-                  </span>
-                </div>
-                <textarea
-                  rows={14}
-                  value={payload.contentMarkdown}
-                  onChange={(e) => setPayload(prev => ({ ...prev, contentMarkdown: e.target.value }))}
-                  className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg p-3.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-amber-500 leading-relaxed resize-none"
-                />
+      {/* DUAL SPLIT-PANE CONTAINER */}
+      <div className={`grid grid-cols-1 ${splitMode === "split" ? "lg:grid-cols-2" : ""} gap-5`}>
+        {/* LEFT PANE: MARKDOWN SOURCE EDITOR */}
+        {(splitMode === "split" || splitMode === "editor") && (
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl flex flex-col overflow-hidden shadow-xl">
+            {/* Left Pane Header */}
+            <div className="px-4 py-2.5 bg-zinc-950/80 border-b border-zinc-800/80 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold">
+                  MD
+                </span>
+                <span className="font-bold text-zinc-200 text-xs">Editor Markdown Nativo</span>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] font-mono text-zinc-500">
+                <span>{linesCount} linhas</span>
+                <span>•</span>
+                <span>{words} palavras</span>
               </div>
             </div>
+
+            {/* Markdown Textarea */}
+            <div className="flex-1 p-3 bg-zinc-950/40">
+              <textarea
+                value={payload.contentMarkdown}
+                onChange={(e) => handleContentChange(e.target.value)}
+                className="w-full min-h-[540px] h-[calc(100vh-380px)] bg-zinc-950/70 border border-zinc-800 focus:border-amber-500/80 rounded-xl p-4 text-xs md:text-sm text-zinc-100 font-mono leading-relaxed resize-none focus:outline-none"
+                placeholder="Escreva seu artigo em Markdown aqui..."
+                spellCheck={false}
+              />
+            </div>
           </div>
+        )}
 
-          {/* Destination Controls & Dispatch Action */}
-          <div className="space-y-4">
-            <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 space-y-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Send className="w-4 h-4 text-amber-400" />
-                Matriz de Despacho Ativa
-              </h3>
-
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 bg-zinc-800/60 p-3 rounded-lg border border-zinc-700/60 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={payload.emailOptions.enabled}
-                    onChange={(e) => setPayload(prev => ({
-                      ...prev,
-                      emailOptions: { ...prev.emailOptions, enabled: e.target.checked }
-                    }))}
-                    className="mt-1 rounded text-amber-500 focus:ring-0"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Ponta E-mail (Newsletter)</span>
-                    <span className="text-[11px] text-zinc-400 block mt-0.5">
-                      Compilar HTML inline e disparar para {payload.emailOptions.audienceList} via Resend API
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 bg-zinc-800/60 p-3 rounded-lg border border-zinc-700/60 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={payload.blogOptions.enabled}
-                    onChange={(e) => setPayload(prev => ({
-                      ...prev,
-                      blogOptions: { ...prev.blogOptions, enabled: e.target.checked }
-                    }))}
-                    className="mt-1 rounded text-amber-500 focus:ring-0"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Ponta Blog (V5 AutoBlog REST)</span>
-                    <span className="text-[11px] text-zinc-400 block mt-0.5">
-                      Transmitir JSON com Schema Org e SEO tags para o endpoint {payload.blogOptions.targetEndpoint}
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 bg-zinc-800/60 p-3 rounded-lg border border-zinc-700/60 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={payload.socialTeaserOptions.enabled}
-                    onChange={(e) => setPayload(prev => ({
-                      ...prev,
-                      socialTeaserOptions: { ...prev.socialTeaserOptions, enabled: e.target.checked }
-                    }))}
-                    className="mt-1 rounded text-amber-500 focus:ring-0"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Ponta Teasers (Redes & Grupos VIP)</span>
-                    <span className="text-[11px] text-zinc-400 block mt-0.5">
-                      Disparo no Telegram VIP, WhatsApp Comunidades e canais sociais
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              <div className="pt-2">
+        {/* RIGHT PANE: LIVE RENDERED PREVIEW */}
+        {(splitMode === "split" || splitMode === "preview") && (
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl flex flex-col overflow-hidden shadow-xl">
+            {/* Right Pane Header */}
+            <div className="px-4 py-2 bg-zinc-950/80 border-b border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+              {/* Preview Format Tabs */}
+              <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
                 <button
-                  onClick={handleTriggerDispatch}
-                  disabled={isDispatching}
-                  className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:brightness-110 text-black font-extrabold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                  onClick={() => setPreviewFormat("reader")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                    previewFormat === "reader" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-white"
+                  }`}
                 >
-                  {isDispatching ? (
-                    <span className="animate-pulse">Transmitindo pelos canais...</span>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4 fill-black" />
-                      <span>Executar Despacho Simultâneo</span>
-                    </>
-                  )}
+                  <BookOpen className="w-3 h-3" />
+                  <span>Leitor</span>
                 </button>
+                <button
+                  onClick={() => setPreviewFormat("email")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                    previewFormat === "email" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Mail className="w-3 h-3" />
+                  <span>E-mail</span>
+                </button>
+                <button
+                  onClick={() => setPreviewFormat("blog")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                    previewFormat === "blog" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Globe className="w-3 h-3" />
+                  <span>AutoBlog</span>
+                </button>
+                <button
+                  onClick={() => setPreviewFormat("raw")}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono transition ${
+                    previewFormat === "raw" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Code className="w-3 h-3" />
+                  <span>Raw HTML</span>
+                </button>
+              </div>
 
-                {executionResult && (
-                  <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2 text-xs">
-                    <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Despacho Concluído com Sucesso!</span>
-                    </div>
-                    <div className="text-[11px] text-zinc-300 space-y-1 font-mono">
-                      <div>• E-mail: {executionResult.emailResult.sentCount} disparos ({executionResult.emailResult.messageId})</div>
-                      <div>• AutoBlog: HTTP {executionResult.blogResult.statusCode} OK (<a href={executionResult.blogResult.publishedUrl} target="_blank" className="underline text-amber-400">{executionResult.blogResult.publishedUrl}</a>)</div>
-                      <div>• Social & VIP: {executionResult.socialResult.deliveredChannels.join(", ")}</div>
-                    </div>
-                  </div>
-                )}
+              {/* Viewport Device Toggle */}
+              <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-[11px]">
+                <button
+                  onClick={() => setPreviewDevice("desktop")}
+                  className={`p-1 rounded transition ${
+                    previewDevice === "desktop" ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-white"
+                  }`}
+                  title="Visualização Desktop"
+                >
+                  <Monitor className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setPreviewDevice("mobile")}
+                  className={`p-1 rounded transition ${
+                    previewDevice === "mobile" ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-white"
+                  }`}
+                  title="Visualização Mobile (375px)"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Email Preview Tab */}
-      {activeTab === "email" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-zinc-900/60 p-3 rounded-xl border border-zinc-800 text-xs">
-            <span className="text-zinc-300">
-              Visualização de E-mail Responsivo (HTML Inline Seguro para Gmail/Outlook/Apple Mail)
-            </span>
+            {/* Right Pane Body */}
+            <div className="flex-1 p-3 bg-zinc-950/40 overflow-y-auto min-h-[540px] h-[calc(100vh-380px)]">
+              {/* 1. MODO LEITOR (EDITORIAL BEEHIIV / SUBSTACK) */}
+              {previewFormat === "reader" && (
+                <div className={`mx-auto transition-all ${previewDevice === "mobile" ? "max-w-[375px] bg-zinc-950 border-2 border-zinc-700 rounded-3xl p-5 shadow-2xl my-2" : "w-full bg-zinc-900/40 p-6 md:p-8 rounded-xl border border-zinc-800/60"}`}>
+                  {/* Article Metadata Header */}
+                  <div className="border-b border-zinc-800/80 pb-5 mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold font-mono">
+                        {payload.blogOptions.category}
+                      </span>
+                      <span className="text-[11px] text-zinc-500 font-mono">
+                        {readingTime} min de leitura
+                      </span>
+                    </div>
+
+                    <h1 className="text-xl md:text-2xl font-bold text-white leading-tight mb-2">
+                      {payload.title}
+                    </h1>
+
+                    {payload.summary && (
+                      <p className="text-xs md:text-sm text-zinc-400 leading-relaxed mb-4">
+                        {payload.summary}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-3 border-t border-zinc-800/60 text-xs text-zinc-400">
+                      <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold text-xs">
+                        AP
+                      </div>
+                      <div>
+                        <span className="font-semibold text-zinc-200 block">{payload.blogOptions.author}</span>
+                        <span className="text-[10px] text-zinc-500">Publicação Onicanal • 27 Out 2026</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rendered Markdown Body */}
+                  <div className="prose prose-invert max-w-none text-zinc-300">
+                    {renderMarkdownToHtml(payload.contentMarkdown)}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. MODO E-MAIL HTML */}
+              {previewFormat === "email" && (
+                <div className="flex flex-col h-full space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-400 pb-1">
+                    <span>HTML Inline Responsivo com Safe-Font Stacks para Gmail e Outlook</span>
+                    <button
+                      onClick={() => handleCopy(compiledHtml, "HTML E-mail")}
+                      className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copiar HTML</span>
+                    </button>
+                  </div>
+                  <div className="flex-1 flex justify-center bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+                    <iframe
+                      srcDoc={compiledHtml}
+                      title="Email Preview"
+                      className={`h-full min-h-[500px] rounded-lg border border-zinc-700/60 bg-white shadow-xl transition-all ${
+                        previewDevice === "mobile" ? "w-[375px]" : "w-full max-w-[620px]"
+                      }`}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 3. MODO AUTOBlog JSON */}
+              {previewFormat === "blog" && (
+                <div className="h-full flex flex-col space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-400 pb-1">
+                    <span>Payload Estruturado para o Endpoint do AutoBlog REST API</span>
+                    <button
+                      onClick={() => handleCopy(JSON.stringify(compiledBlogJson, null, 2), "JSON AutoBlog")}
+                      className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copiar JSON</span>
+                    </button>
+                  </div>
+                  <div className="flex-1 bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+                    <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
+                      {JSON.stringify(compiledBlogJson, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. MODO RAW HTML */}
+              {previewFormat === "raw" && (
+                <div className="h-full flex flex-col space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-400 pb-1">
+                    <span>Código HTML Bruto com Estilos Inline</span>
+                    <button
+                      onClick={() => handleCopy(compiledHtml, "Código HTML")}
+                      className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                  <div className="flex-1 bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+                    <pre className="text-xs font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap break-all">
+                      {compiledHtml}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* COLLAPSIBLE DESTINATION & DISPATCH DRAWER */}
+      {isSettingsOpen && (
+        <div className="bg-zinc-900/90 border border-amber-500/30 rounded-2xl p-5 shadow-2xl space-y-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+              <Zap className="w-4 h-4 fill-amber-400" />
+              <span>Matriz Onicanal de Despacho Simultâneo</span>
+            </div>
             <button
-              onClick={() => handleCopy(compiledHtml, "email_html")}
-              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 text-xs transition"
+              onClick={() => setIsSettingsOpen(false)}
+              className="text-xs text-zinc-400 hover:text-white"
             >
-              <Copy className="w-3.5 h-3.5 text-amber-400" />
-              <span>{copiedSnippet === "email_html" ? "Copiado!" : "Copiar Código HTML"}</span>
+              Fechar Painel
             </button>
           </div>
 
-          <div className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800 flex justify-center">
-            <iframe
-              srcDoc={compiledHtml}
-              title="Email Preview"
-              className="w-full max-w-[650px] h-[600px] rounded-xl border border-zinc-700/60 bg-white shadow-2xl"
-            />
-          </div>
-        </div>
-      )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Email Destination */}
+            <label className="flex items-start gap-3 bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-zinc-700 transition">
+              <input
+                type="checkbox"
+                checked={payload.emailOptions.enabled}
+                onChange={(e) => setPayload(prev => ({
+                  ...prev,
+                  emailOptions: { ...prev.emailOptions, enabled: e.target.checked }
+                }))}
+                className="mt-1 rounded text-amber-500 focus:ring-0"
+              />
+              <div>
+                <span className="text-xs font-bold text-white block">Ponta E-mail (Newsletter)</span>
+                <span className="text-[11px] text-zinc-400 block mt-0.5">
+                  Resend API • {payload.emailOptions.audienceList}
+                </span>
+              </div>
+            </label>
 
-      {/* AutoBlog Payload Tab */}
-      {activeTab === "blog" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-zinc-900/60 p-3 rounded-xl border border-zinc-800 text-xs">
-            <span className="text-zinc-300">
-              Payload JSON Estruturado para o Endpoint do AutoBlog REST API (POST {payload.blogOptions.targetEndpoint})
-            </span>
+            {/* AutoBlog Destination */}
+            <label className="flex items-start gap-3 bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-zinc-700 transition">
+              <input
+                type="checkbox"
+                checked={payload.blogOptions.enabled}
+                onChange={(e) => setPayload(prev => ({
+                  ...prev,
+                  blogOptions: { ...prev.blogOptions, enabled: e.target.checked }
+                }))}
+                className="mt-1 rounded text-amber-500 focus:ring-0"
+              />
+              <div>
+                <span className="text-xs font-bold text-white block">Ponta Blog (V5 AutoBlog REST)</span>
+                <span className="text-[11px] text-zinc-400 block mt-0.5">
+                  Schema.org + Tags SEO • Endpoint Seguro
+                </span>
+              </div>
+            </label>
+
+            {/* Social Teasers Destination */}
+            <label className="flex items-start gap-3 bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-zinc-700 transition">
+              <input
+                type="checkbox"
+                checked={payload.socialTeaserOptions.enabled}
+                onChange={(e) => setPayload(prev => ({
+                  ...prev,
+                  socialTeaserOptions: { ...prev.socialTeaserOptions, enabled: e.target.checked }
+                }))}
+                className="mt-1 rounded text-amber-500 focus:ring-0"
+              />
+              <div>
+                <span className="text-xs font-bold text-white block">Ponta Social & VIP</span>
+                <span className="text-[11px] text-zinc-400 block mt-0.5">
+                  Teasers formatados para Telegram VIP, WhatsApp e Redes
+                </span>
+              </div>
+            </label>
+          </div>
+
+          {/* Social Teasers Preview Grid */}
+          {payload.socialTeaserOptions.enabled && (
+            <div className="pt-2 border-t border-zinc-800/80 space-y-3">
+              <span className="text-xs font-bold text-zinc-300 block">Teasers Automáticos Gerados:</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
+                  <div className="flex items-center justify-between text-[11px] text-pink-400 font-semibold mb-1">
+                    <span>Instagram / Threads</span>
+                    <button onClick={() => handleCopy(compiledTeasers.instagram_caption, "Legenda Instagram")} className="text-amber-400 hover:underline">Copiar</button>
+                  </div>
+                  <p className="text-zinc-400 line-clamp-2 text-[11px] font-mono">{compiledTeasers.instagram_caption}</p>
+                </div>
+                <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
+                  <div className="flex items-center justify-between text-[11px] text-sky-400 font-semibold mb-1">
+                    <span>Telegram VIP</span>
+                    <button onClick={() => handleCopy(compiledTeasers.telegram_vip, "Telegram VIP")} className="text-amber-400 hover:underline">Copiar</button>
+                  </div>
+                  <p className="text-zinc-400 line-clamp-2 text-[11px] font-mono">{compiledTeasers.telegram_vip}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Trigger Dispatch Button */}
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-zinc-400">
+              Pronto para transmissão sem extensões de navegador ou intervenção manual.
+            </div>
             <button
-              onClick={() => handleCopy(JSON.stringify(compiledBlogJson, null, 2), "blog_json")}
-              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 text-xs transition"
+              onClick={handleTriggerDispatch}
+              disabled={isDispatching}
+              className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:brightness-110 text-black font-extrabold px-6 py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
             >
-              <Copy className="w-3.5 h-3.5 text-amber-400" />
-              <span>{copiedSnippet === "blog_json" ? "Copiado!" : "Copiar JSON"}</span>
+              {isDispatching ? (
+                <span className="animate-pulse">Transmitindo pelos canais...</span>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 fill-black" />
+                  <span>Disparar Agora pelos Canais Ativos</span>
+                </>
+              )}
             </button>
           </div>
 
-          <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 overflow-x-auto">
-            <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
-              {JSON.stringify(compiledBlogJson, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* Social & VIP Teasers Tab */}
-      {activeTab === "social" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Instagram Caption */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Share2 className="w-3.5 h-3.5 text-pink-400" />
-                <span>Legenda para Instagram / Reels</span>
-              </span>
-              <button
-                onClick={() => handleCopy(compiledTeasers.instagram_caption, "ig_teaser")}
-                className="text-[11px] text-amber-400 hover:underline"
-              >
-                {copiedSnippet === "ig_teaser" ? "Copiado!" : "Copiar"}
-              </button>
+          {executionResult && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1.5 text-xs">
+              <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Despacho Concluído com Sucesso!</span>
+              </div>
+              <div className="text-[11px] text-zinc-300 space-y-0.5 font-mono">
+                <div>• E-mail: {executionResult.emailResult.sentCount} disparos ({executionResult.emailResult.messageId})</div>
+                <div>• AutoBlog: HTTP {executionResult.blogResult.statusCode} OK (<a href={executionResult.blogResult.publishedUrl} target="_blank" className="underline text-amber-400">{executionResult.blogResult.publishedUrl}</a>)</div>
+                <div>• Social & VIP: {executionResult.socialResult.deliveredChannels.join(", ")}</div>
+              </div>
             </div>
-            <textarea
-              readOnly
-              rows={7}
-              value={compiledTeasers.instagram_caption}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-300 font-mono resize-none"
-            />
-          </div>
-
-          {/* Telegram VIP */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Share2 className="w-3.5 h-3.5 text-blue-400" />
-                <span>Canal VIP Telegram (Markdown Format)</span>
-              </span>
-              <button
-                onClick={() => handleCopy(compiledTeasers.telegram_vip, "tg_teaser")}
-                className="text-[11px] text-amber-400 hover:underline"
-              >
-                {copiedSnippet === "tg_teaser" ? "Copiado!" : "Copiar"}
-              </button>
-            </div>
-            <textarea
-              readOnly
-              rows={7}
-              value={compiledTeasers.telegram_vip}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-300 font-mono resize-none"
-            />
-          </div>
-
-          {/* X / Twitter */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Share2 className="w-3.5 h-3.5 text-zinc-300" />
-                <span>Post para X / Twitter</span>
-              </span>
-              <button
-                onClick={() => handleCopy(compiledTeasers.x_twitter, "x_teaser")}
-                className="text-[11px] text-amber-400 hover:underline"
-              >
-                {copiedSnippet === "x_teaser" ? "Copiado!" : "Copiar"}
-              </button>
-            </div>
-            <textarea
-              readOnly
-              rows={6}
-              value={compiledTeasers.x_twitter}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-300 font-mono resize-none"
-            />
-          </div>
-
-          {/* WhatsApp Community */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Share2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Comunidade WhatsApp</span>
-              </span>
-              <button
-                onClick={() => handleCopy(compiledTeasers.whatsapp_community, "wa_teaser")}
-                className="text-[11px] text-amber-400 hover:underline"
-              >
-                {copiedSnippet === "wa_teaser" ? "Copiado!" : "Copiar"}
-              </button>
-            </div>
-            <textarea
-              readOnly
-              rows={6}
-              value={compiledTeasers.whatsapp_community}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-300 font-mono resize-none"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Raw HTML Code Tab */}
-      {activeTab === "raw_html" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-zinc-900/60 p-3 rounded-xl border border-zinc-800 text-xs">
-            <span className="text-zinc-300">
-              Código-fonte HTML Inline Completo da Newsletter (Pronto para copiar em provedores externos)
-            </span>
-            <button
-              onClick={() => handleCopy(compiledHtml, "raw_html_code")}
-              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 text-xs transition"
-            >
-              <Copy className="w-3.5 h-3.5 text-amber-400" />
-              <span>{copiedSnippet === "raw_html_code" ? "Copiado!" : "Copiar Código HTML"}</span>
-            </button>
-          </div>
-
-          <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 overflow-x-auto">
-            <pre className="text-xs font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap break-all">
-              {compiledHtml}
-            </pre>
-          </div>
+          )}
         </div>
       )}
     </div>
