@@ -136,6 +136,7 @@ import {
 } from "@/lib/seo/taxonomyEngine";
 import { V5AutoBlogWebSimulator } from "@/components/poster/V5AutoBlogWebSimulator";
 import { GoogleRichResultsInspector } from "@/components/poster/GoogleRichResultsInspector";
+import { TwitterTeaserCard } from "@/components/poster/TwitterTeaserCard";
 
 export const IMAGE_PRESETS = [
   {
@@ -536,7 +537,7 @@ export function BeehiivNewsletterEditor() {
 
   // Split-Pane View States
   const [splitMode, setSplitMode] = useState<"split" | "editor" | "preview">("split");
-  const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
+  const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "social" | "raw">("reader");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [blogSubView, setBlogSubView] = useState<"portal" | "rich_results" | "json">("portal");
   const [blogJsonTab, setBlogJsonTab] = useState<"full" | "seo" | "schema" | "og" | "ai" | "connector">("full");
@@ -1902,6 +1903,15 @@ export function BeehiivNewsletterEditor() {
                   <span>AutoBlog</span>
                 </button>
                 <button
+                  onClick={() => setPreviewFormat("social")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                    previewFormat === "social" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Share2 className="w-3 h-3" />
+                  <span>Social Teasers</span>
+                </button>
+                <button
                   onClick={() => setPreviewFormat("raw")}
                   className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono transition ${
                     previewFormat === "raw" ? "bg-amber-500 text-black font-bold" : "text-zinc-400 hover:text-white"
@@ -2747,6 +2757,24 @@ export function BeehiivNewsletterEditor() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* 3.3 MODO SOCIAL TEASERS (Etapas 051 - 060) */}
+              {previewFormat === "social" && (
+                <div className="h-full flex flex-col space-y-4 overflow-y-auto pr-1">
+                  <div className="flex items-center justify-between bg-zinc-900/80 p-3 rounded-xl border border-zinc-800 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <div>
+                        <span className="font-bold text-white block">Central de Teasers Multicanal</span>
+                        <span className="text-[11px] text-zinc-400">Micro-cópias e ganchos adaptados aos limites oficiais de cada rede</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Gerador e Card de Preview para X/Twitter (Etapa 052) */}
+                  <TwitterTeaserCard payload={payload} />
                 </div>
               )}
 
