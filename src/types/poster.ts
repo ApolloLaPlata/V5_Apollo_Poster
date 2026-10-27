@@ -2,6 +2,7 @@ export type SocialPlatform =
   | 'instagram'
   | 'tiktok'
   | 'youtube'
+  | 'kwai'
   | 'wordpress'
   | 'autoblog'
   | 'newsletter'
@@ -10,7 +11,20 @@ export type SocialPlatform =
   | 'x_twitter'
   | 'threads';
 
-export type PostStatus = 'draft' | 'scheduled' | 'published' | 'failed';
+export type PostStatus = 'draft' | 'scheduled' | 'processing' | 'published' | 'failed';
+
+export type MediaType = 'image' | 'video' | 'carousel' | 'text';
+
+export interface PlatformConfig {
+  id: SocialPlatform;
+  name: string;
+  category: 'social' | 'blog' | 'messaging' | 'email';
+  color: string;
+  badgeBg: string;
+  badgeText: string;
+  maxChars?: number;
+  supportsMedia: boolean;
+}
 
 export interface ScheduledPost {
   id: string;
@@ -20,8 +34,13 @@ export interface ScheduledPost {
   scheduledAt: string;
   status: PostStatus;
   mediaUrl?: string;
-  mediaType?: 'image' | 'video';
+  mediaType?: MediaType;
   tags: string[];
+  retryCount?: number;
+  lastError?: string;
+  publishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface NewsletterIssue {
@@ -29,10 +48,14 @@ export interface NewsletterIssue {
   subject: string;
   previewText: string;
   contentMarkdown: string;
-  targetAudience: string;
+  targetAudience: 'all' | 'free_subscribers' | 'paid_vip_members';
+  paywallBreakIndex?: number;
   sendAt: string;
   status: 'draft' | 'scheduled' | 'sent';
   openRateEstimated?: number;
+  clickRateEstimated?: number;
+  resendMessageId?: string;
+  createdAt?: string;
 }
 
 export interface CommentRule {
@@ -46,6 +69,21 @@ export interface CommentRule {
   ctaUrl: string;
   isActive: boolean;
   totalTriggered: number;
+  lastTriggeredAt?: string;
+}
+
+export interface CommentTriggerEvent {
+  id: string;
+  ruleId: string;
+  platform: 'instagram' | 'tiktok';
+  username: string;
+  commentId: string;
+  commentText: string;
+  matchedKeyword: string;
+  publicReplySent: string;
+  dmSent: string;
+  timestamp: string;
+  status: 'success' | 'throttled' | 'failed';
 }
 
 export interface GroupBroadcastDeal {
@@ -55,11 +93,13 @@ export interface GroupBroadcastDeal {
   originalPrice: number;
   promoPrice: number;
   discountPercentage: number;
+  savingsAmount?: number;
   couponCode?: string;
   affiliateUrl: string;
   targetChannels: Array<'whatsapp' | 'telegram'>;
   scheduledTime: string;
-  status: 'pending' | 'sent';
+  status: 'pending' | 'sent' | 'failed';
+  totalClicks?: number;
 }
 
 export interface MultimodalDispatchPayload {
@@ -97,4 +137,25 @@ export interface MultimodalDispatchPayload {
     blog: { status: 'idle' | 'sent' | 'failed'; publishedUrl?: string; statusCode?: number; error?: string };
     social: { status: 'idle' | 'sent' | 'failed'; deliveredChannels?: string[]; error?: string };
   };
+}
+
+export interface DispatchLogEntry {
+  id: string;
+  timestamp: string;
+  channel: SocialPlatform;
+  action: 'publish' | 'schedule' | 'comment_reply' | 'dm_dispatch' | 'group_broadcast';
+  status: 'success' | 'failed' | 'in_progress';
+  statusCode: number;
+  message: string;
+  payloadSummary: string;
+  latencyMs?: number;
+}
+
+export interface DispatchAnalyticsSummary {
+  totalDispatched: number;
+  successRate: number;
+  dmsSentCount: number;
+  totalReachEstimated: number;
+  activeAutomations: number;
+  pendingQueueCount: number;
 }
