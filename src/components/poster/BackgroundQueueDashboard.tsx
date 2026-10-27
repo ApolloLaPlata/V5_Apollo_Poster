@@ -33,6 +33,7 @@ import {
   diagnoseDispatchError,
   getCategoryBadgeStyle
 } from "@/lib/queue/dispatchDiagnostics";
+import { useCrossTabQueueSync } from "@/lib/queue/crossTabQueueSync";
 import { QueueItem, QueueItemPriority, SocialPlatform, DispatchDiagnostic } from "@/types/poster";
 import {
   Layers,
@@ -55,7 +56,8 @@ import {
   Key,
   FileWarning,
   HelpCircle,
-  X
+  X,
+  Radio
 } from "lucide-react";
 import { toast } from "@/lib/toast/useToast";
 
@@ -86,6 +88,17 @@ export function BackgroundQueueDashboard() {
   } = useOverdueScanner({
     onOverdueDetected: (qItems, pItems) => {
       toast.info(`⚡ Varredura: ${qItems.length + pItems.length} tarefa(s) vencida(s) identificada(s) para despacho!`);
+    }
+  });
+
+  // Hook de sincronização multi-abas em tempo real (Etapa 089)
+  const { isSyncActive, syncCount } = useCrossTabQueueSync({
+    onSyncReceived: (payload) => {
+      if (payload.action === "QUEUE_ITEM_ENQUEUED") {
+        toast.info(`🔄 Outra aba adicionou a tarefa "${payload.item?.title || "Nova"}" à fila.`);
+      } else if (payload.action === "QUEUE_BATCH_SYNCED") {
+        toast.info("🔄 Sincronização multi-abas: Fila atualizada em segundo plano.");
+      }
     }
   });
 
@@ -259,6 +272,12 @@ export function BackgroundQueueDashboard() {
               <Timer className="w-3.5 h-3.5 text-amber-400" />
               <span>Próximo Scan:</span>
               <strong className="text-zinc-200">{countdownString}</strong>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1.5 text-zinc-400 font-mono text-[11px] px-2 py-1 bg-zinc-900/60 rounded-lg" title="Sincronização instantânea com outras abas do Poster via StorageEvent / BroadcastChannel">
+              <Radio className={`w-3.5 h-3.5 ${isSyncActive ? "text-cyan-400 animate-pulse" : "text-zinc-600"}`} />
+              <span>Multi-Abas:</span>
+              <strong className="text-cyan-300 font-semibold">{syncCount > 0 ? `${syncCount} syncs` : "Ativo"}</strong>
             </div>
 
             <div className="flex items-center gap-1.5">

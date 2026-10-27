@@ -35,6 +35,8 @@ import {
   clearCompletedItems as clearCompletedItemsUtil,
   applyRetryToQueueItem
 } from "@/lib/queue/dispatchQueue";
+import { getSafeStorage } from "@/lib/queue/safeStorage";
+import { notifyCrossTabQueueChange } from "@/lib/queue/crossTabQueueSync";
 
 export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "queue" | "logs";
 
@@ -422,18 +424,24 @@ export const usePosterStore = create<PosterStoreState>()(
 
       // 5. Fila de Agendamento em Background
       dispatchQueue: INITIAL_DISPATCH_QUEUE,
-      enqueueQueueItem: (item) =>
+      enqueueQueueItem: (item) => {
         set((state) => ({
           dispatchQueue: enqueueItemQueue(state.dispatchQueue, item)
-        })),
-      enqueueBatchQueue: (items) =>
+        }));
+        notifyCrossTabQueueChange("QUEUE_ITEM_ENQUEUED", { item });
+      },
+      enqueueBatchQueue: (items) => {
         set((state) => ({
           dispatchQueue: enqueueBatchItemsQueue(state.dispatchQueue, items)
-        })),
-      updateQueueItemStatus: (id, status, errorMessage) =>
+        }));
+        notifyCrossTabQueueChange("QUEUE_BATCH_SYNCED", { items });
+      },
+      updateQueueItemStatus: (id, status, errorMessage) => {
         set((state) => ({
           dispatchQueue: updateQueueItemStatusUtil(state.dispatchQueue, id, status, errorMessage)
-        })),
+        }));
+        notifyCrossTabQueueChange("QUEUE_ITEM_UPDATED", { itemId: id, status });
+      },
       retryQueueItem: (id, error, statusCode) =>
         set((state) => {
           const target = state.dispatchQueue.find((i) => i.id === id);
@@ -443,25 +451,33 @@ export const usePosterStore = create<PosterStoreState>()(
             dispatchQueue: state.dispatchQueue.map((i) => (i.id === id ? updatedItem : i))
           };
         }),
-      cancelQueueItem: (id) =>
+      cancelQueueItem: (id) => {
         set((state) => ({
           dispatchQueue: cancelQueueItemUtil(state.dispatchQueue, id)
-        })),
-      removeQueueItem: (id) =>
+        }));
+        notifyCrossTabQueueChange("QUEUE_ITEM_UPDATED", { itemId: id, status: "cancelled" });
+      },
+      removeQueueItem: (id) => {
         set((state) => ({
           dispatchQueue: removeQueueItemUtil(state.dispatchQueue, id)
-        })),
-      clearCompletedQueue: () =>
+        }));
+        notifyCrossTabQueueChange("QUEUE_ITEM_REMOVED", { itemId: id });
+      },
+      clearCompletedQueue: () => {
         set((state) => ({
           dispatchQueue: clearCompletedItemsUtil(state.dispatchQueue)
-        })),
-      syncQueueItems: (updatedItems) =>
+        }));
+        notifyCrossTabQueueChange("QUEUE_CLEARED");
+      },
+      syncQueueItems: (updatedItems) => {
         set((state) => {
           const updatedMap = new Map(updatedItems.map((i) => [i.id, i]));
           return {
             dispatchQueue: state.dispatchQueue.map((item) => updatedMap.get(item.id) || item)
           };
-        }),
+        });
+        notifyCrossTabQueueChange("QUEUE_BATCH_SYNCED", { items: updatedItems });
+      },
 
       logs: INITIAL_LOGS,
       addLog: (logData) =>
@@ -508,7 +524,7 @@ export const usePosterStore = create<PosterStoreState>()(
     }),
     {
       name: "v5-apollo-poster-store",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => getSafeStorage() as any),
       partialize: (state) => ({
         posts: state.posts,
         commentRules: state.commentRules,
