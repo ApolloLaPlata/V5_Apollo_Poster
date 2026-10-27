@@ -25,6 +25,7 @@ import {
 
 export * from "./taskStateTransition";
 export * from "./retryManager";
+export * from "./batchNetworkSimulator";
 
 export const PRIORITY_WEIGHTS: Record<QueueItemPriority, number> = {
   urgent: 4,

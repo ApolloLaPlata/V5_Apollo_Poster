@@ -84,6 +84,7 @@ interface PosterStoreState {
   cancelQueueItem: (id: string) => void;
   removeQueueItem: (id: string) => void;
   clearCompletedQueue: () => void;
+  syncQueueItems: (items: QueueItem[]) => void;
 
   // 6. Logs & Telemetria
   logs: DispatchLogEntry[];
@@ -454,6 +455,13 @@ export const usePosterStore = create<PosterStoreState>()(
         set((state) => ({
           dispatchQueue: clearCompletedItemsUtil(state.dispatchQueue)
         })),
+      syncQueueItems: (updatedItems) =>
+        set((state) => {
+          const updatedMap = new Map(updatedItems.map((i) => [i.id, i]));
+          return {
+            dispatchQueue: state.dispatchQueue.map((item) => updatedMap.get(item.id) || item)
+          };
+        }),
 
       logs: INITIAL_LOGS,
       addLog: (logData) =>
