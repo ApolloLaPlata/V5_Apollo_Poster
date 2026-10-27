@@ -426,3 +426,46 @@ export interface CompiledSocialTeasers {
     generatedAt: string;
   };
 }
+
+// ==========================================
+// FASE 9: FILA DE AGENDAMENTO EM BACKGROUND (081 - 090)
+// ==========================================
+export type QueueItemPriority = 'urgent' | 'high' | 'normal' | 'low';
+
+export type QueueItemStatus = 'scheduled' | 'queued' | 'processing' | 'published' | 'failed' | 'cancelled';
+
+export type QueueItemType = 'post' | 'deal' | 'comment_dm' | 'webhook';
+
+export interface QueueItem {
+  id: string;
+  entityId: string;
+  entityType: QueueItemType;
+  title: string;
+  platforms: SocialPlatform[];
+  scheduledFor: string; // ISO 8601 string
+  priority: QueueItemPriority;
+  status: QueueItemStatus;
+  attempts: number;
+  maxAttempts: number;
+  lastAttemptAt?: string;
+  nextAttemptAt?: string;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface QueueStats {
+  totalItems: number;
+  scheduledCount: number;
+  queuedCount: number;
+  processingCount: number;
+  publishedCount: number;
+  failedCount: number;
+  cancelledCount: number;
+  activeCount: number;
+  oldestScheduledAt?: string;
+  nextScheduledAt?: string;
+  averageWaitTimeSeconds: number;
+}

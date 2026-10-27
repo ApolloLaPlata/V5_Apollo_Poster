@@ -10,7 +10,9 @@ import {
   GroupBroadcastDeal, 
   DispatchLogEntry, 
   DispatchAnalyticsSummary,
-  SocialPlatform
+  SocialPlatform,
+  QueueItem,
+  QueueItemStatus
 } from "@/types/poster";
 import { 
   SEED_POSTS, 
@@ -23,6 +25,15 @@ import {
   INITIAL_BROADCAST_HISTORY,
   buildBroadcastHistoryEntry
 } from "@/lib/finders/broadcastHistoryManager";
+import {
+  INITIAL_DISPATCH_QUEUE,
+  enqueue as enqueueItemQueue,
+  enqueueBatch as enqueueBatchItemsQueue,
+  updateItemStatus as updateQueueItemStatusUtil,
+  cancelQueueItem as cancelQueueItemUtil,
+  removeQueueItem as removeQueueItemUtil,
+  clearCompletedItems as clearCompletedItemsUtil
+} from "@/lib/queue/dispatchQueue";
 
 export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "logs";
 
@@ -63,7 +74,16 @@ interface PosterStoreState {
   addBroadcastHistory: (entry: BroadcastHistoryEntry) => void;
   clearBroadcastHistory: () => void;
 
-  // 5. Logs & Telemetria
+  // 5. Fila de Agendamento em Background (FIFO)
+  dispatchQueue: QueueItem[];
+  enqueueQueueItem: (item: QueueItem) => void;
+  enqueueBatchQueue: (items: QueueItem[]) => void;
+  updateQueueItemStatus: (id: string, status: QueueItemStatus, errorMessage?: string) => void;
+  cancelQueueItem: (id: string) => void;
+  removeQueueItem: (id: string) => void;
+  clearCompletedQueue: () => void;
+
+  // 6. Logs & Telemetria
   logs: DispatchLogEntry[];
   addLog: (log: Omit<DispatchLogEntry, "id" | "timestamp">) => void;
   clearLogs: () => void;
@@ -397,6 +417,33 @@ export const usePosterStore = create<PosterStoreState>()(
         })),
       clearBroadcastHistory: () => set({ broadcastHistory: [] }),
 
+      // 5. Fila de Agendamento em Background
+      dispatchQueue: INITIAL_DISPATCH_QUEUE,
+      enqueueQueueItem: (item) =>
+        set((state) => ({
+          dispatchQueue: enqueueItemQueue(state.dispatchQueue, item)
+        })),
+      enqueueBatchQueue: (items) =>
+        set((state) => ({
+          dispatchQueue: enqueueBatchItemsQueue(state.dispatchQueue, items)
+        })),
+      updateQueueItemStatus: (id, status, errorMessage) =>
+        set((state) => ({
+          dispatchQueue: updateQueueItemStatusUtil(state.dispatchQueue, id, status, errorMessage)
+        })),
+      cancelQueueItem: (id) =>
+        set((state) => ({
+          dispatchQueue: cancelQueueItemUtil(state.dispatchQueue, id)
+        })),
+      removeQueueItem: (id) =>
+        set((state) => ({
+          dispatchQueue: removeQueueItemUtil(state.dispatchQueue, id)
+        })),
+      clearCompletedQueue: () =>
+        set((state) => ({
+          dispatchQueue: clearCompletedItemsUtil(state.dispatchQueue)
+        })),
+
       logs: INITIAL_LOGS,
       addLog: (logData) =>
         set((state) => ({
@@ -447,6 +494,8 @@ export const usePosterStore = create<PosterStoreState>()(
         posts: state.posts,
         commentRules: state.commentRules,
         deals: state.deals,
+        dispatchQueue: state.dispatchQueue,
+        broadcastHistory: state.broadcastHistory,
         logs: state.logs,
         newsletterDraft: state.newsletterDraft
       })
