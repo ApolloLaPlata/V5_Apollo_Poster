@@ -16,6 +16,7 @@ import { calculateSavings, detectStoreFromUrl, validateDealData } from "../src/l
 import { calculateFullSavings, getDealUrgency } from "../src/lib/finders/discountCalculator";
 import { paginateLogs } from "../src/lib/analytics/auditLogManager";
 import { serializeQueue, deserializeQueue } from "../src/lib/queue/crossTabQueueSync";
+import { matchCommentTrigger, compileTriggerRegex } from "../src/lib/comments/triggerMatcher";
 
 let passed = 0;
 let total = 0;
@@ -121,6 +122,23 @@ const validQueueSerialized = serializeQueue([
 assert(typeof validQueueSerialized === "string" && validQueueSerialized.includes("task-test-1"), "Serializa item de fila corretamente");
 const restoredQueue = deserializeQueue(validQueueSerialized);
 assert(restoredQueue.length === 1 && restoredQueue[0].id === "task-test-1", "Restaura item da fila com integridade");
+
+// 7. Hardening de Gatilhos Cognitivos Comment-to-DM (Anti-Falsos Positivos)
+console.log("\n--- 7. Hardening de Gatilhos Cognitivos (ChatbotX) ---");
+const emptyKwMatch = matchCommentTrigger("Qualquer comentário aqui", ["", "   ", "!!!"]);
+assert(emptyKwMatch.isMatch === false, "Keywords vazias ou só de símbolos não ativam gatilho falso");
+
+const emptyRegexCompile = compileTriggerRegex("!!!");
+assert(!emptyRegexCompile.test("comentário qualquer"), "Regex compilada para keyword inválida nunca casa");
+
+const borderMatchBlink = matchCommentTrigger("Eu vi o blink do led", ["link"]);
+assert(borderMatchBlink.isMatch === false, "Proteção de fronteira \\b: 'blink' não ativa 'link'");
+
+const validMatchLink = matchCommentTrigger("Manda o link pfv!", ["link"]);
+assert(validMatchLink.isMatch === true, "Comentário com 'link' ativa gatilho com sucesso");
+
+const invalidRegexFallback = matchCommentTrigger("teste regex", ["[unclosed-bracket"], { mode: "regex" });
+assert(invalidRegexFallback.isMatch === false, "Regex com sintaxe inválida não causa crash e retorna isMatch false");
 
 console.log("\n=======================================================");
 console.log(`📊 RESULTADO FINAL: ${passed}/${total} TESTES APROVADOS!`);

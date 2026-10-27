@@ -139,12 +139,18 @@ export function compileTriggerRegex(keyword: string, mode: TriggerMatchMode = "c
   // Escapa caracteres especiais de regex
   const escaped = normalizedKw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+  if (!escaped || !escaped.trim()) {
+    // Regex segura que nunca dá match se a keyword for vazia ou inválida
+    return /(?!)/;
+  }
+
   if (mode === "exact") {
     return new RegExp(`^${escaped}$`, "i");
   }
 
   if (mode === "regex") {
     try {
+      if (!keyword || !keyword.trim()) return /(?!)/;
       return new RegExp(keyword, "i");
     } catch {
       // Fallback para contains se regex for inválida
@@ -184,10 +190,22 @@ export function matchCommentTrigger(
     ? expandKeywordsWithSynonyms(keywords) 
     : keywords;
 
+  // Filtra keywords vazias para evitar falsos positivos
+  const validKeywords = effectiveKeywords.filter(k => k && k.trim().length > 0);
+  if (validKeywords.length === 0) {
+    return {
+      isMatch: false,
+      confidence: 0,
+      matchModeUsed: mode,
+      normalizedComment: normalized
+    };
+  }
+
   // 2. MODO EXATO: O comentário inteiro precisa ser a palavra-chave
   if (mode === "exact") {
-    for (const kw of effectiveKeywords) {
+    for (const kw of validKeywords) {
       const normKw = normalizeCommentText(kw);
+      if (!normKw) continue;
       if (normalized === normKw) {
         return {
           isMatch: true,
@@ -204,7 +222,7 @@ export function matchCommentTrigger(
 
   // 3. MODO REGEX: Avalia regex livre
   if (mode === "regex") {
-    for (const kw of effectiveKeywords) {
+    for (const kw of validKeywords) {
       try {
         const rx = new RegExp(kw, "i");
         const match = rx.exec(rawComment);
@@ -227,7 +245,7 @@ export function matchCommentTrigger(
 
   // 4. MODO CONTAINS (COM FRONTEIRAS DE PALAVRA): Evita "blink" dar match em "link"
   if (mode === "contains") {
-    for (const kw of effectiveKeywords) {
+    for (const kw of validKeywords) {
       const rx = compileTriggerRegex(kw, "contains");
       const match = rx.exec(normalized);
       if (match) {
@@ -245,10 +263,11 @@ export function matchCommentTrigger(
 
   // 5. MODO DIFUSO (FUZZY): Detecta typos e pequenas variações ("qro", "linck", "linkk")
   if (mode === "fuzzy" || options.mode === "fuzzy") {
-    const commentTokens = normalized.split(" ");
+    const commentTokens = normalized.split(" ").filter(Boolean);
     
-    for (const kw of effectiveKeywords) {
+    for (const kw of validKeywords) {
       const normKw = normalizeCommentText(kw);
+      if (!normKw) continue;
       
       // Se a palavra-chave for multi-palavra (ex: "eu quero")
       if (normKw.includes(" ")) {
