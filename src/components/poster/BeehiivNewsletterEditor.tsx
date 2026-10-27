@@ -39,7 +39,8 @@ import {
   ListOrdered,
   Link2,
   Lock,
-  Minus
+  Minus,
+  BarChart2
 } from "lucide-react";
 import { MultimodalDispatchPayload } from "@/types/poster";
 import { 
@@ -53,6 +54,7 @@ import { usePosterStore } from "@/store/usePosterStore";
 import { toast } from "@/lib/toast/useToast";
 import { dispatchEventBus } from "@/lib/events/dispatchEvents";
 import { countWords, calculateReadingTimeMinutes } from "@/lib/utils/formatters";
+import { extractContentMetadata } from "@/lib/utils/metadataExtractor";
 
 const DEFAULT_PAYLOAD: MultimodalDispatchPayload = {
   id: "dispatch-001",
@@ -263,6 +265,7 @@ export function BeehiivNewsletterEditor() {
   const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
@@ -271,10 +274,22 @@ export function BeehiivNewsletterEditor() {
   const compiledBlogJson = compileBlogPayload(payload);
   const compiledTeasers = compileSocialTeasers(payload);
 
-  const words = countWords(payload.contentMarkdown);
-  const chars = payload.contentMarkdown.length;
-  const readingTime = calculateReadingTimeMinutes(payload.contentMarkdown);
+  const metadata = extractContentMetadata(payload.contentMarkdown);
+  const words = metadata.wordCount;
+  const chars = metadata.charCount;
+  const readingTime = metadata.readingTimeMinutes;
   const linesCount = payload.contentMarkdown.split("\n").length;
+
+  const handleInjectKeywordsAsTags = () => {
+    const newTags = Array.from(
+      new Set([...payload.blogOptions.tags, ...metadata.topKeywords.map(k => k.word)])
+    );
+    setPayload(prev => ({
+      ...prev,
+      blogOptions: { ...prev.blogOptions, tags: newTags }
+    }));
+    toast.success("Tags Atualizadas!", "Top palavras-chave injetadas nas tags do AutoBlog.");
+  };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -426,20 +441,32 @@ export function BeehiivNewsletterEditor() {
 
         {/* Action Controls: Split Modes + Settings + Telemetry */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
-          {/* Telemetry pill */}
-          <div className="hidden sm:flex items-center gap-3 bg-zinc-950/80 px-3 py-1.5 rounded-xl border border-zinc-800 text-[11px] font-mono text-zinc-400">
+          {/* Interactive Telemetry pill */}
+          <button
+            type="button"
+            onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+            className={`hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-xl border text-[11px] font-mono transition cursor-pointer ${
+              isAnalyticsOpen 
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm" 
+                : "bg-zinc-950/80 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200"
+            }`}
+            title="Clique para ver Diagnóstico Semântico e Densidade de Palavras"
+          >
             <span className="flex items-center gap-1">
               <FileText className="w-3 h-3 text-amber-400" />
-              <strong className="text-zinc-200">{words}</strong> pal.
+              <strong className="text-zinc-200">{metadata.wordCount}</strong> pal.
             </span>
-            <span className="text-zinc-600">•</span>
-            <span><strong className="text-zinc-200">{chars}</strong> carac.</span>
             <span className="text-zinc-600">•</span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-cyan-400" />
-              <strong className="text-zinc-200">{readingTime}</strong> min leitura
+              <strong className="text-zinc-200">{metadata.readingTimeMinutes}</strong> min
             </span>
-          </div>
+            <span className="text-zinc-600">•</span>
+            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+              <BarChart2 className="w-3 h-3" />
+              <span>{metadata.readabilityScore}/100</span>
+            </span>
+          </button>
 
           {/* Split Mode Switcher */}
           <div className="flex items-center bg-zinc-800/90 p-1 rounded-xl border border-zinc-700/60 text-xs">
@@ -489,6 +516,88 @@ export function BeehiivNewsletterEditor() {
           </button>
         </div>
       </div>
+
+      {/* SEMANTIC DENSITY & METADATA PANEL */}
+      {isAnalyticsOpen && (
+        <div className="bg-zinc-900/95 border border-amber-500/30 rounded-2xl p-4 md:p-5 shadow-2xl space-y-4 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+                <BarChart2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Extrator Automático de Metadados & Densidade Semântica</h3>
+                <p className="text-[11px] text-zinc-400 font-mono">Diagnóstico em tempo real para SEO no AutoBlog e retenção na Newsletter</p>
+              </div>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setIsAnalyticsOpen(false)}
+              className="text-xs text-zinc-400 hover:text-white"
+            >
+              Fechar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-zinc-950/80 p-3 rounded-xl border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono block">Tempo Estimado</span>
+              <span className="text-base font-bold text-white font-mono mt-0.5 block">{metadata.readingTimeMinutes} min</span>
+              <span className="text-[10px] text-zinc-400 font-mono">{metadata.readingTimeSeconds} segundos</span>
+            </div>
+            <div className="bg-zinc-950/80 p-3 rounded-xl border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono block">Volume Textual</span>
+              <span className="text-base font-bold text-amber-400 font-mono mt-0.5 block">{metadata.wordCount} palavras</span>
+              <span className="text-[10px] text-zinc-400 font-mono">{metadata.charCountNoSpaces} carac. sem espaço</span>
+            </div>
+            <div className="bg-zinc-950/80 p-3 rounded-xl border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono block">Índice Legibilidade</span>
+              <span className="text-base font-bold text-emerald-400 font-mono mt-0.5 block">{metadata.readabilityScore}/100</span>
+              <span className="text-[10px] text-emerald-400/80 font-mono">Nível: {metadata.readabilityLevel}</span>
+            </div>
+            <div className="bg-zinc-950/80 p-3 rounded-xl border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono block">Estrutura & Seções</span>
+              <span className="text-base font-bold text-cyan-400 font-mono mt-0.5 block">{metadata.headingCount.total} títulos</span>
+              <span className="text-[10px] text-zinc-400 font-mono">{metadata.paragraphCount} parágrafos • {metadata.hasPaywallBreak ? "🔒 Com Paywall" : "Sem Paywall"}</span>
+            </div>
+          </div>
+
+          {/* Top Keywords / Semantic Density */}
+          <div className="bg-zinc-950/60 p-3.5 rounded-xl border border-zinc-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-amber-400" />
+                <span>Top Palavras-Chave e Densidade Semântica (% de ocorrência no texto)</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleInjectKeywordsAsTags}
+                className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold underline flex items-center gap-1"
+              >
+                <span>Injetar como Tags do Blog</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {metadata.topKeywords.length === 0 ? (
+                <span className="text-xs text-zinc-500 italic">Escreva mais texto para calcular a densidade semântica...</span>
+              ) : (
+                metadata.topKeywords.map((kw) => (
+                  <div 
+                    key={kw.word}
+                    className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-700/80 px-2.5 py-1 rounded-lg text-xs"
+                  >
+                    <span className="text-zinc-200 font-medium capitalize">{kw.word}</span>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
+                      {kw.density}% ({kw.count}x)
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Article Meta Bar (Title, Slug, Preheader) */}
       <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 space-y-3">
