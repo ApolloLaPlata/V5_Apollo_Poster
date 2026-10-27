@@ -49,6 +49,8 @@ interface PosterStoreState {
   // 4. Despachador de Grupos VIP (Finders Hub)
   deals: GroupBroadcastDeal[];
   addDeal: (deal: Omit<GroupBroadcastDeal, "id">) => void;
+  updateDeal: (id: string, updates: Partial<GroupBroadcastDeal>) => void;
+  importFindersDeals: (newDeals: GroupBroadcastDeal[]) => void;
   dispatchDeal: (id: string) => void;
   deleteDeal: (id: string) => void;
 
@@ -333,6 +335,16 @@ export const usePosterStore = create<PosterStoreState>()(
             }
           ]
         })),
+      updateDeal: (id, updates) =>
+        set((state) => ({
+          deals: state.deals.map((d) => (d.id === id ? { ...d, ...updates } : d))
+        })),
+      importFindersDeals: (newDeals) =>
+        set((state) => {
+          const existingIds = new Set(state.deals.map((d) => d.id));
+          const uniqueNew = newDeals.filter((d) => !existingIds.has(d.id));
+          return { deals: [...state.deals, ...uniqueNew] };
+        }),
       dispatchDeal: (id) =>
         set((state) => ({
           deals: state.deals.map((d) =>
