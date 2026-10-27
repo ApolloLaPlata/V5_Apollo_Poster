@@ -40,6 +40,14 @@ import { usePosterStore } from "@/store/usePosterStore";
 import { CommentRule, CommentTriggerEvent } from "@/types/poster";
 import { toast } from "@/lib/toast/useToast";
 import { matchCommentTrigger, TriggerMatchMode, TriggerMatchResult } from "@/lib/comments/triggerMatcher";
+import { 
+  validateAntiSpamDiversity, 
+  getNextPublicReply, 
+  formatPublicReply, 
+  NICHE_VARIANT_PACKS, 
+  ContentNiche,
+  AntiSpamHealthCheck 
+} from "@/lib/comments/publicReplyRotator";
 
 export function CommentToDmManager() {
   const { 
@@ -100,6 +108,7 @@ export function CommentToDmManager() {
     matchModeUsed?: string;
     normalizedComment?: string;
     publicReply?: string;
+    publicReplyIndex?: number;
     dmMessage?: string;
   } | null>(null);
 
@@ -117,7 +126,24 @@ export function CommentToDmManager() {
     return commentRules.reduce((acc, r) => acc + (r.totalTriggered || 0), 0);
   }, [commentRules]);
 
-  // Executa teste no simulador com o motor cognitivo ChatbotX
+  // Auditoria de Saúde Anti-Spam das respostas públicas da regra selecionada
+  const antiSpamHealth = useMemo<AntiSpamHealthCheck | null>(() => {
+    if (!selectedRule) return null;
+    return validateAntiSpamDiversity(selectedRule.publicReplyVariants);
+  }, [selectedRule]);
+
+  // Aplica pacote de 5 variações pré-construídas por nicho
+  const handleApplyNichePack = (niche: ContentNiche) => {
+    if (!selectedRule) return;
+    const pack = NICHE_VARIANT_PACKS[niche];
+    if (!pack) return;
+    updateCommentRule(selectedRule.id, {
+      publicReplyVariants: [...pack.variants]
+    });
+    toast.success(`Pacote anti-spam "${pack.title}" aplicado com 5 variações!`);
+  };
+
+  // Executa teste no simulador com o motor cognitivo ChatbotX & Rotação Anti-Spam
   const handleRunSimulator = () => {
     if (!selectedRule) return;
 
@@ -131,14 +157,20 @@ export function CommentToDmManager() {
     if (matchResult.isMatch) {
       const matchedKw = matchResult.matchedKeyword || selectedRule.keywords[0] || "LINK";
 
-      // Sorteia uma das respostas públicas rotativas
-      const replies = selectedRule.publicReplyVariants.length > 0 
-        ? selectedRule.publicReplyVariants 
-        : ["Te mandei no Direct!"];
-      const randomReply = replies[Math.floor(Math.random() * replies.length)];
+      // Seleciona a próxima resposta pública rotativa com estratégia anti-repetição
+      const { reply: chosenTemplate, selectedIndex } = getNextPublicReply(
+        selectedRule.publicReplyVariants,
+        selectedRule.id,
+        "random_no_repeat"
+      );
+
+      const cleanUsername = simUsername.replace("@", "");
+      const formattedPublicReply = formatPublicReply(chosenTemplate, {
+        username: simUsername,
+        name: cleanUsername
+      });
 
       // Preenche os placeholders da DM
-      const cleanUsername = simUsername.replace("@", "");
       const formattedDm = selectedRule.dmMessageTemplate
         .replace(/{{nome}}/gi, cleanUsername)
         .replace(/{{ctaUrl}}/gi, selectedRule.ctaUrl)
@@ -151,7 +183,8 @@ export function CommentToDmManager() {
         confidence: matchResult.confidence,
         matchModeUsed: matchResult.matchModeUsed,
         normalizedComment: matchResult.normalizedComment,
-        publicReply: randomReply,
+        publicReply: formattedPublicReply,
+        publicReplyIndex: selectedIndex,
         dmMessage: formattedDm
       });
 
@@ -163,7 +196,7 @@ export function CommentToDmManager() {
         commentId: `mock_cmt_${Date.now()}`,
         commentText: simCommentText,
         matchedKeyword: matchedKw,
-        publicReplySent: randomReply,
+        publicReplySent: formattedPublicReply,
         dmSent: formattedDm,
         status: "success"
       });
@@ -273,7 +306,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 062 (Mapeador ChatbotX)
+              Etapa 063 (Respostas Rotativas Anti-Spam)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -506,14 +539,87 @@ export function CommentToDmManager() {
                 </div>
 
                 {/* Respostas Públicas Rotativas Anti-Spam */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-mono text-zinc-400">
-                      Respostas Públicas Rotativas ({selectedRule.publicReplyVariants.length}):
-                    </label>
-                    <span className="text-[10px] text-amber-400 font-mono">Evasão Anti-Spam</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] font-mono text-zinc-400">
+                        Respostas Públicas Rotativas ({selectedRule.publicReplyVariants.length}):
+                      </label>
+                      {antiSpamHealth && (
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                          antiSpamHealth.status === "excellent"
+                            ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/30"
+                            : antiSpamHealth.status === "healthy"
+                            ? "bg-blue-950/40 text-blue-300 border-blue-500/30"
+                            : antiSpamHealth.status === "warning"
+                            ? "bg-amber-950/40 text-amber-300 border-amber-500/30"
+                            : "bg-rose-950/40 text-rose-300 border-rose-500/30"
+                        }`}>
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Saúde Anti-Spam: {antiSpamHealth.score}%</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-mono">Meta/TikTok Evasion</span>
                   </div>
 
+                  {/* Sugestor Rápido de Pacotes de Variações por Nicho */}
+                  <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                      <span className="flex items-center gap-1 text-zinc-300">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        Sugerir Pacote com 5 Variações Anti-Spam (1 Clique):
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleApplyNichePack("content_blog")}
+                        className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] text-zinc-300 transition text-left truncate"
+                        title="Blog e Artigos Técnicos"
+                      >
+                        📝 Auto Blog
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyNichePack("ecommerce_finders")}
+                        className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] text-zinc-300 transition text-left truncate"
+                        title="Achadinhos e Afiliados"
+                      >
+                        🛒 Achadinhos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyNichePack("vip_community")}
+                        className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] text-zinc-300 transition text-left truncate"
+                        title="Grupos VIP WhatsApp/Telegram"
+                      >
+                        🎟️ Grupos VIP
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyNichePack("course_lead")}
+                        className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] text-zinc-300 transition text-left truncate"
+                        title="Playbooks, Guias e Cursos"
+                      >
+                        📚 Cursos & Leads
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Alertas de Diversidade Anti-Spam se houver */}
+                  {antiSpamHealth && antiSpamHealth.warnings.length > 0 && (
+                    <div className="p-2 rounded-lg bg-amber-950/25 border border-amber-500/20 text-[10px] text-amber-300 space-y-0.5">
+                      {antiSpamHealth.warnings.map((w, idx) => (
+                        <div key={idx} className="flex items-start gap-1.5">
+                          <AlertCircle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                          <span>{w}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Lista de Variações Cadastradas */}
                   <div className="space-y-1.5">
                     {selectedRule.publicReplyVariants.map((reply, idx) => (
                       <div key={idx} className="flex items-center gap-2 bg-zinc-950 p-2 rounded-lg border border-zinc-800 text-xs text-zinc-300">
@@ -535,7 +641,7 @@ export function CommentToDmManager() {
                         type="text"
                         value={newPublicReplyInput}
                         onChange={(e) => setNewPublicReplyInput(e.target.value)}
-                        placeholder="Nova variação de resposta no post..."
+                        placeholder="Nova variação de resposta no post (ex: Te mandei no direct! 👀)..."
                         className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
                       />
                       <button
@@ -648,9 +754,14 @@ export function CommentToDmManager() {
                     </div>
 
                     <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-                      <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block">
-                        1. Resposta Pública no Post:
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block">
+                          1. Resposta Pública no Post:
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-amber-300 border border-zinc-700">
+                          Variação #{((simResult.publicReplyIndex ?? 0) >= 0 ? (simResult.publicReplyIndex! + 1) : 1)} (Sem Repetição)
+                        </span>
+                      </div>
                       <p className="text-zinc-200 text-[11px]">{simResult.publicReply}</p>
                     </div>
 
