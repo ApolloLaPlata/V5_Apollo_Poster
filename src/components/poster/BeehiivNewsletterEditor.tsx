@@ -266,6 +266,7 @@ export function BeehiivNewsletterEditor() {
   const [splitMode, setSplitMode] = useState<"split" | "editor" | "preview">("split");
   const [previewFormat, setPreviewFormat] = useState<"reader" | "email" | "blog" | "raw">("reader");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [blogSubView, setBlogSubView] = useState<"portal" | "json">("portal");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
@@ -490,7 +491,7 @@ export function BeehiivNewsletterEditor() {
             </span>
           </button>
 
-          {/* Split Mode Switcher */}
+          {/* Main View Mode Switcher */}
           <div className="flex items-center bg-zinc-800/90 p-1 rounded-xl border border-zinc-700/60 text-xs">
             <button
               onClick={() => setSplitMode("split")}
@@ -507,20 +508,36 @@ export function BeehiivNewsletterEditor() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
                 splitMode === "editor" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
               }`}
-              title="Apenas Editor de Markdown"
+              title="Apenas Editor de Markdown (Tela Cheia)"
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Editor</span>
+              <span className="hidden md:inline">Editor Puro</span>
             </button>
             <button
-              onClick={() => setSplitMode("preview")}
+              onClick={() => {
+                setSplitMode("preview");
+                setPreviewFormat("email");
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
-                splitMode === "preview" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
+                splitMode === "preview" && previewFormat === "email" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
               }`}
-              title="Apenas Pré-visualização"
+              title="Preview Exclusivo de E-mail HTML"
             >
-              <Eye className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Preview</span>
+              <Mail className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Preview E-mail</span>
+            </button>
+            <button
+              onClick={() => {
+                setSplitMode("preview");
+                setPreviewFormat("blog");
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition font-medium ${
+                splitMode === "preview" && previewFormat === "blog" ? "bg-amber-500 text-black font-bold shadow" : "text-zinc-400 hover:text-white"
+              }`}
+              title="Preview Exclusivo do AutoBlog Web"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Preview AutoBlog</span>
             </button>
           </div>
 
@@ -974,22 +991,49 @@ export function BeehiivNewsletterEditor() {
 
               {/* 2. MODO E-MAIL HTML */}
               {previewFormat === "email" && (
-                <div className="flex flex-col h-full space-y-2">
-                  <div className="flex items-center justify-between text-xs text-zinc-400 pb-1">
-                    <span>HTML Inline Responsivo com Safe-Font Stacks para Gmail e Outlook</span>
-                    <button
-                      onClick={() => handleCopy(compiledHtml, "HTML E-mail")}
-                      className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>Copiar HTML</span>
-                    </button>
+                <div className="flex flex-col h-full space-y-3">
+                  {/* Email Envelope Header */}
+                  <div className="bg-zinc-900/90 p-3.5 rounded-xl border border-zinc-800 text-xs space-y-2 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-2">
+                      <div className="space-y-0.5">
+                        <span className="text-zinc-400 block font-mono text-[11px]">
+                          <strong>De:</strong> {payload.emailOptions.fromName || "Holding V5 Apollo"} &lt;newsletter@v5apollo.com&gt;
+                        </span>
+                        <span className="text-zinc-400 block font-mono text-[11px]">
+                          <strong>Para:</strong> {payload.emailOptions.audienceList}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-mono">
+                          Resend API • Inline CSS
+                        </span>
+                        <button
+                          onClick={() => handleCopy(compiledHtml, "HTML E-mail")}
+                          className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copiar HTML</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-[12px] text-zinc-200">
+                      <span className="text-zinc-500 font-semibold font-mono text-[11px]">Assunto: </span>
+                      <strong className="text-white">{payload.emailOptions.subject || payload.title}</strong>
+                    </div>
+                    {payload.emailOptions.previewText && (
+                      <div className="text-[11px] text-zinc-400 truncate font-mono">
+                        <span className="text-zinc-500 font-semibold">Preheader: </span>
+                        {payload.emailOptions.previewText}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 flex justify-center bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+
+                  {/* Responsive Email Frame */}
+                  <div className="flex-1 flex justify-center bg-zinc-950 p-2 rounded-xl border border-zinc-800 overflow-hidden">
                     <iframe
                       srcDoc={compiledHtml}
                       title="Email Preview"
-                      className={`h-full min-h-[500px] rounded-lg border border-zinc-700/60 bg-white shadow-xl transition-all ${
+                      className={`h-full min-h-[520px] rounded-lg border border-zinc-700/60 bg-white shadow-xl transition-all ${
                         previewDevice === "mobile" ? "w-[375px]" : "w-full max-w-[620px]"
                       }`}
                     />
@@ -997,24 +1041,139 @@ export function BeehiivNewsletterEditor() {
                 </div>
               )}
 
-              {/* 3. MODO AUTOBlog JSON */}
+              {/* 3. MODO AUTOBlog WEB PORTAL & JSON */}
               {previewFormat === "blog" && (
-                <div className="h-full flex flex-col space-y-2">
-                  <div className="flex items-center justify-between text-xs text-zinc-400 pb-1">
-                    <span>Payload Estruturado para o Endpoint do AutoBlog REST API</span>
+                <div className="h-full flex flex-col space-y-3">
+                  {/* AutoBlog Sub-Mode Switcher */}
+                  <div className="flex items-center justify-between bg-zinc-900/80 p-2 rounded-xl border border-zinc-800 text-xs">
+                    <div className="flex items-center gap-1 bg-zinc-950 p-0.5 rounded-lg border border-zinc-800">
+                      <button
+                        onClick={() => setBlogSubView("portal")}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-medium transition ${
+                          blogSubView === "portal" ? "bg-amber-500 text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        <Globe className="w-3 h-3" />
+                        <span>Portal Web (AutoBlog Frontend)</span>
+                      </button>
+                      <button
+                        onClick={() => setBlogSubView("json")}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-medium transition ${
+                          blogSubView === "json" ? "bg-amber-500 text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        <Code className="w-3 h-3" />
+                        <span>Payload REST API (Schema.org)</span>
+                      </button>
+                    </div>
+
                     <button
                       onClick={() => handleCopy(JSON.stringify(compiledBlogJson, null, 2), "JSON AutoBlog")}
-                      className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                      className="text-amber-400 hover:underline flex items-center gap-1 text-[11px] font-medium"
                     >
                       <Copy className="w-3 h-3" />
                       <span>Copiar JSON</span>
                     </button>
                   </div>
-                  <div className="flex-1 bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
-                    <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
-                      {JSON.stringify(compiledBlogJson, null, 2)}
-                    </pre>
-                  </div>
+
+                  {/* 3.1 V5 AUTOBlog FRONTEND SIMULATION */}
+                  {blogSubView === "portal" && (
+                    <div className={`mx-auto transition-all ${previewDevice === "mobile" ? "max-w-[375px]" : "w-full"} space-y-4`}>
+                      {/* Browser Address Bar Simulation */}
+                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 flex items-center gap-2 text-xs font-mono text-zinc-400 shadow-sm">
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="text-zinc-500">https://</span>
+                        <span className="text-zinc-200">v5autoblog.com/artigo/{payload.slug}</span>
+                      </div>
+
+                      {/* Google SERP Snippet Preview Card */}
+                      <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 space-y-1.5 shadow-sm">
+                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-sans">
+                          <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[9px]">G</span>
+                          <span>v5autoblog.com › artigo › {payload.slug}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-blue-400 hover:underline cursor-pointer leading-tight">
+                          {payload.title} | V5 AutoBlog
+                        </h4>
+                        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                          {payload.summary || payload.emailOptions.previewText}
+                        </p>
+                      </div>
+
+                      {/* Web Article Page Simulation */}
+                      <div className="bg-zinc-900/40 p-6 md:p-8 rounded-xl border border-zinc-800/80 space-y-6">
+                        {/* Breadcrumbs */}
+                        <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1.5">
+                          <span>Início</span>
+                          <span>&gt;</span>
+                          <span>Blog</span>
+                          <span>&gt;</span>
+                          <span className="text-amber-400 font-semibold">{payload.blogOptions.category}</span>
+                        </div>
+
+                        {/* Title & Metadata */}
+                        <div>
+                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider mb-2">
+                            {payload.blogOptions.category}
+                          </span>
+                          <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight mb-3">
+                            {payload.title}
+                          </h1>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-mono border-b border-zinc-800/80 pb-4">
+                            <span>Por <strong>{payload.blogOptions.author}</strong></span>
+                            <span>•</span>
+                            <span>27 de Outubro de 2026</span>
+                            <span>•</span>
+                            <span>{readingTime} min de leitura</span>
+                          </div>
+                        </div>
+
+                        {/* Article Body */}
+                        <div className="prose prose-invert max-w-none text-zinc-300">
+                          {renderMarkdownToHtml(payload.contentMarkdown)}
+                        </div>
+
+                        {/* Tags Cloud */}
+                        {payload.blogOptions.tags.length > 0 && (
+                          <div className="pt-4 border-t border-zinc-800/80 space-y-2">
+                            <span className="text-[11px] font-mono text-zinc-500 uppercase block font-semibold">Tópicos e Tags:</span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {payload.blogOptions.tags.map((tag) => (
+                                <span 
+                                  key={tag}
+                                  className="px-2.5 py-1 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 text-xs font-mono"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Author Bio Box */}
+                        <div className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold text-sm shrink-0">
+                            AP
+                          </div>
+                          <div className="text-xs">
+                            <span className="font-bold text-white block">{payload.blogOptions.author}</span>
+                            <p className="text-zinc-400 text-[11px] mt-0.5">
+                              Canal editorial oficial da Capitania #13 • V5 Apollo Poster Ecosystem. Artigos otimizados para busca e retenção.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3.2 REST API JSON SCHEMA */}
+                  {blogSubView === "json" && (
+                    <div className="flex-1 bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+                      <pre className="text-xs font-mono text-emerald-400 leading-relaxed">
+                        {JSON.stringify(compiledBlogJson, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
 

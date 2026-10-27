@@ -64,7 +64,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 023:** Inserção do Divisor "Paywall Break / Linha de Assinatura" no Markdown nativo.
 - [x] **Etapa 024:** Extrator Automático de Metadados: Cálculo de Tempo de Leitura, Contagem de Palavras e Densidade Semântica.
 - [x] **Etapa 025:** Sanitizador de Markdown para remoção de caracteres de controle e tags maliciosas.
-- [ ] **Etapa 026:** Alternador de Abas de Visualização (Editor Puro vs. Preview E-mail HTML vs. Preview AutoBlog Web).
+- [x] **Etapa 026:** Alternador de Abas de Visualização (Editor Puro vs. Preview E-mail HTML vs. Preview AutoBlog Web).
 - [ ] **Etapa 027:** Suporte a Inserção de Mídia e Imagens de Capa com URL canônica e tag ALT automática.
 - [ ] **Etapa 028:** Painel Lateral de Configurações de Publicação (Audiência, Categoria, Tags e Slug customizado).
 - [ ] **Etapa 029:** Persistência de Rascunho Automática (Auto-Save a cada 3 segundos com status visual discreto).
