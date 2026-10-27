@@ -57,6 +57,11 @@ import {
   validateWhatsAppMessageLength, 
   WHATSAPP_MAX_CAPTION_CHARS 
 } from "@/lib/finders/whatsappFormatter";
+import { 
+  calculateFullSavings, 
+  getDealUrgency, 
+  FullSavingsResult 
+} from "@/lib/finders/discountCalculator";
 import { toast } from "@/lib/toast/useToast";
 
 export function OfferGroupDispatcher() {
@@ -96,6 +101,13 @@ export function OfferGroupDispatcher() {
     const orig = parseFloat(newDealForm.originalPrice.replace(",", ".")) || 0;
     const promo = parseFloat(newDealForm.promoPrice.replace(",", ".")) || 0;
     return calculateSavings(orig, promo);
+  }, [newDealForm.originalPrice, newDealForm.promoPrice]);
+
+  // Cálculo avançado de economia e urgência psicológica
+  const fullSavings = useMemo(() => {
+    const orig = parseFloat(newDealForm.originalPrice.replace(",", ".")) || 0;
+    const promo = parseFloat(newDealForm.promoPrice.replace(",", ".")) || 0;
+    return calculateFullSavings({ originalPrice: orig, promoPrice: promo });
   }, [newDealForm.originalPrice, newDealForm.promoPrice]);
 
   // Mensagem compilada para o Telegram do deal selecionado
@@ -234,7 +246,7 @@ export function OfferGroupDispatcher() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Despachador de Ofertas & Grupos VIP</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Fase 8 • Etapa 073 (Compilador de Formatação para WhatsApp)
+              Fase 8 • Etapa 074 (Calculadora de Desconto & Economia em Reais)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -313,6 +325,7 @@ export function OfferGroupDispatcher() {
         {filteredDeals.map((deal) => {
           const storeMeta = SUPPORTED_STORES[deal.store as SupportedStore] || SUPPORTED_STORES.Shopee;
           const savings = deal.savingsAmount || Number((deal.originalPrice - deal.promoPrice).toFixed(2));
+          const urgency = getDealUrgency(deal.discountPercentage);
 
           return (
             <div
@@ -321,7 +334,7 @@ export function OfferGroupDispatcher() {
             >
               <div>
                 {/* Header do Card: Loja e Desconto */}
-                <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <span 
                       className={`text-[10px] uppercase font-mono px-2.5 py-0.5 rounded-lg border font-bold flex items-center gap-1.5 bg-zinc-950 ${storeMeta.borderColor} ${storeMeta.textColor}`}
@@ -337,6 +350,14 @@ export function OfferGroupDispatcher() {
                   <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold flex items-center gap-1">
                     <Percent className="w-3 h-3" />
                     <span>{deal.discountPercentage}% OFF</span>
+                  </span>
+                </div>
+
+                {/* Badge de Urgência Psicológica da Oferta */}
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded-md border font-bold flex items-center gap-1 ${urgency.badgeColor}`}>
+                    <span>{urgency.emoji}</span>
+                    <span>{urgency.badgeLabel}</span>
                   </span>
                 </div>
 
@@ -584,11 +605,26 @@ export function OfferGroupDispatcher() {
                 </div>
               </div>
 
-              {/* Feedback do Cálculo de Economia */}
-              {formSavings.isValid && (
-                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-[11px] text-emerald-300">
-                  <span>Desconto Calculado: <strong>{formSavings.discountPercentage}% OFF</strong></span>
-                  <span>Economia Real: <strong>R$ {formSavings.savingsAmount.toFixed(2)}</strong></span>
+              {/* Feedback do Cálculo de Economia e Urgência Psicológica */}
+              {fullSavings.isValid && (
+                <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-500/30 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-emerald-300">
+                    <span className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${fullSavings.urgency.badgeColor}`}>
+                        {fullSavings.urgency.emoji} {fullSavings.urgency.badgeLabel}
+                      </span>
+                    </span>
+                    <span className="font-mono font-bold text-white text-xs">
+                      {fullSavings.discountPercentage}% OFF
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-zinc-800/80">
+                    <span className="text-zinc-400">Destaque de Economia Real:</span>
+                    <span className="text-emerald-400 font-bold">
+                      Você economiza R$ {fullSavings.formattedSavingsAmount}
+                    </span>
+                  </div>
                 </div>
               )}
 

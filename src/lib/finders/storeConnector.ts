@@ -11,6 +11,16 @@
  */
 
 import { GroupBroadcastDeal } from "@/types/poster";
+export { 
+  calculateFullSavings, 
+  getDealUrgency, 
+  formatCurrencyBr 
+} from "./discountCalculator";
+export type { 
+  FullSavingsResult, 
+  DealUrgencyInfo, 
+  DealUrgencyLevel 
+} from "./discountCalculator";
 
 export type SupportedStore = "Shopee" | "Mercado Livre" | "Amazon" | "AliExpress" | "Magalu";
 
