@@ -39,6 +39,7 @@ import {
 import { usePosterStore } from "@/store/usePosterStore";
 import { CommentRule, CommentTriggerEvent } from "@/types/poster";
 import { toast } from "@/lib/toast/useToast";
+import { matchCommentTrigger, TriggerMatchMode, TriggerMatchResult } from "@/lib/comments/triggerMatcher";
 
 export function CommentToDmManager() {
   const { 
@@ -66,7 +67,7 @@ export function CommentToDmManager() {
     name: string;
     platform: "instagram" | "tiktok";
     targetPostId: string;
-    matchMode: "contains" | "exact";
+    matchMode: TriggerMatchMode;
     keywords: string[];
     publicReplyVariants: string[];
     dmMessageTemplate: string;
@@ -94,6 +95,10 @@ export function CommentToDmManager() {
   const [simResult, setSimResult] = useState<{
     matched: boolean;
     matchedKeyword?: string;
+    matchedSnippet?: string;
+    confidence?: number;
+    matchModeUsed?: string;
+    normalizedComment?: string;
     publicReply?: string;
     dmMessage?: string;
   } | null>(null);
@@ -112,20 +117,20 @@ export function CommentToDmManager() {
     return commentRules.reduce((acc, r) => acc + (r.totalTriggered || 0), 0);
   }, [commentRules]);
 
-  // Executa teste no simulador
+  // Executa teste no simulador com o motor cognitivo ChatbotX
   const handleRunSimulator = () => {
     if (!selectedRule) return;
 
-    const normalizedComment = simCommentText.trim().toUpperCase();
-    let matchedKw: string | undefined;
+    const matchMode = (selectedRule.matchMode as TriggerMatchMode) || "contains";
+    const matchResult = matchCommentTrigger(simCommentText, selectedRule.keywords, {
+      mode: matchMode,
+      useSynonyms: true,
+      fuzzyMaxDistance: 1
+    });
 
-    if (selectedRule.matchMode === "exact") {
-      matchedKw = selectedRule.keywords.find((kw) => normalizedComment === kw.toUpperCase());
-    } else {
-      matchedKw = selectedRule.keywords.find((kw) => normalizedComment.includes(kw.toUpperCase()));
-    }
+    if (matchResult.isMatch) {
+      const matchedKw = matchResult.matchedKeyword || selectedRule.keywords[0] || "LINK";
 
-    if (matchedKw) {
       // Sorteia uma das respostas públicas rotativas
       const replies = selectedRule.publicReplyVariants.length > 0 
         ? selectedRule.publicReplyVariants 
@@ -142,6 +147,10 @@ export function CommentToDmManager() {
       setSimResult({
         matched: true,
         matchedKeyword: matchedKw,
+        matchedSnippet: matchResult.matchedSnippet,
+        confidence: matchResult.confidence,
+        matchModeUsed: matchResult.matchModeUsed,
+        normalizedComment: matchResult.normalizedComment,
         publicReply: randomReply,
         dmMessage: formattedDm
       });
@@ -159,12 +168,13 @@ export function CommentToDmManager() {
         status: "success"
       });
 
-      toast.success(`Gatilho disparado com sucesso pela palavra "${matchedKw}"!`);
+      toast.success(`Gatilho ativado (${matchResult.matchModeUsed.toUpperCase()}): "${matchedKw}"!`);
     } else {
       setSimResult({
-        matched: false
+        matched: false,
+        normalizedComment: matchResult.normalizedComment
       });
-      toast.info("Nenhuma palavra-chave compatível encontrada no comentário.");
+      toast.info("Nenhuma palavra-chave ou sinônimo compatível encontrado no comentário.");
     }
   };
 
@@ -263,7 +273,7 @@ export function CommentToDmManager() {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Comment-to-DM & Lead Hunter</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              Etapa 061 (Zustand Integrated)
+              Etapa 062 (Mapeador ChatbotX)
             </span>
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-3xl">
@@ -417,18 +427,36 @@ export function CommentToDmManager() {
                 </div>
               </div>
 
-              {/* Nome e Post Alvo */}
+              {/* Nome e Modo de Correspondência */}
               <div className="space-y-3">
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                    Nome Identificador da Automação:
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedRule.name}
-                    onChange={(e) => updateCommentRule(selectedRule.id, { name: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                      Nome Identificador da Automação:
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedRule.name}
+                      onChange={(e) => updateCommentRule(selectedRule.id, { name: e.target.value })}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                      Modo de Match (ChatbotX):
+                    </label>
+                    <select
+                      value={selectedRule.matchMode || "contains"}
+                      onChange={(e) => updateCommentRule(selectedRule.id, { matchMode: e.target.value as TriggerMatchMode })}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-blue-300 focus:outline-none focus:border-blue-500 font-mono"
+                    >
+                      <option value="contains">Contém (\b Fronteira Anti-Falsos)</option>
+                      <option value="exact">Exato (Somente a Palavra)</option>
+                      <option value="fuzzy">Fuzzy (Tolerância a Typos/Levenshtein)</option>
+                      <option value="regex">Expressão Regular (Regex)</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Palavras-Chave com Tags Interativas */}
@@ -613,9 +641,15 @@ export function CommentToDmManager() {
               <div className="space-y-2 pt-2 border-t border-zinc-800/60 animate-in fade-in duration-200">
                 {simResult.matched ? (
                   <>
+                    <div className="flex items-center justify-between text-[10px] font-mono bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg text-emerald-300">
+                      <span>Match: <strong className="text-white">{simResult.matchModeUsed?.toUpperCase()}</strong></span>
+                      <span>Snippet: &quot;{simResult.matchedSnippet}&quot;</span>
+                      <span>Confiança: <strong>{Math.round((simResult.confidence || 1) * 100)}%</strong></span>
+                    </div>
+
                     <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs space-y-1">
                       <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block">
-                        1. Resposta Pública no Reel:
+                        1. Resposta Pública no Post:
                       </span>
                       <p className="text-zinc-200 text-[11px]">{simResult.publicReply}</p>
                     </div>
@@ -633,9 +667,16 @@ export function CommentToDmManager() {
                     </div>
                   </>
                 ) : (
-                  <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 text-[11px] text-rose-300 flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                    <span>Nenhum gatilho ativado. Nenhuma palavra compatível encontrada.</span>
+                  <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 text-[11px] text-rose-300 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>Nenhum gatilho ativado para este comentário.</span>
+                    </div>
+                    {simResult.normalizedComment && (
+                      <p className="text-[10px] text-zinc-400 font-mono">
+                        Texto normalizado: &quot;{simResult.normalizedComment}&quot;
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -721,15 +762,17 @@ export function CommentToDmManager() {
 
                 <div>
                   <label className="text-[11px] font-mono text-zinc-400 block mb-1">
-                    Modo de Correspondência:
+                    Modo de Correspondência (ChatbotX):
                   </label>
                   <select
                     value={newRuleForm.matchMode}
-                    onChange={(e) => setNewRuleForm({ ...newRuleForm, matchMode: e.target.value as "contains" | "exact" })}
+                    onChange={(e) => setNewRuleForm({ ...newRuleForm, matchMode: e.target.value as TriggerMatchMode })}
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none"
                   >
-                    <option value="contains">Contém Palavra-chave</option>
+                    <option value="contains">Contém (\b Fronteira Anti-Falsos)</option>
                     <option value="exact">Palavra-chave Exata</option>
+                    <option value="fuzzy">Fuzzy (Tolerância a Typos/Levenshtein)</option>
+                    <option value="regex">Expressão Regular (Regex)</option>
                   </select>
                 </div>
               </div>

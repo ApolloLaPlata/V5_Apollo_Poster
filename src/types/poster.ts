@@ -102,7 +102,7 @@ export interface CommentRule {
   platform: 'instagram' | 'tiktok';
   targetPostId: string;
   targetPostTitle?: string;
-  matchMode?: 'contains' | 'exact' | 'regex';
+  matchMode?: 'contains' | 'exact' | 'fuzzy' | 'regex';
   keywords: string[];
   publicReplyVariants: string[];
   dmMessageTemplate: string;

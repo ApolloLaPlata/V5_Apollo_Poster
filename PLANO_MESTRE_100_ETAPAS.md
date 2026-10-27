@@ -116,7 +116,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 
 ### FASE 7: COMMENT-TO-DM ENGINE (CHATBOTX ARCHITECTURE) (061 - 070)
 - [x] **Etapa 061:** Estruturação do Gerenciador de Regras de Comentários (`CommentToDmManager.tsx`) integrado ao Zustand.
-- [ ] **Etapa 062:** Absorção do Mapeador de Gatilhos do ChatbotX (`packages/automated-response`): normalização e regex de palavras-chave.
+- [x] **Etapa 062:** Absorção do Mapeador de Gatilhos do ChatbotX (`packages/automated-response`): normalização e regex de palavras-chave.
 - [ ] **Etapa 063:** Construtor de Variações de Resposta Pública Rotativa (mínimo de 3 a 5 variações para evasão de bloqueio de spam).
 - [ ] **Etapa 064:** Construtor de Template de Direct Message (DM Privada) com placeholders `{{nome}}`, `{{ctaUrl}}` e `{{cupom}}`.
 - [ ] **Etapa 065:** Implementação da Lógica de Envio de DM Ancorada no `comment_id` (Bypass da janela de 24h Meta Graph API).
