@@ -19,6 +19,7 @@ import { LogPayloadDrawer } from "./LogPayloadDrawer";
 import { AuditExportButtons } from "./AuditExportButtons";
 import { LatencyMetricsCard } from "./LatencyMetricsCard";
 import { ClearLogsModal } from "./ClearLogsModal";
+import { SystemHealthGrid } from "./SystemHealthGrid";
 import { DispatchLogEntry } from "@/types/poster";
 
 export function DispatchLogsViewer() {
@@ -62,6 +63,9 @@ export function DispatchLogsViewer() {
 
       {/* Gráfico Visual de Distribuição de Posts por Canal (Etapa 092) */}
       <ChannelDistributionChart />
+
+      {/* Alertas Visuais de Saúde do Sistema e APIs Parceiras (Etapa 099) */}
+      <SystemHealthGrid logs={logs} />
 
       {/* Indicador de Latência Média de Despacho e Tempo Total de Processamento (Etapa 097) */}
       <LatencyMetricsCard logs={logs} />
