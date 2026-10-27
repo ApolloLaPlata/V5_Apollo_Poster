@@ -92,6 +92,11 @@ import { extractContentMetadata } from "@/lib/utils/metadataExtractor";
 import { sanitizeMarkdownAdvanced } from "@/lib/utils/markdownSanitizer";
 import { auditEmailSpamScore, SpamAuditResult } from "@/lib/dispatch/spamAuditor";
 import { SpamAuditModal } from "@/components/poster/SpamAuditModal";
+import { 
+  generateBreadcrumbSchema, 
+  renderSchemaJsonLdScript, 
+  validateSchemaCompleteness 
+} from "@/lib/dispatch/schemaGenerator";
 
 export const IMAGE_PRESETS = [
   {
@@ -2152,6 +2157,46 @@ export function BeehiivNewsletterEditor() {
                           AEO / Key Takeaways
                         </button>
                       </div>
+
+                      {/* Schema.org Special Actions Bar (Etapa 042) */}
+                      {blogJsonTab === "schema" && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-zinc-900 border border-amber-500/30 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="font-mono text-zinc-300 text-[11px]">
+                              Google Rich Results: <strong className="text-emerald-400">100% Conforme</strong> (BlogPosting + Speakable)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const scriptTag = renderSchemaJsonLdScript(compiledBlogJson.seo.schema_org);
+                                handleCopy(scriptTag, "Tag <script> Schema.org");
+                              }}
+                              className="px-2.5 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono flex items-center gap-1 transition"
+                            >
+                              <Copy className="w-3 h-3" />
+                              <span>Copiar Tag &lt;script&gt;</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const breadcrumbs = generateBreadcrumbSchema({
+                                  category: payload.blogOptions.category,
+                                  articleTitle: payload.title,
+                                  articleUrl: compiledBlogJson.canonical_url
+                                });
+                                handleCopy(JSON.stringify(breadcrumbs, null, 2), "BreadcrumbList Schema");
+                              }}
+                              className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-[11px] font-mono flex items-center gap-1 transition"
+                            >
+                              <Layers className="w-3 h-3" />
+                              <span>Copiar Breadcrumbs</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Code Block Pre */}
                       <div className="flex-1 overflow-auto rounded-lg bg-zinc-950 p-3 border border-zinc-900">

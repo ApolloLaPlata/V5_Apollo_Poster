@@ -88,7 +88,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 
 ### FASE 5: PONTA BLOG REST API (SCHEMAS & CONECTORES AUTOBLOG) (041 - 050)
 - [x] **Etapa 041:** Compilador de Payload JSON Estruturado para o V5 AutoBlog (`compileBlogPayload` com tags SEO estendidas).
-- [ ] **Etapa 042:** Gerador de Schema.org JSON-LD para BlogPosting / Article com entidade de autor, data e publisher.
+- [x] **Etapa 042:** Gerador de Schema.org JSON-LD para BlogPosting / Article com entidade de autor, data e publisher.
 - [ ] **Etapa 043:** Gerador de Meta Tags Open Graph (og:title, og:description, og:image, twitter:card) para compartilhamento social.
 - [ ] **Etapa 044:** Conector do Endpoint REST do V5 AutoBlog com autenticação por chave de capitania.
 - [ ] **Etapa 045:** Conector do Endpoint REST do WordPress (`/wp-json/wp/v2/posts`) com Basic Auth / Application Passwords.

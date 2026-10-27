@@ -257,6 +257,28 @@ export interface SchemaOrgBlogPosting {
   keywords: string;
   wordCount: number;
   articleSection: string;
+  isAccessibleForFree?: boolean;
+  hasPart?: {
+    '@type': 'WebPageElement';
+    isAccessibleForFree: boolean;
+    cssSelector: string;
+  };
+  timeRequired?: string;
+  speakable?: {
+    '@type': 'SpeakableSpecification';
+    cssSelector: string[];
+  };
+}
+
+export interface SchemaOrgBreadcrumbList {
+  '@context': 'https://schema.org';
+  '@type': 'BreadcrumbList';
+  itemListElement: Array<{
+    '@type': 'ListItem';
+    position: number;
+    name: string;
+    item: string;
+  }>;
 }
 
 export interface AiSearchReadiness {

@@ -10,6 +10,7 @@ import {
   BlogFeaturedImage 
 } from "@/types/poster";
 import { sanitizeMarkdown } from "@/lib/utils/markdownSanitizer";
+import { generateBlogPostingSchema } from "./schemaGenerator";
 
 export function slugify(text: string): string {
   return text
@@ -772,43 +773,24 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload): V5AutoBl
   const featuredImageUrl = payload.coverImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200";
   const featuredImageAlt = payload.coverImageAlt || payload.title;
 
-  // Schema.org BlogPosting Completo (Google Rich Results Compliant)
-  const schemaOrg: SchemaOrgBlogPosting = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
+  // Schema.org BlogPosting Completo (Google Rich Results Compliant - Etapa 042)
+  const schemaOrg = generateBlogPostingSchema({
+    title: payload.title,
     headline: payload.title,
     description: excerpt,
-    articleBody: cleanMarkdown,
-    inLanguage: "pt-BR",
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": canonicalUrl
-    },
-    author: {
-      "@type": "Person",
-      name: payload.blogOptions.author || "Equipe V5 Apollo",
-      url: "https://v5autoblog.com/autores/apollo-la-plata"
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "Holding V5 Apollo",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://v5autoblog.com/logo.png"
-      }
-    },
+    contentMarkdown: cleanMarkdown,
+    canonicalUrl,
+    coverImageUrl: featuredImageUrl,
+    coverImageAlt: featuredImageAlt,
+    authorName: payload.blogOptions.author || "Apollo La Plata",
+    authorRole: "Editor Chefe & Arquiteto de Sistemas",
+    category: payload.blogOptions.category || "Tecnologia",
+    tags: payload.blogOptions.tags,
     datePublished: nowIso,
     dateModified: nowIso,
-    image: {
-      "@type": "ImageObject",
-      url: featuredImageUrl,
-      width: 1200,
-      height: 630
-    },
-    keywords: payload.blogOptions.tags.join(", "),
-    wordCount,
-    articleSection: payload.blogOptions.category || "Tecnologia"
-  };
+    hasPaywall,
+    articleType: "BlogPosting"
+  });
 
   // Open Graph Metadata
   const openGraph: OpenGraphMetadata = {
