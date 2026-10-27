@@ -110,6 +110,17 @@ import {
   AutoBlogDispatchResult, 
   DEFAULT_CAPITANIA_KEY 
 } from "@/lib/dispatch/autoblogConnector";
+import { 
+  buildWordPressBasicAuth, 
+  buildWordPressHeaders, 
+  compileWordPressPostPayload, 
+  testWordPressHandshake, 
+  publishToWordPress, 
+  WordPressHandshakeResult, 
+  WordPressDispatchResult, 
+  DEFAULT_WP_SITE_URL, 
+  DEFAULT_WP_CONFIG 
+} from "@/lib/dispatch/wordpressConnector";
 
 export const IMAGE_PRESETS = [
   {
@@ -213,7 +224,13 @@ Nos vemos na próxima transmissão!`,
     tags: ["Agentes IA", "Automação", "Produtividade", "SaaS"],
     author: "Redação Apollo",
     generateSchema: true,
-    capitaniaKey: DEFAULT_CAPITANIA_KEY
+    capitaniaKey: DEFAULT_CAPITANIA_KEY,
+    wordpressConfig: {
+      siteUrl: DEFAULT_WP_SITE_URL,
+      username: "apollo_admin",
+      applicationPassword: "v5ap 3011 post live pass",
+      status: "publish"
+    }
   },
   socialTeaserOptions: {
     enabled: true,
@@ -520,6 +537,14 @@ export function BeehiivNewsletterEditor() {
   const [isPublishingAutoBlog, setIsPublishingAutoBlog] = useState(false);
   const [autoBlogDispatchResult, setAutoBlogDispatchResult] = useState<AutoBlogDispatchResult | null>(null);
   const [showCapitaniaKey, setShowCapitaniaKey] = useState(false);
+
+  // WordPress REST Connector state (Etapa 045)
+  const [isPingingWordPress, setIsPingingWordPress] = useState(false);
+  const [wordPressHandshakeResult, setWordPressHandshakeResult] = useState<WordPressHandshakeResult | null>(null);
+  const [isPublishingWordPress, setIsPublishingWordPress] = useState(false);
+  const [wordPressDispatchResult, setWordPressDispatchResult] = useState<WordPressDispatchResult | null>(null);
+  const [showWpPassword, setShowWpPassword] = useState(false);
+  const [connectorViewTarget, setConnectorViewTarget] = useState<"autoblog" | "wordpress">("autoblog");
 
   // Media & Cover Image Modal States
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
@@ -932,6 +957,67 @@ export function BeehiivNewsletterEditor() {
     }
   };
 
+  const handleTestWordPressHandshake = async () => {
+    setIsPingingWordPress(true);
+    try {
+      const res = await testWordPressHandshake({
+        siteUrl: payload.blogOptions.wordpressConfig?.siteUrl,
+        username: payload.blogOptions.wordpressConfig?.username,
+        applicationPassword: payload.blogOptions.wordpressConfig?.applicationPassword
+      });
+      setWordPressHandshakeResult(res);
+      if (res.success) {
+        toast.success(
+          "Handshake WordPress OK",
+          `Status ${res.statusCode} (${res.latencyMs}ms) • ${res.authenticatedUser?.name || "Autenticado"}`
+        );
+      } else {
+        toast.error("Falha no Handshake WordPress", res.message);
+      }
+    } catch (e) {
+      toast.error("Erro no Handshake WordPress", String(e));
+    } finally {
+      setIsPingingWordPress(false);
+    }
+  };
+
+  const handlePublishToWordPressDirect = async () => {
+    setIsPublishingWordPress(true);
+    try {
+      const wpPayload = compileWordPressPostPayload(payload);
+      const res = await publishToWordPress(wpPayload, {
+        siteUrl: payload.blogOptions.wordpressConfig?.siteUrl,
+        username: payload.blogOptions.wordpressConfig?.username,
+        applicationPassword: payload.blogOptions.wordpressConfig?.applicationPassword
+      });
+      setWordPressDispatchResult(res);
+      if (res.success) {
+        toast.success(
+          "Publicado no WordPress!",
+          `Post ID: ${res.postId} (${res.latencyMs}ms)`
+        );
+        setPayload(prev => ({
+          ...prev,
+          dispatchStatus: {
+            ...prev.dispatchStatus,
+            blog: {
+              ...prev.dispatchStatus.blog,
+              status: "sent",
+              wordpressUrl: res.publishedUrl,
+              wordpressStatusCode: res.statusCode
+            }
+          }
+        }));
+      } else {
+        toast.error("Erro na Publicação WordPress", res.message);
+      }
+    } catch (e) {
+      toast.error("Erro ao Publicar no WordPress", String(e));
+    } finally {
+      setIsPublishingWordPress(false);
+    }
+  };
+
   const handleTriggerDispatch = async () => {
     setIsDispatching(true);
     setExecutionResult(null);
@@ -945,7 +1031,7 @@ export function BeehiivNewsletterEditor() {
     // Conexão direta com a Capitania #13 AutoBlog REST API (Etapa 044)
     let blogPublishedUrl = result.blogResult.publishedUrl;
     let blogStatusCode = result.blogResult.statusCode;
-    if (payload.blogOptions.enabled) {
+    if (payload.blogOptions.enabled && (payload.blogOptions.targetPlatform === "v5autoblog" || payload.blogOptions.targetPlatform === "both")) {
       try {
         const blogPayload = compileBlogPayload(sanitizedPayload);
         const autoBlogRes = await publishToAutoBlog(blogPayload, {
@@ -962,6 +1048,27 @@ export function BeehiivNewsletterEditor() {
       }
     }
 
+    // Conexão com WordPress REST API via Application Passwords (Etapa 045)
+    let wpPublishedUrl: string | undefined;
+    let wpStatusCode: number | undefined;
+    if (payload.blogOptions.enabled && (payload.blogOptions.targetPlatform === "wordpress" || payload.blogOptions.targetPlatform === "both")) {
+      try {
+        const wpPayload = compileWordPressPostPayload(sanitizedPayload);
+        const wpRes = await publishToWordPress(wpPayload, {
+          siteUrl: payload.blogOptions.wordpressConfig?.siteUrl,
+          username: payload.blogOptions.wordpressConfig?.username,
+          applicationPassword: payload.blogOptions.wordpressConfig?.applicationPassword
+        });
+        if (wpRes.success) {
+          wpPublishedUrl = wpRes.publishedUrl;
+          wpStatusCode = wpRes.statusCode;
+          setWordPressDispatchResult(wpRes);
+        }
+      } catch (err) {
+        console.error("WordPress Dispatch Error:", err);
+      }
+    }
+
     setIsDispatching(false);
     setExecutionResult(result);
     setPayload(prev => ({
@@ -969,7 +1076,13 @@ export function BeehiivNewsletterEditor() {
       dispatchStatus: {
         overall: "completed",
         email: { status: "sent", sentCount: result.emailResult.sentCount, messageId: result.emailResult.messageId },
-        blog: { status: "sent", publishedUrl: blogPublishedUrl, statusCode: blogStatusCode },
+        blog: { 
+          status: "sent", 
+          publishedUrl: blogPublishedUrl, 
+          statusCode: blogStatusCode,
+          wordpressUrl: wpPublishedUrl,
+          wordpressStatusCode: wpStatusCode
+        },
         social: { status: "sent", deliveredChannels: result.socialResult.deliveredChannels }
       }
     }));
@@ -2392,93 +2505,216 @@ export function BeehiivNewsletterEditor() {
                         </div>
                       )}
 
-                      {/* 3.5 AUTOBLOG REST CONNECTOR (Etapa 044) */}
+                      {/* 3.5 AUTOBLOG & WORDPRESS REST CONNECTORS (Etapa 044 & 045) */}
                       {blogJsonTab === "connector" && (
                         <div className="space-y-3">
-                          {/* Top Bar com Handshake Status */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-zinc-900 border border-amber-500/30 text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${
-                                autoBlogHandshakeResult?.success ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                              }`} />
-                              <span className="font-mono text-zinc-300 text-[11px]">
-                                Gateway AutoBlog: <strong className={autoBlogHandshakeResult?.success ? "text-emerald-400" : "text-amber-300"}>
-                                  {autoBlogHandshakeResult ? `${autoBlogHandshakeResult.statusCode} OK (${autoBlogHandshakeResult.latencyMs}ms)` : "Pronto para Handshake"}
-                                </strong>
-                              </span>
-                              {autoBlogHandshakeResult?.isMock && (
-                                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 text-[9px] font-mono">
-                                  Mock Fallback
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={handleTestAutoBlogHandshake}
-                                disabled={isPingingAutoBlog}
-                                className="px-3 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50"
-                              >
-                                <RefreshCw className={`w-3 h-3 ${isPingingAutoBlog ? "animate-spin text-amber-400" : ""}`} />
-                                <span>{isPingingAutoBlog ? "Testando..." : "Ping Handshake"}</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={handlePublishToAutoBlogDirect}
-                                disabled={isPublishingAutoBlog}
-                                className="px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50 shadow-sm"
-                              >
-                                <Send className={`w-3 h-3 ${isPublishingAutoBlog ? "animate-pulse" : ""}`} />
-                                <span>{isPublishingAutoBlog ? "Publicando..." : "Publicar via REST"}</span>
-                              </button>
-                            </div>
+                          {/* Alternador de Conector */}
+                          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+                            <button
+                              type="button"
+                              onClick={() => setConnectorViewTarget("autoblog")}
+                              className={`px-3 py-1 rounded-lg text-xs font-mono transition flex items-center gap-1.5 ${
+                                connectorViewTarget === "autoblog"
+                                  ? "bg-amber-500 text-black font-bold"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-white"
+                              }`}
+                            >
+                              <Server className="w-3 h-3" />
+                              <span>V5 AutoBlog Gateway</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConnectorViewTarget("wordpress")}
+                              className={`px-3 py-1 rounded-lg text-xs font-mono transition flex items-center gap-1.5 ${
+                                connectorViewTarget === "wordpress"
+                                  ? "bg-blue-600 text-white font-bold"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-white"
+                              }`}
+                            >
+                              <Globe className="w-3 h-3" />
+                              <span>WordPress REST API (/wp-json)</span>
+                            </button>
                           </div>
 
-                          {/* Se houve publicação recente com sucesso */}
-                          {autoBlogDispatchResult && (
-                            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                  <span>Artigo Publicado no V5 AutoBlog!</span>
+                          {/* 1. VISÃO V5 AUTOBLOG */}
+                          {connectorViewTarget === "autoblog" && (
+                            <>
+                              {/* Top Bar com Handshake Status */}
+                              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-zinc-900 border border-amber-500/30 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2 h-2 rounded-full ${
+                                    autoBlogHandshakeResult?.success ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                                  }`} />
+                                  <span className="font-mono text-zinc-300 text-[11px]">
+                                    Gateway AutoBlog: <strong className={autoBlogHandshakeResult?.success ? "text-emerald-400" : "text-amber-300"}>
+                                      {autoBlogHandshakeResult ? `${autoBlogHandshakeResult.statusCode} OK (${autoBlogHandshakeResult.latencyMs}ms)` : "Pronto para Handshake"}
+                                    </strong>
+                                  </span>
+                                  {autoBlogHandshakeResult?.isMock && (
+                                    <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 text-[9px] font-mono">
+                                      Mock Fallback
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={handleTestAutoBlogHandshake}
+                                    disabled={isPingingAutoBlog}
+                                    className="px-3 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${isPingingAutoBlog ? "animate-spin text-amber-400" : ""}`} />
+                                    <span>{isPingingAutoBlog ? "Testando..." : "Ping Handshake"}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={handlePublishToAutoBlogDirect}
+                                    disabled={isPublishingAutoBlog}
+                                    className="px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50 shadow-sm"
+                                  >
+                                    <Send className={`w-3 h-3 ${isPublishingAutoBlog ? "animate-pulse" : ""}`} />
+                                    <span>{isPublishingAutoBlog ? "Publicando..." : "Publicar via REST"}</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Se houve publicação recente com sucesso */}
+                              {autoBlogDispatchResult && (
+                                <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                      <span>Artigo Publicado no V5 AutoBlog!</span>
+                                    </span>
+                                    <span className="text-[10px] font-mono text-emerald-400/80">
+                                      HTTP {autoBlogDispatchResult.statusCode} • {autoBlogDispatchResult.latencyMs}ms
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] font-mono text-zinc-300 flex items-center gap-2">
+                                    <span className="text-zinc-500">Post ID:</span>
+                                    <span className="text-amber-300">{autoBlogDispatchResult.postId}</span>
+                                  </div>
+                                  <div className="text-[11px] font-mono flex items-center gap-2">
+                                    <span className="text-zinc-500">URL Canônica:</span>
+                                    <a 
+                                      href={autoBlogDispatchResult.publishedUrl} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="text-cyan-400 hover:underline flex items-center gap-1 truncate"
+                                    >
+                                      <span>{autoBlogDispatchResult.publishedUrl}</span>
+                                      <ExternalLink className="w-3 h-3 shrink-0" />
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Headers Oficiais da Capitania */}
+                              <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 text-[11px] font-mono space-y-1">
+                                <span className="text-zinc-400 font-semibold block text-[10px] uppercase tracking-wider">
+                                  Cabeçalhos Oficiais de Segurança (Inter-Capitanias #13)
                                 </span>
-                                <span className="text-[10px] font-mono text-emerald-400/80">
-                                  HTTP {autoBlogDispatchResult.statusCode} • {autoBlogDispatchResult.latencyMs}ms
-                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-300">
+                                  <div><strong className="text-amber-400">Authorization:</strong> Bearer {payload.blogOptions.capitaniaKey ? `${payload.blogOptions.capitaniaKey.substring(0, 10)}...` : "padrão"}</div>
+                                  <div><strong className="text-amber-400">X-Capitania-Source:</strong> 13-poster</div>
+                                  <div><strong className="text-amber-400">X-Capitania-Port:</strong> 3011</div>
+                                  <div><strong className="text-amber-400">X-Capitania-Signer:</strong> Apollo La Plata</div>
+                                </div>
                               </div>
-                              <div className="text-[11px] font-mono text-zinc-300 flex items-center gap-2">
-                                <span className="text-zinc-500">Post ID:</span>
-                                <span className="text-amber-300">{autoBlogDispatchResult.postId}</span>
-                              </div>
-                              <div className="text-[11px] font-mono flex items-center gap-2">
-                                <span className="text-zinc-500">URL Canônica:</span>
-                                <a 
-                                  href={autoBlogDispatchResult.publishedUrl} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  className="text-cyan-400 hover:underline flex items-center gap-1 truncate"
-                                >
-                                  <span>{autoBlogDispatchResult.publishedUrl}</span>
-                                  <ExternalLink className="w-3 h-3 shrink-0" />
-                                </a>
-                              </div>
-                            </div>
+                            </>
                           )}
 
-                          {/* Headers Oficiais da Capitania */}
-                          <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 text-[11px] font-mono space-y-1">
-                            <span className="text-zinc-400 font-semibold block text-[10px] uppercase tracking-wider">
-                              Cabeçalhos Oficiais de Segurança (Inter-Capitanias #13)
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-300">
-                              <div><strong className="text-amber-400">Authorization:</strong> Bearer {payload.blogOptions.capitaniaKey ? `${payload.blogOptions.capitaniaKey.substring(0, 10)}...` : "padrão"}</div>
-                              <div><strong className="text-amber-400">X-Capitania-Source:</strong> 13-poster</div>
-                              <div><strong className="text-amber-400">X-Capitania-Port:</strong> 3011</div>
-                              <div><strong className="text-amber-400">X-Capitania-Signer:</strong> Apollo La Plata</div>
-                            </div>
-                          </div>
+                          {/* 2. VISÃO WORDPRESS REST API */}
+                          {connectorViewTarget === "wordpress" && (
+                            <>
+                              {/* Top Bar com Handshake Status WordPress */}
+                              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-zinc-900 border border-blue-500/30 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2 h-2 rounded-full ${
+                                    wordPressHandshakeResult?.success ? "bg-emerald-400 animate-pulse" : "bg-blue-400"
+                                  }`} />
+                                  <span className="font-mono text-zinc-300 text-[11px]">
+                                    WordPress REST: <strong className={wordPressHandshakeResult?.success ? "text-emerald-400" : "text-blue-300"}>
+                                      {wordPressHandshakeResult ? `${wordPressHandshakeResult.statusCode} OK (${wordPressHandshakeResult.latencyMs}ms)` : "Autenticação via Application Passwords"}
+                                    </strong>
+                                  </span>
+                                  {wordPressHandshakeResult?.isMock && (
+                                    <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 text-[9px] font-mono">
+                                      Mock Gateway
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={handleTestWordPressHandshake}
+                                    disabled={isPingingWordPress}
+                                    className="px-3 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${isPingingWordPress ? "animate-spin text-blue-400" : ""}`} />
+                                    <span>{isPingingWordPress ? "Testando..." : "Ping Handshake WP"}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={handlePublishToWordPressDirect}
+                                    disabled={isPublishingWordPress}
+                                    className="px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] font-mono flex items-center gap-1.5 transition disabled:opacity-50 shadow-sm"
+                                  >
+                                    <Send className={`w-3 h-3 ${isPublishingWordPress ? "animate-pulse" : ""}`} />
+                                    <span>{isPublishingWordPress ? "Publicando..." : "Publicar no WordPress"}</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Se houve publicação recente no WordPress com sucesso */}
+                              {wordPressDispatchResult && (
+                                <div className="p-3 rounded-lg bg-blue-950/40 border border-blue-500/40 text-xs space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-blue-300 flex items-center gap-1.5 text-xs">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                      <span>Post Publicado no WordPress REST API!</span>
+                                    </span>
+                                    <span className="text-[10px] font-mono text-blue-400/80">
+                                      HTTP {wordPressDispatchResult.statusCode} • {wordPressDispatchResult.latencyMs}ms
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] font-mono text-zinc-300 flex items-center gap-2">
+                                    <span className="text-zinc-500">Post ID WordPress:</span>
+                                    <span className="text-amber-300 font-bold">#{wordPressDispatchResult.postId}</span>
+                                  </div>
+                                  <div className="text-[11px] font-mono flex items-center gap-2">
+                                    <span className="text-zinc-500">Link no Portal:</span>
+                                    <a 
+                                      href={wordPressDispatchResult.publishedUrl} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="text-cyan-400 hover:underline flex items-center gap-1 truncate"
+                                    >
+                                      <span>{wordPressDispatchResult.publishedUrl}</span>
+                                      <ExternalLink className="w-3 h-3 shrink-0" />
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Headers e Auth do WordPress */}
+                              <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 text-[11px] font-mono space-y-1">
+                                <span className="text-zinc-400 font-semibold block text-[10px] uppercase tracking-wider">
+                                  Configuração de Autenticação WordPress (/wp-json/wp/v2/posts)
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-300">
+                                  <div><strong className="text-blue-400">Site URL:</strong> {payload.blogOptions.wordpressConfig?.siteUrl || DEFAULT_WP_SITE_URL}</div>
+                                  <div><strong className="text-blue-400">Usuário WP:</strong> {payload.blogOptions.wordpressConfig?.username || "apollo_admin"}</div>
+                                  <div><strong className="text-blue-400">Auth Method:</strong> Basic Auth (Application Passwords)</div>
+                                  <div><strong className="text-blue-400">Status Destino:</strong> {payload.blogOptions.wordpressConfig?.status || "publish"}</div>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
 
@@ -2490,13 +2726,30 @@ export function BeehiivNewsletterEditor() {
                             if (blogJsonTab === "schema") return JSON.stringify(compiledBlogJson.seo.schema_org, null, 2);
                             if (blogJsonTab === "og") return JSON.stringify({ open_graph: compiledBlogJson.seo.open_graph, twitter_card: compiledBlogJson.seo.twitter_card }, null, 2);
                             if (blogJsonTab === "ai") return JSON.stringify(compiledBlogJson.seo.ai_search, null, 2);
-                            if (blogJsonTab === "connector") return JSON.stringify({
-                              target_endpoint: payload.blogOptions.targetEndpoint,
-                              capitania_key_configured: Boolean(payload.blogOptions.capitaniaKey),
-                              handshake_status: autoBlogHandshakeResult,
-                              last_dispatch_result: autoBlogDispatchResult,
-                              official_request_headers: buildAutoBlogHeaders(payload.blogOptions.capitaniaKey)
-                            }, null, 2);
+                            if (blogJsonTab === "connector") {
+                              if (connectorViewTarget === "wordpress") {
+                                const wpPayload = compileWordPressPostPayload(payload);
+                                return JSON.stringify({
+                                  wordpress_site_url: payload.blogOptions.wordpressConfig?.siteUrl || DEFAULT_WP_SITE_URL,
+                                  endpoint: "/wp-json/wp/v2/posts",
+                                  auth_type: "Application Passwords (Basic Auth)",
+                                  handshake_status: wordPressHandshakeResult,
+                                  last_dispatch_result: wordPressDispatchResult,
+                                  compiled_wordpress_payload: wpPayload,
+                                  request_headers: buildWordPressHeaders(
+                                    payload.blogOptions.wordpressConfig?.username || "apollo_admin",
+                                    payload.blogOptions.wordpressConfig?.applicationPassword || "v5ap 3011 post live pass"
+                                  )
+                                }, null, 2);
+                              }
+                              return JSON.stringify({
+                                target_endpoint: payload.blogOptions.targetEndpoint,
+                                capitania_key_configured: Boolean(payload.blogOptions.capitaniaKey),
+                                handshake_status: autoBlogHandshakeResult,
+                                last_dispatch_result: autoBlogDispatchResult,
+                                official_request_headers: buildAutoBlogHeaders(payload.blogOptions.capitaniaKey)
+                              }, null, 2);
+                            }
                             return JSON.stringify(compiledBlogJson, null, 2);
                           })()}
                         </pre>
@@ -2630,6 +2883,26 @@ export function BeehiivNewsletterEditor() {
                         }))}
                         className="rounded text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
                       />
+                    </div>
+
+                    {/* Plataforma de Publicação (Target Platform) */}
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Destino Web CMS</span>
+                      </label>
+                      <select
+                        value={payload.blogOptions.targetPlatform}
+                        onChange={(e) => setPayload(prev => ({
+                          ...prev,
+                          blogOptions: { ...prev.blogOptions, targetPlatform: e.target.value as any }
+                        }))}
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                      >
+                        <option value="v5autoblog">V5 AutoBlog (Portal Oficial em Nuvem)</option>
+                        <option value="wordpress">WordPress REST API (/wp-json/wp/v2/posts)</option>
+                        <option value="both">Ambos (Dual Publish Multicanal)</option>
+                      </select>
                     </div>
 
                     {/* Categoria */}
@@ -2843,6 +3116,155 @@ export function BeehiivNewsletterEditor() {
                         </div>
                       )}
                     </div>
+
+                    {/* Conector WordPress REST API (Etapa 045) */}
+                    {(payload.blogOptions.targetPlatform === "wordpress" || payload.blogOptions.targetPlatform === "both") && (
+                      <div className="pt-3 border-t border-zinc-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Globe className="w-3.5 h-3.5 text-blue-400" />
+                            <span>WordPress REST API (/wp-json)</span>
+                          </label>
+                          <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                            Application Passwords
+                          </span>
+                        </div>
+
+                        {/* Site URL */}
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 block mb-1">URL do Site WordPress:</label>
+                          <input
+                            type="text"
+                            value={payload.blogOptions.wordpressConfig?.siteUrl || DEFAULT_WP_SITE_URL}
+                            onChange={(e) => setPayload(prev => ({
+                              ...prev,
+                              blogOptions: {
+                                ...prev.blogOptions,
+                                wordpressConfig: {
+                                  ...(prev.blogOptions.wordpressConfig || DEFAULT_WP_CONFIG),
+                                  siteUrl: e.target.value
+                                }
+                              }
+                            }))}
+                            placeholder="https://wordpress.v5holding.com"
+                            className="w-full bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                          />
+                        </div>
+
+                        {/* Username & Status Grid */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-mono text-zinc-400 block mb-1">Usuário WP:</label>
+                            <input
+                              type="text"
+                              value={payload.blogOptions.wordpressConfig?.username || "apollo_admin"}
+                              onChange={(e) => setPayload(prev => ({
+                                ...prev,
+                                blogOptions: {
+                                  ...prev.blogOptions,
+                                  wordpressConfig: {
+                                    ...(prev.blogOptions.wordpressConfig || DEFAULT_WP_CONFIG),
+                                    username: e.target.value
+                                  }
+                                }
+                              }))}
+                              placeholder="apollo_admin"
+                              className="w-full bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-mono text-zinc-400 block mb-1">Status Destino:</label>
+                            <select
+                              value={payload.blogOptions.wordpressConfig?.status || "publish"}
+                              onChange={(e) => setPayload(prev => ({
+                                ...prev,
+                                blogOptions: {
+                                  ...prev.blogOptions,
+                                  wordpressConfig: {
+                                    ...(prev.blogOptions.wordpressConfig || DEFAULT_WP_CONFIG),
+                                    status: e.target.value as any
+                                  }
+                                }
+                              }))}
+                              className="w-full bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                            >
+                              <option value="publish">Publicar Imediato</option>
+                              <option value="draft">Rascunho (Draft)</option>
+                              <option value="pending">Pendente Revisão</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Application Password */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                              <Key className="w-3 h-3 text-blue-400" />
+                              <span>Application Password:</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setShowWpPassword(!showWpPassword)}
+                              className="text-[10px] text-blue-400 hover:underline font-mono"
+                            >
+                              {showWpPassword ? "Ocultar" : "Mostrar"}
+                            </button>
+                          </div>
+                          <input
+                            type={showWpPassword ? "text" : "password"}
+                            value={payload.blogOptions.wordpressConfig?.applicationPassword || ""}
+                            onChange={(e) => setPayload(prev => ({
+                              ...prev,
+                              blogOptions: {
+                                ...prev.blogOptions,
+                                wordpressConfig: {
+                                  ...(prev.blogOptions.wordpressConfig || DEFAULT_WP_CONFIG),
+                                  applicationPassword: e.target.value
+                                }
+                              }
+                            }))}
+                            placeholder="v5ap 3011 post live pass"
+                            className="w-full bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+                          />
+                        </div>
+
+                        {/* Handshake & Publish Buttons WP */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleTestWordPressHandshake}
+                            disabled={isPingingWordPress}
+                            className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-[11px] font-mono flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${isPingingWordPress ? "animate-spin text-blue-400" : ""}`} />
+                            <span>{isPingingWordPress ? "Testando..." : "Ping Handshake WP"}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handlePublishToWordPressDirect}
+                            disabled={isPublishingWordPress}
+                            className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] font-mono flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-sm"
+                          >
+                            <Send className={`w-3.5 h-3.5 ${isPublishingWordPress ? "animate-pulse" : ""}`} />
+                            <span>{isPublishingWordPress ? "Publicando..." : "Publicar no WP"}</span>
+                          </button>
+                        </div>
+
+                        {/* Handshake Result Feedback WP */}
+                        {wordPressHandshakeResult && (
+                          <div className={`p-2.5 rounded-lg border text-[11px] font-mono flex items-center justify-between ${
+                            wordPressHandshakeResult.success 
+                              ? "bg-blue-950/30 border-blue-500/30 text-blue-300"
+                              : "bg-red-950/30 border-red-500/30 text-red-300"
+                          }`}>
+                            <span className="truncate">{wordPressHandshakeResult.message}</span>
+                            <span className="shrink-0 font-bold ml-2">HTTP {wordPressHandshakeResult.statusCode}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

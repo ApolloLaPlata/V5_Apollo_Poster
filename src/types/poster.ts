@@ -140,6 +140,13 @@ export interface GroupBroadcastDeal {
   totalClicks?: number;
 }
 
+export interface WordPressSiteConfig {
+  siteUrl: string;
+  username: string;
+  applicationPassword?: string;
+  status?: 'publish' | 'draft' | 'pending';
+}
+
 export interface MultimodalDispatchPayload {
   id: string;
   title: string;
@@ -169,6 +176,7 @@ export interface MultimodalDispatchPayload {
     author: string;
     generateSchema: boolean;
     capitaniaKey?: string;
+    wordpressConfig?: WordPressSiteConfig;
   };
   socialTeaserOptions: {
     enabled: boolean;
@@ -178,7 +186,14 @@ export interface MultimodalDispatchPayload {
   dispatchStatus: {
     overall: 'idle' | 'in_progress' | 'completed' | 'partial_error';
     email: { status: 'idle' | 'sent' | 'failed'; sentCount?: number; messageId?: string; error?: string };
-    blog: { status: 'idle' | 'sent' | 'failed'; publishedUrl?: string; statusCode?: number; error?: string };
+    blog: { 
+      status: 'idle' | 'sent' | 'failed'; 
+      publishedUrl?: string; 
+      statusCode?: number; 
+      wordpressUrl?: string;
+      wordpressStatusCode?: number;
+      error?: string 
+    };
     social: { status: 'idle' | 'sent' | 'failed'; deliveredChannels?: string[]; error?: string };
   };
 }
@@ -352,4 +367,19 @@ export interface DispatchAnalyticsSummary {
   totalReachEstimated: number;
   activeAutomations: number;
   pendingQueueCount: number;
+}
+
+export interface WordPressPostPayload {
+  title: string;
+  content: string;
+  excerpt?: string;
+  status: 'publish' | 'draft' | 'pending' | 'future';
+  slug?: string;
+  date?: string;
+  categories?: number[];
+  tags?: number[];
+  featured_media?: number;
+  comment_status?: 'open' | 'closed';
+  ping_status?: 'open' | 'closed';
+  meta?: Record<string, string | number | boolean>;
 }
