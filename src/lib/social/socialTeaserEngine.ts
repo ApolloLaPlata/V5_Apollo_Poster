@@ -187,11 +187,15 @@ export function fitToCharacterLimit(options: {
 export function buildSocialUtmUrl(
   canonicalUrl: string, 
   slug: string, 
-  platform: SocialTeaserPlatform
+  platform: SocialTeaserPlatform,
+  customMedium?: string,
+  customCampaign?: string
 ): string {
   const base = canonicalUrl || `https://v5autoblog.com/artigo/${slug}`;
   const cleanBase = base.split("?")[0];
-  return `${cleanBase}?utm_source=${platform}&utm_medium=social_teaser&utm_campaign=v5poster`;
+  const medium = customMedium || "social_teaser";
+  const campaign = customCampaign || "v5poster";
+  return `${cleanBase}?utm_source=${platform}&utm_medium=${medium}&utm_campaign=${campaign}`;
 }
 
 /**

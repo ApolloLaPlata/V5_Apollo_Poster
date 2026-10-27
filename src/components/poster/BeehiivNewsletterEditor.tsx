@@ -139,6 +139,7 @@ import { GoogleRichResultsInspector } from "@/components/poster/GoogleRichResult
 import { TwitterTeaserCard } from "@/components/poster/TwitterTeaserCard";
 import { ThreadsTeaserCard } from "@/components/poster/ThreadsTeaserCard";
 import { InstagramCaptionCard } from "@/components/poster/InstagramCaptionCard";
+import { WhatsAppMessageCard } from "@/components/poster/WhatsAppMessageCard";
 
 export const IMAGE_PRESETS = [
   {
@@ -2783,6 +2784,9 @@ export function BeehiivNewsletterEditor() {
 
                   {/* Gerador de Legenda para Instagram com Comment-to-DM (Etapa 054) */}
                   <InstagramCaptionCard payload={payload} />
+
+                  {/* Gerador de Mensagens Curtas para WhatsApp (Etapa 055) */}
+                  <WhatsAppMessageCard payload={payload} />
                 </div>
               )}
 

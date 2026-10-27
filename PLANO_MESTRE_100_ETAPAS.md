@@ -105,7 +105,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 052:** Gerador de Teasers para X/Twitter (280 caracteres, ganchos visuais e emojis de destaque).
 - [x] **Etapa 053:** Gerador de Teasers para Threads (Tom conversacional e chamada para a bio).
 - [x] **Etapa 054:** Gerador de Legenda para Instagram (Parágrafos espaçados, hashtags estratégicas e gancho "Comente LINK").
-- [ ] **Etapa 055:** Gerador de Mensagem Curta para Grupos de WhatsApp (Negritos no padrão `*texto*` e CTA direto).
+- [x] **Etapa 055:** Gerador de Mensagem Curta para Grupos de WhatsApp (Negritos no padrão `*texto*` e CTA direto).
 - [ ] **Etapa 056:** Gerador de Mensagem com Markdown para Canais de Telegram (Suporte a formatação rica e link embutido).
 - [ ] **Etapa 057:** Painel de Edição de Teasers Individuais com contadores de caracteres por rede em tempo real.
 - [ ] **Etapa 058:** Botão de Cópia com 1 Clique para cada teaser social com feedback visual.
