@@ -143,6 +143,7 @@ import { WhatsAppMessageCard } from "@/components/poster/WhatsAppMessageCard";
 import { TelegramMessageCard } from "@/components/poster/TelegramMessageCard";
 import { SocialTeasersEditorPanel } from "@/components/poster/SocialTeasersEditorPanel";
 import { CopyAllTeasersButton } from "@/components/poster/CopyAllTeasersButton";
+import { SocialMediaSelectorCard } from "@/components/poster/SocialMediaSelectorCard";
 
 export const IMAGE_PRESETS = [
   {
@@ -2771,6 +2772,12 @@ export function BeehiivNewsletterEditor() {
                 <div className="h-full flex flex-col space-y-4 overflow-y-auto pr-1">
                   {/* Painel Avançado de Edição e Contadores de Caracteres em Tempo Real (Etapa 057) */}
                   <SocialTeasersEditorPanel payload={payload} />
+
+                  {/* Seletor de Mídia e Card de Destaque Social (Etapa 059) */}
+                  <SocialMediaSelectorCard 
+                    payload={payload} 
+                    onUpdateCoverImage={(url, alt) => setPayload(prev => ({ ...prev, coverImageUrl: url, coverImageAlt: alt }))} 
+                  />
 
                   <div className="flex items-center justify-between bg-zinc-900/80 p-3 rounded-xl border border-zinc-800 text-xs">
                     <div className="flex items-center gap-2">

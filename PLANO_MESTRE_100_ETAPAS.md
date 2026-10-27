@@ -109,7 +109,7 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 - [x] **Etapa 056:** Gerador de Mensagem com Markdown para Canais de Telegram (Suporte a formatação rica e link embutido).
 - [x] **Etapa 057:** Painel de Edição de Teasers Individuais com contadores de caracteres por rede em tempo real.
 - [x] **Etapa 058:** Botão de Cópia com 1 Clique para cada teaser social com feedback visual.
-- [ ] **Etapa 059:** Seletor de Imagem / Card de Destaque gerado para acompanhar o teaser social.
+- [x] **Etapa 059:** Seletor de Imagem / Card de Destaque gerado para acompanhar o teaser social.
 - [ ] **Etapa 060:** Validação de Build Next.js 14 (`npm run build`) com Exit Code 0 e homologação da Ponta Social Teasers.
 
 ---
