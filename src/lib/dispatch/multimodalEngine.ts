@@ -13,11 +13,73 @@ export function slugify(text: string): string {
     .trim();
 }
 
+export interface UtmConfig {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+  term?: string;
+}
+
+/**
+ * Constrói e anexa parâmetros UTM de forma inteligente a qualquer URL
+ * Trata URLs com parâmetros existentes, âncoras e ignora protocolos não-web (mailto, tel)
+ */
+export function buildTrackingUrl(rawUrl: string, config: UtmConfig): string {
+  if (!rawUrl || rawUrl.startsWith("#") || rawUrl.startsWith("mailto:") || rawUrl.startsWith("tel:")) {
+    return rawUrl;
+  }
+
+  // Se já tiver utm_source, preserva a URL original
+  if (rawUrl.includes("utm_source=")) {
+    return rawUrl;
+  }
+
+  try {
+    const [baseUrlWithQuery, hash] = rawUrl.split("#");
+    const hasQuery = baseUrlWithQuery.includes("?");
+    const separator = hasQuery ? "&" : "?";
+
+    const params: string[] = [];
+    params.push(`utm_source=${encodeURIComponent(config.source || "v5poster")}`);
+    params.push(`utm_medium=${encodeURIComponent(config.medium || "email_newsletter")}`);
+    if (config.campaign) {
+      params.push(`utm_campaign=${encodeURIComponent(config.campaign)}`);
+    }
+    if (config.content) {
+      params.push(`utm_content=${encodeURIComponent(config.content)}`);
+    }
+    if (config.term) {
+      params.push(`utm_term=${encodeURIComponent(config.term)}`);
+    }
+
+    const trackedBase = `${baseUrlWithQuery}${separator}${params.join("&")}`;
+    return hash ? `${trackedBase}#${hash}` : trackedBase;
+  } catch {
+    return rawUrl;
+  }
+}
+
+/**
+ * Injeta parâmetros UTM em todas as tags <a> e links Markdown [texto](url) de um conteúdo
+ */
+export function injectUtmParameters(
+  content: string,
+  config: UtmConfig,
+  defaultContentId: string = "body_link"
+): string {
+  const markdownLinkRegex = /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g;
+  return content.replace(markdownLinkRegex, (_, text, url) => {
+    const trackedUrl = buildTrackingUrl(url, { ...config, content: config.content || defaultContentId });
+    return `<a href="${trackedUrl}" target="_blank" style="color: #d97706; text-decoration: underline; font-weight: 500;">${text}</a>`;
+  });
+}
+
 /**
  * Converte blocos de tabela Markdown (| col1 | col2 |) para tabelas HTML com estilos inline
  * 100% compatíveis com Outlook Desktop, Gmail App e Apple Mail.
  */
-export function parseMarkdownTableToEmailHtml(tableLines: string[]): string {
+export function parseMarkdownTableToEmailHtml(tableLines: string[], utmConfig?: UtmConfig): string {
   if (tableLines.length === 0) return "";
 
   const extractCells = (row: string) => {
@@ -46,7 +108,10 @@ export function parseMarkdownTableToEmailHtml(tableLines: string[]): string {
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
       .replace(/`(.*?)`/g, '<code style="background-color: #f1f5f9; color: #b45309; padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 11px;">$1</code>')
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: #d97706; text-decoration: underline;">$1</a>');
+      .replace(/\[(.*?)\]\((.*?)\)/g, (_, linkText, url) => {
+        const trackedUrl = utmConfig ? buildTrackingUrl(url, { ...utmConfig, content: "table_cell_link" }) : url;
+        return `<a href="${trackedUrl}" target="_blank" style="color: #d97706; text-decoration: underline;">${linkText}</a>`;
+      });
   };
 
   const theadHtml = `
@@ -118,8 +183,27 @@ export function generateInvisiblePreheader(previewText?: string, fallbackText?: 
  */
 export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   const { title, contentMarkdown, emailOptions, slug } = payload;
-  const utmSuffix = `utm_source=v5poster&utm_medium=email_newsletter&utm_campaign=${emailOptions.utmCampaign || slug}`;
+  
+  // Configuração centralizada de parâmetros UTM industriais
+  const utmConfig: UtmConfig = {
+    source: "v5poster",
+    medium: "email_newsletter",
+    campaign: emailOptions.utmCampaign || slug,
+  };
+  const utmSuffix = `utm_source=${utmConfig.source}&utm_medium=${utmConfig.medium}&utm_campaign=${encodeURIComponent(utmConfig.campaign || "")}`;
   const preheaderBlock = generateInvisiblePreheader(emailOptions.previewText, payload.summary);
+
+  // Helper de formatação inline segura com injeção de parâmetros UTM em todos os links
+  const formatEmailInlineText = (text: string, contentId: string = "body_link"): string => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(/`(.*?)`/g, '<code style="background-color: #f1f5f9; color: #b45309; padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 12px;">$1</code>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, (_, linkText, url) => {
+        const trackedUrl = buildTrackingUrl(url, { ...utmConfig, content: contentId });
+        return `<a href="${trackedUrl}" target="_blank" style="color: #d97706; text-decoration: underline; font-weight: 500;">${linkText}</a>`;
+      });
+  };
 
   // Saneamento profundo e conversão segura para HTML inline
   const sanitizedMarkdown = sanitizeMarkdown(contentMarkdown);
@@ -147,7 +231,7 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
         i++;
         tableLines.push(lines[i].trim());
       }
-      const tableHtml = parseMarkdownTableToEmailHtml(tableLines);
+      const tableHtml = parseMarkdownTableToEmailHtml(tableLines, utmConfig);
       htmlBodyLines.push(tableHtml);
       continue;
     }
@@ -159,11 +243,12 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
         `<figure style="margin: 24px 0; text-align: center;"><img src="${imgMatch[2]}" alt="${imgMatch[1] || 'Imagem ilustrativa'}" style="width: 100%; max-width: 580px; height: auto; border-radius: 8px; display: block; margin: 0 auto;" />${imgMatch[1] ? `<figcaption style="color: #6b7280; font-size: 12px; margin-top: 6px;">${imgMatch[1]}</figcaption>` : ''}</figure>`
       );
     } else if (line.includes("[PAYWALL_BREAK") || line.includes("<!-- paywall") || line.includes("<!-- PAYWALL")) {
+      const paywallTrackedUrl = buildTrackingUrl("https://v5autoblog.com/vip", { ...utmConfig, content: "vip_paywall_button" });
       htmlBodyLines.push(
         `<div style="margin: 32px 0; padding: 24px 16px; border: 2px dashed #f59e0b; background-color: #fffbeb; border-radius: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
           <p style="color: #92400e; font-weight: 800; font-size: 15px; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;">🔒 Conteúdo Exclusivo de Assinantes VIP</p>
           <p style="color: #b45309; font-size: 13px; line-height: 1.5; margin: 0 0 16px 0;">Este é o ponto de corte da prévia gratuita. Assine o plano VIP para liberar a leitura completa.</p>
-          <a href="https://v5autoblog.com/vip?${utmSuffix}" style="display: inline-block; background-color: #f59e0b; color: #000000; font-weight: 800; font-size: 13px; text-decoration: none; padding: 10px 20px; border-radius: 8px;">Desbloquear Assinatura VIP →</a>
+          <a href="${paywallTrackedUrl}" style="display: inline-block; background-color: #f59e0b; color: #000000; font-weight: 800; font-size: 13px; text-decoration: none; padding: 10px 20px; border-radius: 8px;">Desbloquear Assinatura VIP →</a>
         </div>`
       );
     } else if (line === "---" || line === "***") {
@@ -172,36 +257,39 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
       );
     } else if (line.startsWith("# ")) {
       htmlBodyLines.push(
-        `<h1 style="color: #111827; font-size: 26px; font-weight: 800; line-height: 1.3; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${line.replace("# ", "")}</h1>`
+        `<h1 style="color: #111827; font-size: 26px; font-weight: 800; line-height: 1.3; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatEmailInlineText(line.replace("# ", ""), "heading_h1_link")}</h1>`
       );
     } else if (line.startsWith("## ")) {
       htmlBodyLines.push(
-        `<h2 style="color: #1f2937; font-size: 20px; font-weight: 700; line-height: 1.4; margin: 24px 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${line.replace("## ", "")}</h2>`
+        `<h2 style="color: #1f2937; font-size: 20px; font-weight: 700; line-height: 1.4; margin: 24px 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatEmailInlineText(line.replace("## ", ""), "heading_h2_link")}</h2>`
       );
     } else if (line.startsWith("### ")) {
       htmlBodyLines.push(
-        `<h3 style="color: #374151; font-size: 17px; font-weight: 600; line-height: 1.4; margin: 20px 0 10px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${line.replace("### ", "")}</h3>`
+        `<h3 style="color: #374151; font-size: 17px; font-weight: 600; line-height: 1.4; margin: 20px 0 10px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatEmailInlineText(line.replace("### ", ""), "heading_h3_link")}</h3>`
       );
     } else if (line.startsWith("> ")) {
       htmlBodyLines.push(
-        `<blockquote style="border-left: 4px solid #f59e0b; padding: 12px 18px; margin: 20px 0; background-color: #fffbeb; color: #92400e; font-style: italic; border-radius: 0 8px 8px 0; font-size: 15px; line-height: 1.6;">${line.replace("> ", "")}</blockquote>`
+        `<blockquote style="border-left: 4px solid #f59e0b; padding: 12px 18px; margin: 20px 0; background-color: #fffbeb; color: #92400e; font-style: italic; border-radius: 0 8px 8px 0; font-size: 15px; line-height: 1.6;">${formatEmailInlineText(line.replace("> ", ""), "blockquote_link")}</blockquote>`
       );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       htmlBodyLines.push(
-        `<li style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${line.substring(2)}</li>`
+        `<li style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatEmailInlineText(line.substring(2), "bullet_list_link")}</li>`
       );
     } else if (/^\d+\.\s/.test(line)) {
       htmlBodyLines.push(
-        `<li style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${line.replace(/^\d+\.\s/, "")}</li>`
+        `<li style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatEmailInlineText(line.replace(/^\d+\.\s/, ""), "numbered_list_link")}</li>`
       );
     } else {
-      // Formatacao inline simples de bold
-      let formattedText = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       htmlBodyLines.push(
-        `<p style="color: #374151; font-size: 15px; line-height: 1.7; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formattedText}</p>`
+        `<p style="color: #374151; font-size: 15px; line-height: 1.7; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${formatEmailInlineText(line, "paragraph_link")}</p>`
       );
     }
   }
+
+  // URLs rastreadas para CTA e Rodapé Institucional
+  const mainCtaUrl = buildTrackingUrl(`https://v5autoblog.com/artigo/${slug}`, { ...utmConfig, content: "cta_main_button" });
+  const prefsUrl = buildTrackingUrl("https://v5apollo.com/preferencias", { ...utmConfig, content: "footer_preferences" });
+  const unsubUrl = buildTrackingUrl("https://v5apollo.com/cancelar", { ...utmConfig, content: "footer_unsubscribe" });
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -247,7 +335,7 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
               <table border="0" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="border-radius: 10px; background-color: #f59e0b;">
-                    <a href="https://v5autoblog.com/artigo/${slug}?${utmSuffix}" target="_blank" style="display: inline-block; padding: 14px 28px; color: #000000; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Ler Artigo Completo no Blog →</a>
+                    <a href="${mainCtaUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; color: #000000; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Ler Artigo Completo no Blog →</a>
                   </td>
                 </tr>
               </table>
@@ -261,8 +349,8 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
                 Enviado por <strong>${emailOptions.fromName || "Holding V5 Apollo"}</strong> via V5 Poster Engine.
               </p>
               <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-                <a href="https://v5apollo.com/preferencias?${utmSuffix}" style="color: #6b7280; text-decoration: underline;">Gerenciar Preferências</a> • 
-                <a href="https://v5apollo.com/cancelar?${utmSuffix}" style="color: #6b7280; text-decoration: underline;">Cancelar Inscrição</a>
+                <a href="${prefsUrl}" style="color: #6b7280; text-decoration: underline;">Gerenciar Preferências</a> • 
+                <a href="${unsubUrl}" style="color: #6b7280; text-decoration: underline;">Cancelar Inscrição</a>
               </p>
             </td>
           </tr>
@@ -379,5 +467,32 @@ export async function executeMockDispatch(payload: MultimodalDispatchPayload): P
       status: "sent",
       deliveredChannels: ["Telegram VIP", "WhatsApp Comunidades", "Threads"]
     }
+  };
+}
+
+/**
+ * Retorna uma amostra de URLs rastreadas para exibição e cópia no inspetor UTM do editor
+ */
+export function getSampleTrackingUrls(slug: string, campaign?: string): { 
+  ctaUrl: string; 
+  vipUrl: string; 
+  inlineUrl: string;
+  source: string;
+  medium: string;
+  campaign: string;
+} {
+  const finalCampaign = campaign || slug || "newsletter_geral";
+  const config: UtmConfig = {
+    source: "v5poster",
+    medium: "email_newsletter",
+    campaign: finalCampaign,
+  };
+  return {
+    source: config.source || "v5poster",
+    medium: config.medium || "email_newsletter",
+    campaign: finalCampaign,
+    ctaUrl: buildTrackingUrl(`https://v5autoblog.com/artigo/${slug}`, { ...config, content: "cta_main_button" }),
+    vipUrl: buildTrackingUrl("https://v5autoblog.com/vip", { ...config, content: "vip_paywall_button" }),
+    inlineUrl: buildTrackingUrl(`https://v5autoblog.com/artigo/${slug}`, { ...config, content: "paragraph_link" }),
   };
 }

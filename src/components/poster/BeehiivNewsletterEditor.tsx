@@ -58,7 +58,9 @@ import {
   compileBlogPayload, 
   compileSocialTeasers, 
   executeMockDispatch,
-  slugify 
+  slugify,
+  buildTrackingUrl,
+  getSampleTrackingUrls
 } from "@/lib/dispatch/multimodalEngine";
 import { usePosterStore } from "@/store/usePosterStore";
 import { toast } from "@/lib/toast/useToast";
@@ -556,6 +558,18 @@ export function BeehiivNewsletterEditor() {
     setPayload(prev => ({ ...prev, slug: freshSlug }));
     setIsDirty(true);
     toast.info("Slug Atualizado!", `URL canônica baseada no título: ${freshSlug}`);
+  };
+
+  // Inspetor de Links UTM (Etapa 033)
+  const [copiedUtmKey, setCopiedUtmKey] = useState<string | null>(null);
+
+  const handleCopyTrackingUrl = (url: string, key: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
+    setCopiedUtmKey(key);
+    toast.success("Link UTM Copiado!", "URL rastreada pronta para compartilhamento.");
+    setTimeout(() => setCopiedUtmKey(null), 2500);
   };
 
   // Auto-Save States & Handlers (Etapa 029)
@@ -2060,6 +2074,98 @@ export function BeehiivNewsletterEditor() {
                         placeholder="newsletter_agentes_2026"
                       />
                     </div>
+
+                    {/* Inspetor de Links Rastreados UTM (Etapa 033) */}
+                    {(() => {
+                      const trackingUrls = getSampleTrackingUrls(payload.slug, payload.emailOptions.utmCampaign);
+                      return (
+                        <div className="p-3.5 bg-zinc-900/70 rounded-xl border border-amber-500/30 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Inspetor UTM da Campanha</span>
+                            </span>
+                            <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                              100% Onicanal
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono">
+                            <div className="bg-zinc-950 p-2 rounded-lg border border-zinc-800">
+                              <span className="text-zinc-500 block text-[9px]">source</span>
+                              <span className="text-amber-400 font-bold truncate block">{trackingUrls.source}</span>
+                            </div>
+                            <div className="bg-zinc-950 p-2 rounded-lg border border-zinc-800">
+                              <span className="text-zinc-500 block text-[9px]">medium</span>
+                              <span className="text-amber-400 font-bold truncate block">{trackingUrls.medium}</span>
+                            </div>
+                            <div className="bg-zinc-950 p-2 rounded-lg border border-zinc-800">
+                              <span className="text-zinc-500 block text-[9px]">campaign</span>
+                              <span className="text-amber-400 font-bold truncate block">{trackingUrls.campaign}</span>
+                            </div>
+                          </div>
+
+                          {/* CTA Principal Rastreamento */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-zinc-400 font-semibold">Link do Botão CTA Principal:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyTrackingUrl(trackingUrls.ctaUrl, "cta")}
+                                className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono transition"
+                              >
+                                {copiedUtmKey === "cta" ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span className="text-emerald-400">Copiado!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copiar</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <div className="text-[10px] font-mono bg-zinc-950 p-2 rounded-lg border border-zinc-800 text-zinc-300 break-all select-all">
+                              {trackingUrls.ctaUrl}
+                            </div>
+                          </div>
+
+                          {/* VIP Paywall Link Rastreamento */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-zinc-400 font-semibold">Link do Paywall Break (VIP):</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyTrackingUrl(trackingUrls.vipUrl, "vip")}
+                                className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono transition"
+                              >
+                                {copiedUtmKey === "vip" ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span className="text-emerald-400">Copiado!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copiar</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <div className="text-[10px] font-mono bg-zinc-950 p-2 rounded-lg border border-zinc-800 text-zinc-300 break-all select-all">
+                              {trackingUrls.vipUrl}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/80 text-[10px] text-zinc-400">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>Injeção dinâmica em todos os links e tabelas Markdown do e-mail.</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -2090,11 +2196,49 @@ export function BeehiivNewsletterEditor() {
                       />
                     </div>
 
-                    {/* URL Final Preview */}
-                    <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800 space-y-1">
-                      <span className="text-[10px] font-mono text-zinc-500 uppercase">URL Canônica Final:</span>
-                      <div className="text-xs font-mono text-zinc-300 break-all select-all">
+                    {/* URL Final Preview com Rastreamento UTM */}
+                    <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-zinc-500 uppercase">URL Canônica Pura:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyTrackingUrl(`https://v5autoblog.com/artigo/${payload.slug}`, "canonical")}
+                          className="text-[10px] text-zinc-400 hover:text-amber-400 flex items-center gap-1 font-mono transition"
+                        >
+                          {copiedUtmKey === "canonical" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedUtmKey === "canonical" ? "Copiado!" : "Copiar"}</span>
+                        </button>
+                      </div>
+                      <div className="text-xs font-mono text-zinc-300 break-all select-all bg-zinc-950 p-2 rounded border border-zinc-800">
                         https://v5autoblog.com/artigo/<strong className="text-amber-400">{payload.slug}</strong>
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-800 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-amber-500/80 uppercase">Com Rastreamento UTM:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const tracked = buildTrackingUrl(`https://v5autoblog.com/artigo/${payload.slug}`, {
+                              source: "v5poster",
+                              medium: "email_newsletter",
+                              campaign: payload.emailOptions.utmCampaign || payload.slug,
+                              content: "seo_canonical_share"
+                            });
+                            handleCopyTrackingUrl(tracked, "seo_utm");
+                          }}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono transition"
+                        >
+                          {copiedUtmKey === "seo_utm" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedUtmKey === "seo_utm" ? "Copiado!" : "Copiar com UTM"}</span>
+                        </button>
+                      </div>
+                      <div className="text-[10px] font-mono text-amber-300/80 break-all select-all bg-zinc-950 p-2 rounded border border-zinc-800/80">
+                        {buildTrackingUrl(`https://v5autoblog.com/artigo/${payload.slug}`, {
+                          source: "v5poster",
+                          medium: "email_newsletter",
+                          campaign: payload.emailOptions.utmCampaign || payload.slug,
+                          content: "seo_canonical_share"
+                        })}
                       </div>
                     </div>
 
