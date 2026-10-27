@@ -25,13 +25,26 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   const lines = sanitizedMarkdown.split("\n");
   const htmlBodyLines: string[] = [];
 
+  // Imagem de Capa do E-mail (Hero Image)
+  if (payload.coverImageUrl) {
+    htmlBodyLines.push(
+      `<img src="${payload.coverImageUrl}" alt="${payload.coverImageAlt || payload.title}" style="width: 100%; max-width: 600px; height: auto; border-radius: 10px; margin-bottom: 24px; display: block;" />`
+    );
+  }
+
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) {
       continue;
     }
 
-    if (line.includes("[PAYWALL_BREAK") || line.includes("<!-- paywall") || line.includes("<!-- PAYWALL")) {
+    // Suporte a Imagens inline no corpo: ![ALT](URL)
+    const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (imgMatch) {
+      htmlBodyLines.push(
+        `<figure style="margin: 24px 0; text-align: center;"><img src="${imgMatch[2]}" alt="${imgMatch[1] || 'Imagem ilustrativa'}" style="width: 100%; max-width: 580px; height: auto; border-radius: 8px; display: block; margin: 0 auto;" />${imgMatch[1] ? `<figcaption style="color: #6b7280; font-size: 12px; margin-top: 6px;">${imgMatch[1]}</figcaption>` : ''}</figure>`
+      );
+    } else if (line.includes("[PAYWALL_BREAK") || line.includes("<!-- paywall") || line.includes("<!-- PAYWALL")) {
       htmlBodyLines.push(
         `<div style="margin: 32px 0; padding: 24px 16px; border: 2px dashed #f59e0b; background-color: #fffbeb; border-radius: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
           <p style="color: #92400e; font-weight: 800; font-size: 15px; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;">🔒 Conteúdo Exclusivo de Assinantes VIP</p>
@@ -198,6 +211,8 @@ export function compileBlogPayload(payload: MultimodalDispatchPayload) {
     status: "publish",
     author: payload.blogOptions.author,
     canonical_url: canonicalUrl,
+    featured_image: payload.coverImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200",
+    image_alt: payload.coverImageAlt || payload.title,
     has_paywall: hasPaywall,
     paywall_index: paywallIndex,
     schema_org: schemaJsonLd,

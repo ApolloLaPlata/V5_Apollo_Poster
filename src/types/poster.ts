@@ -48,6 +48,8 @@ export interface NewsletterIssue {
   subject: string;
   previewText: string;
   contentMarkdown: string;
+  coverImageUrl?: string;
+  coverImageAlt?: string;
   targetAudience: 'all' | 'free_subscribers' | 'paid_vip_members';
   paywallBreakIndex?: number;
   sendAt: string;
@@ -108,6 +110,8 @@ export interface MultimodalDispatchPayload {
   slug: string;
   summary: string;
   contentMarkdown: string;
+  coverImageUrl?: string;
+  coverImageAlt?: string;
   emailOptions: {
     enabled: boolean;
     subject: string;

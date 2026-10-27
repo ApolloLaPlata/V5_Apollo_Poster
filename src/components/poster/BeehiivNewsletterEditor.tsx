@@ -41,7 +41,10 @@ import {
   Lock,
   Minus,
   BarChart2,
-  ShieldCheck
+  ShieldCheck,
+  Image as ImageIcon,
+  Trash2,
+  X
 } from "lucide-react";
 import { MultimodalDispatchPayload } from "@/types/poster";
 import { 
@@ -58,11 +61,41 @@ import { countWords, calculateReadingTimeMinutes } from "@/lib/utils/formatters"
 import { extractContentMetadata } from "@/lib/utils/metadataExtractor";
 import { sanitizeMarkdownAdvanced } from "@/lib/utils/markdownSanitizer";
 
+export const IMAGE_PRESETS = [
+  {
+    label: "Inteligência Artificial",
+    url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200",
+    alt: "Visualização abstrata de redes neurais e fluxo de dados em IA"
+  },
+  {
+    label: "Cloud & Servidores",
+    url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200",
+    alt: "Infraestrutura de datacenter de alta performance em nuvem"
+  },
+  {
+    label: "SaaS & Dashboard",
+    url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200",
+    alt: "Painel de métricas e analytics de crescimento para SaaS"
+  },
+  {
+    label: "Finanças & Conversão",
+    url: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=1200",
+    alt: "Crescimento financeiro, investimento e performance de receita"
+  },
+  {
+    label: "Comunicação & Mídia",
+    url: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200",
+    alt: "Mídia digital, canais de distribuição de conteúdo e audiência"
+  }
+];
+
 const DEFAULT_PAYLOAD: MultimodalDispatchPayload = {
   id: "dispatch-001",
   title: "A Revolução Silenciosa dos Agentes Autônomos em 2026",
   slug: "revolucao-silenciosa-agentes-autonomos-2026",
   summary: "Como ecossistemas de agentes autônomos estão eliminando gargalos de produção e acelerando entregas digitais.",
+  coverImageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200",
+  coverImageAlt: "Ecossistema de Inteligência Artificial e Agentes Autônomos",
   contentMarkdown: `# A Revolução Silenciosa dos Agentes Autônomos em 2026
 
 Olá! Se você acompanha tecnologia, provavelmente já percebeu que o jogo mudou.
@@ -167,6 +200,29 @@ function renderMarkdownToHtml(markdown: string) {
       continue;
     }
 
+    // Suporte a Imagem inline no corpo: ![ALT](URL)
+    const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (imgMatch) {
+      const alt = imgMatch[1] || "Imagem ilustrativa";
+      const src = imgMatch[2];
+      elements.push(
+        <figure key={i} className="my-6 text-center">
+          <img
+            src={src}
+            alt={alt}
+            className="w-full max-h-[460px] object-cover rounded-xl border border-zinc-800 shadow-md mx-auto"
+            loading="lazy"
+          />
+          {alt && (
+            <figcaption className="text-center text-xs text-zinc-500 mt-2 italic font-mono">
+              {alt}
+            </figcaption>
+          )}
+        </figure>
+      );
+      continue;
+    }
+
     if (line.startsWith("# ")) {
       elements.push(
         <h1 key={i} className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-6 mb-3 font-sans">
@@ -252,6 +308,8 @@ export function BeehiivNewsletterEditor() {
         slug: slugify(newsletterDraft.subject || DEFAULT_PAYLOAD.title),
         summary: newsletterDraft.previewText || DEFAULT_PAYLOAD.summary,
         contentMarkdown: newsletterDraft.contentMarkdown || DEFAULT_PAYLOAD.contentMarkdown,
+        coverImageUrl: newsletterDraft.coverImageUrl || DEFAULT_PAYLOAD.coverImageUrl,
+        coverImageAlt: newsletterDraft.coverImageAlt || DEFAULT_PAYLOAD.coverImageAlt,
         emailOptions: {
           ...DEFAULT_PAYLOAD.emailOptions,
           subject: newsletterDraft.subject || DEFAULT_PAYLOAD.emailOptions.subject,
@@ -272,6 +330,87 @@ export function BeehiivNewsletterEditor() {
   const [isDispatching, setIsDispatching] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
+
+  // Media & Cover Image Modal States
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [mediaTarget, setMediaTarget] = useState<"cover" | "inline">("cover");
+  const [mediaUrlInput, setMediaUrlInput] = useState("");
+  const [mediaAltInput, setMediaAltInput] = useState("");
+
+  const handleOpenMediaModal = (target: "cover" | "inline") => {
+    setMediaTarget(target);
+    if (target === "cover") {
+      setMediaUrlInput(payload.coverImageUrl || "");
+      setMediaAltInput(payload.coverImageAlt || payload.title || "");
+    } else {
+      setMediaUrlInput("");
+      setMediaAltInput(payload.title ? `Ilustração: ${payload.title}` : "Imagem ilustrativa");
+    }
+    setIsMediaModalOpen(true);
+  };
+
+  const handleApplyMedia = () => {
+    if (!mediaUrlInput.trim()) {
+      toast.info("URL Necessária", "Informe uma URL válida para a imagem.");
+      return;
+    }
+
+    const cleanUrl = mediaUrlInput.trim();
+    const cleanAlt = mediaAltInput.trim() || payload.title || "Imagem do artigo";
+
+    if (mediaTarget === "cover") {
+      setPayload(prev => ({
+        ...prev,
+        coverImageUrl: cleanUrl,
+        coverImageAlt: cleanAlt
+      }));
+      updateNewsletterDraft({
+        coverImageUrl: cleanUrl,
+        coverImageAlt: cleanAlt
+      });
+      toast.success("Imagem de Capa Definida!", "Capa atualizada para E-mail, AutoBlog e Redes.");
+    } else {
+      const markdownImage = `\n![${cleanAlt}](${cleanUrl})\n`;
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = payload.contentMarkdown;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        const newContent = `${before}${markdownImage}${after}`;
+        handleContentChange(newContent);
+        setTimeout(() => {
+          textarea.focus();
+          const newCursor = start + markdownImage.length;
+          textarea.setSelectionRange(newCursor, newCursor);
+        }, 0);
+      } else {
+        handleContentChange(`${payload.contentMarkdown}\n${markdownImage}`);
+      }
+      toast.success("Mídia Inserida!", "Imagem adicionada ao corpo do artigo com tag ALT.");
+    }
+
+    setIsMediaModalOpen(false);
+  };
+
+  const handleRemoveCover = () => {
+    setPayload(prev => ({
+      ...prev,
+      coverImageUrl: undefined,
+      coverImageAlt: undefined
+    }));
+    updateNewsletterDraft({
+      coverImageUrl: undefined,
+      coverImageAlt: undefined
+    });
+    toast.info("Capa Removida", "O artigo agora será despachado sem hero banner de capa.");
+  };
+
+  const handleSelectPreset = (preset: typeof IMAGE_PRESETS[0]) => {
+    setMediaUrlInput(preset.url);
+    setMediaAltInput(preset.alt);
+  };
 
   const compiledHtml = compileEmailHtml(payload);
   const compiledBlogJson = compileBlogPayload(payload);
@@ -638,8 +777,70 @@ export function BeehiivNewsletterEditor() {
         </div>
       )}
 
-      {/* Article Meta Bar (Title, Slug, Preheader) */}
-      <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 space-y-3">
+      {/* Article Meta Bar (Cover Image, Title, Slug, Preheader) */}
+      <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 space-y-3.5">
+        {/* Cover Image Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-zinc-950/70 rounded-xl border border-zinc-800">
+          <div className="flex items-center gap-3">
+            {payload.coverImageUrl ? (
+              <div className="relative group w-20 h-14 rounded-lg overflow-hidden border border-zinc-700 shrink-0 bg-zinc-900">
+                <img
+                  src={payload.coverImageUrl}
+                  alt={payload.coverImageAlt || "Capa do artigo"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center text-zinc-500 shrink-0">
+                <ImageIcon className="w-5 h-5 text-zinc-500" />
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white">Imagem de Capa (Hero Banner)</span>
+                {payload.coverImageUrl ? (
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold">
+                    Ativa
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 text-[10px] font-mono">
+                    Opcional
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400 line-clamp-1 mt-0.5">
+                {payload.coverImageUrl ? (
+                  <span>ALT: <span className="text-zinc-300 italic font-mono">{payload.coverImageAlt || "Sem ALT definido"}</span></span>
+                ) : (
+                  <span>Banner principal para E-mail, AutoBlog (Schema.org) e Social Cards</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={() => handleOpenMediaModal("cover")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium border border-zinc-700 transition"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+              <span>{payload.coverImageUrl ? "Alterar Capa" : "Definir Capa"}</span>
+            </button>
+            {payload.coverImageUrl && (
+              <button
+                type="button"
+                onClick={handleRemoveCover}
+                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition"
+                title="Remover imagem de capa"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div>
           <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
             Título do Artigo / Assunto do E-mail
@@ -800,6 +1001,14 @@ export function BeehiivNewsletterEditor() {
                     title="Inserir Link ([Texto](url)) - Ctrl+K"
                   >
                     <Link2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMediaModal("inline")}
+                    className="p-1.5 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 rounded transition"
+                    title="Inserir Imagem no Artigo (![ALT](url))"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
@@ -982,6 +1191,22 @@ export function BeehiivNewsletterEditor() {
                     </div>
                   </div>
 
+                  {/* Hero Cover Image in Reader */}
+                  {payload.coverImageUrl && (
+                    <div className="relative mb-6 rounded-xl overflow-hidden border border-zinc-800 shadow-lg max-h-[380px] bg-zinc-950">
+                      <img
+                        src={payload.coverImageUrl}
+                        alt={payload.coverImageAlt || payload.title}
+                        className="w-full h-auto max-h-[380px] object-cover"
+                      />
+                      {payload.coverImageAlt && (
+                        <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-sm text-[10px] text-zinc-300 px-2.5 py-1 rounded-md font-mono border border-zinc-700/60">
+                          ALT: {payload.coverImageAlt}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Rendered Markdown Body */}
                   <div className="prose prose-invert max-w-none text-zinc-300">
                     {renderMarkdownToHtml(payload.contentMarkdown)}
@@ -1127,6 +1352,22 @@ export function BeehiivNewsletterEditor() {
                             <span>{readingTime} min de leitura</span>
                           </div>
                         </div>
+
+                        {/* Featured Hero Image */}
+                        {payload.coverImageUrl && (
+                          <figure className="my-5 rounded-2xl overflow-hidden border border-zinc-800 shadow-xl bg-zinc-950">
+                            <img
+                              src={payload.coverImageUrl}
+                              alt={payload.coverImageAlt || payload.title}
+                              className="w-full max-h-[420px] object-cover"
+                            />
+                            {payload.coverImageAlt && (
+                              <figcaption className="p-2.5 text-center text-xs text-zinc-400 font-mono bg-zinc-950/90 border-t border-zinc-900">
+                                {payload.coverImageAlt}
+                              </figcaption>
+                            )}
+                          </figure>
+                        )}
 
                         {/* Article Body */}
                         <div className="prose prose-invert max-w-none text-zinc-300">
@@ -1334,6 +1575,127 @@ export function BeehiivNewsletterEditor() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* MEDIA & COVER IMAGE MODAL */}
+      {isMediaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2 text-white font-bold text-sm">
+                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <ImageIcon className="w-4 h-4" />
+                </div>
+                <span>
+                  {mediaTarget === "cover" ? "Configurar Imagem de Capa (Hero)" : "Inserir Imagem no Artigo"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMediaModalOpen(false)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  URL Canônica da Imagem (HTTPS)
+                </label>
+                <input
+                  type="text"
+                  value={mediaUrlInput}
+                  onChange={(e) => setMediaUrlInput(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="w-full bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Tag ALT Automática (Acessibilidade & SEO)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setMediaAltInput(payload.title || "Imagem ilustrativa")}
+                    className="text-[10px] text-amber-400 hover:underline font-mono"
+                  >
+                    Usar título do artigo
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={mediaAltInput}
+                  onChange={(e) => setMediaAltInput(e.target.value)}
+                  placeholder="Descrição da imagem para leitores de tela e Google..."
+                  className="w-full bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
+                />
+              </div>
+
+              {/* Preview Thumbnail */}
+              {mediaUrlInput && (
+                <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1.5">
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase">Prévia da Mídia:</span>
+                  <div className="h-32 w-full rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900">
+                    <img
+                      src={mediaUrlInput}
+                      alt={mediaAltInput || "Prévia"}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600";
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Image Presets */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  Presets Rápidos de Imagem Royalty-Free:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {IMAGE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => handleSelectPreset(preset)}
+                      className={`p-2 rounded-xl border text-left transition ${
+                        mediaUrlInput === preset.url
+                          ? "bg-amber-500/20 border-amber-500 text-amber-300"
+                          : "bg-zinc-950/80 border-zinc-800 hover:border-zinc-700 text-zinc-300"
+                      }`}
+                    >
+                      <span className="font-semibold block text-[11px]">{preset.label}</span>
+                      <span className="text-[9px] text-zinc-500 truncate block font-mono">Unsplash HD</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setIsMediaModalOpen(false)}
+                className="px-3.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyMedia}
+                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition flex items-center gap-1.5 shadow"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>{mediaTarget === "cover" ? "Salvar Imagem de Capa" : "Inserir Imagem no Artigo"}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
