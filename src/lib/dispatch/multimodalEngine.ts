@@ -145,6 +145,83 @@ export function renderEmailCtaContainer(
   </table>`;
 }
 
+export interface InstitutionalFooterOptions {
+  companyName?: string;
+  senderName?: string;
+  physicalAddress?: string;
+  permissionReminder?: string;
+  unsubscribeUrl: string;
+  preferencesUrl: string;
+  privacyUrl?: string;
+  termsUrl?: string;
+  currentYear?: number;
+  enginePort?: string;
+}
+
+/**
+ * Renderiza o Rodapé Institucional Obrigatório de E-mail
+ * Em conformidade estrita com o CAN-SPAM Act, LGPD (Brasil), GDPR (UE) e RFC-8058 (One-Click Unsubscribe)
+ */
+export function renderInstitutionalEmailFooter(options: InstitutionalFooterOptions): string {
+  const {
+    companyName = "Holding V5 Apollo",
+    senderName = "Holding V5 Apollo",
+    physicalAddress = "Holding V5 Apollo Ltda. • Av. Paulista, 1000 - Bela Vista, São Paulo/SP - CEP 01310-100, Brasil",
+    permissionReminder = "Você está recebendo esta mensagem porque se inscreveu na newsletter oficial de inteligência e automação da Holding V5 Apollo através do portal AutoBlog ou de nossas capitanias parceiras.",
+    unsubscribeUrl,
+    preferencesUrl,
+    privacyUrl = "https://v5apollo.com/privacidade",
+    termsUrl = "https://v5apollo.com/termos",
+    currentYear = new Date().getFullYear(),
+    enginePort = ":3011",
+  } = options;
+
+  return `<!-- RODAPÉ INSTITUCIONAL OBRIGATÓRIO (CAN-SPAM, LGPD & RFC-8058) -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 32px 32px 28px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <!-- Selo de Compliance & Permission Reminder -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 16px;">
+                <tr>
+                  <td align="center">
+                    <span style="display: inline-block; background-color: #f1f5f9; color: #475569; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 10px;">
+                      🛡️ E-mail Transacional & Editorial • 100% Opt-In Verificado
+                    </span>
+                    <p style="color: #64748b; font-size: 11px; line-height: 1.6; margin: 0 auto; max-width: 520px;">
+                      ${permissionReminder}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Links de Governança, Cancelamento e Preferências -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 16px;">
+                <tr>
+                  <td align="center" style="font-size: 12px; color: #64748b; line-height: 1.8;">
+                    <a href="${preferencesUrl}" target="_blank" style="color: #475569; text-decoration: underline; font-weight: 600;">Gerenciar Preferências</a>
+                    <span style="color: #cbd5e1; margin: 0 8px;">•</span>
+                    <a href="${unsubscribeUrl}" target="_blank" style="color: #ef4444; text-decoration: underline; font-weight: 600;">Cancelar Inscrição (1-Click)</a>
+                    <span style="color: #cbd5e1; margin: 0 8px;">•</span>
+                    <a href="${privacyUrl}" target="_blank" style="color: #64748b; text-decoration: underline;">Privacidade</a>
+                    <span style="color: #cbd5e1; margin: 0 8px;">•</span>
+                    <a href="${termsUrl}" target="_blank" style="color: #64748b; text-decoration: underline;">Termos de Uso</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Endereço Físico Obrigatório CAN-SPAM / LGPD -->
+              <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0 0 10px 0;">
+                <strong>${companyName}</strong> (${senderName})<br>
+                ${physicalAddress}
+              </p>
+
+              <!-- Copyright e Identificação da Capitania -->
+              <p style="color: #cbd5e1; font-size: 10px; margin: 0; font-family: monospace;">
+                © ${currentYear} Holding V5 Apollo. Todos os direitos reservados. Despachado pela Capitania #13: V5 Apollo Poster (Porta ${enginePort}).
+              </p>
+            </td>
+          </tr>`;
+}
+
 /**
  * Converte blocos de tabela Markdown (| col1 | col2 |) para tabelas HTML com estilos inline
  * 100% compatíveis com Outlook Desktop, Gmail App e Apple Mail.
@@ -394,6 +471,8 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
   const mainCtaUrl = buildTrackingUrl(`https://v5autoblog.com/artigo/${slug}`, { ...utmConfig, content: "cta_main_button" });
   const prefsUrl = buildTrackingUrl("https://v5apollo.com/preferencias", { ...utmConfig, content: "footer_preferences" });
   const unsubUrl = buildTrackingUrl("https://v5apollo.com/cancelar", { ...utmConfig, content: "footer_unsubscribe" });
+  const privacyUrl = buildTrackingUrl("https://v5apollo.com/privacidade", { ...utmConfig, content: "footer_privacy" });
+  const termsUrl = buildTrackingUrl("https://v5apollo.com/termos", { ...utmConfig, content: "footer_terms" });
 
   const mainCtaHtml = renderOutlookCtaButton({
     url: mainCtaUrl,
@@ -405,6 +484,19 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
     width: 290,
     height: 48,
     borderRadius: 10,
+  });
+
+  const institutionalFooterHtml = renderInstitutionalEmailFooter({
+    companyName: "Holding V5 Apollo",
+    senderName: emailOptions.fromName || "Holding V5 Apollo",
+    physicalAddress: emailOptions.footerAddress || "Holding V5 Apollo Ltda. • Av. Paulista, 1000 - Bela Vista, São Paulo/SP - CEP 01310-100, Brasil",
+    permissionReminder: emailOptions.permissionReminder || "Você está recebendo esta mensagem porque se inscreveu na newsletter oficial de inteligência e automação da Holding V5 Apollo através do portal AutoBlog ou de nossas capitanias parceiras.",
+    unsubscribeUrl: unsubUrl,
+    preferencesUrl: prefsUrl,
+    privacyUrl: privacyUrl,
+    termsUrl: termsUrl,
+    currentYear: new Date().getFullYear(),
+    enginePort: ":3011",
   });
 
   return `<!DOCTYPE html>
@@ -461,18 +553,8 @@ export function compileEmailHtml(payload: MultimodalDispatchPayload): string {
             </td>
           </tr>
 
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f9fafb; padding: 24px 32px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="color: #6b7280; font-size: 12px; line-height: 1.5; margin: 0 0 8px 0;">
-                Enviado por <strong>${emailOptions.fromName || "Holding V5 Apollo"}</strong> via V5 Poster Engine.
-              </p>
-              <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-                <a href="${prefsUrl}" style="color: #6b7280; text-decoration: underline;">Gerenciar Preferências</a> • 
-                <a href="${unsubUrl}" style="color: #6b7280; text-decoration: underline;">Cancelar Inscrição</a>
-              </p>
-            </td>
-          </tr>
+          <!-- Institutional Footer (CAN-SPAM, LGPD & RFC-8058 Compliance) -->
+          ${institutionalFooterHtml}
         </table>
       </td>
     </tr>

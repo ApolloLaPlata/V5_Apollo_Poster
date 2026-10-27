@@ -120,6 +120,8 @@ export interface MultimodalDispatchPayload {
     provider: 'resend' | 'ses' | 'smtp';
     audienceList: string;
     utmCampaign: string;
+    footerAddress?: string;
+    permissionReminder?: string;
   };
   blogOptions: {
     enabled: boolean;
