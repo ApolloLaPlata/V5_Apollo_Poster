@@ -108,6 +108,76 @@ export function SocialPublishingStudio() {
   const [previewChannel, setPreviewChannel] = useState<"instagram" | "tiktok" | "whatsapp" | "beehiiv">("instagram");
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Efeito para carregar parâmetros de URL via Apollo Bridge (ex: vindos do V5 Avatar ou AutoBlog)
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const qTitle = params.get("title");
+    const qContent = params.get("content");
+    const qActor = params.get("actor");
+    const qSource = params.get("source");
+
+    if (qTitle || qContent) {
+      if (qTitle) setTitle(decodeURIComponent(qTitle));
+      if (qContent) {
+        const actorPrefix = qActor ? `🎙️ [V5 Avatar: ${decodeURIComponent(qActor)}]\n\n` : "";
+        setContent(`${actorPrefix}${decodeURIComponent(qContent)}`);
+      }
+      toast.success(
+        "Ponte Apollo Ativa",
+        `Conteúdo importado com sucesso via ${qSource || qActor || "Capitania Conectada"}`
+      );
+    }
+  }, []);
+
+  const handleImportFindersDeal = () => {
+    setTitle("⚡ ACHADINHO VIP: Teclado Mecânico Wireless RGB Hot-Swap com 45% OFF");
+    setContent(
+      "🔥 OPORTUNIDADE RELÂMPAGO DO DIA!\n\n" +
+        "Teclado mecânico wireless com switch hot-swap, iluminação RGB personalizável e bateria de 4000mAh para até 3 semanas de uso contínuo.\n\n" +
+        "❌ De R$ 389,00\n" +
+        "✅ Por apenas R$ 213,95 em até 6x sem juros!\n\n" +
+        "Use o cupom secreto: VIPAPOLLO\n" +
+        "Garantia oficial e frete grátis para todo o Brasil pelo link abaixo 👇"
+    );
+    setCtaUrl("https://finders.v5apollo.com/deal/teclado-mecanico-rgb-hotswap?ref=v5poster");
+    setSelectedPlatforms(["instagram", "whatsapp", "telegram", "newsletter"]);
+    setMediaType("image");
+    setMediaUrl("https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80");
+    toast.success("Finders VIP Importado", "Dados da oferta preenchidos no compositor.");
+  };
+
+  const handleImportAutoBlogArticle = () => {
+    setTitle("🧠 Como o Google Core Update de 2026 Avalia Conteúdo Criado por IA");
+    setContent(
+      "O algoritmo de ranqueamento passou pela maior reformulação desde o BERT. Descubra os 3 pilares não-negociáveis para manter seus artigos nas primeiras posições:\n\n" +
+        "1. Experiência em primeira pessoa (testes práticos comprovados)\n" +
+        "2. Dados e benchmarks próprios (evite cópia genérica)\n" +
+        "3. Atualização incremental com schema estruturado\n\n" +
+        "Confira o artigo completo e o framework de automação no portal."
+    );
+    setCtaUrl("https://autoblog.v5apollo.com/artigo/google-core-update-2026-ia-eeat?ref=v5poster");
+    setSelectedPlatforms(["autoblog", "newsletter", "instagram"]);
+    setMediaType("image");
+    setMediaUrl("https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&auto=format&fit=crop&q=80");
+    toast.success("AutoBlog SEO Importado", "Artigo estruturado carregado no compositor.");
+  };
+
+  const handleImportAvatarCatchphrase = () => {
+    setTitle("🚀 ROXINGO QUESTS: O segredo é manter o topete alinhado e o código limpo!");
+    setContent(
+      "Topete no lugar, café na caneca e motor da holding rodando em velocidade de escape! 🚀\n\n" +
+        "\"Se não tem automação de verdade rodando no background, você não tem uma empresa, tem um trabalho braçal.\"\n\n" +
+        "— Oliver (Roxingo Quests) em transmissão oficial direto da V5 Holding.\n\n" +
+        "Confira o jogo completo e os novos episódios no arcade interativo!"
+    );
+    setCtaUrl("https://roxingo.v5apollo.com/?ref=v5poster");
+    setSelectedPlatforms(["tiktok", "youtube", "instagram"]);
+    setMediaType("video");
+    setMediaUrl("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80");
+    toast.success("Avatar Roxingo Importado", "Bordão e persona carregados no compositor.");
+  };
+
   // Toggle de Plataforma
   const togglePlatform = (id: SocialPlatform) => {
     if (selectedPlatforms.includes(id)) {
@@ -309,6 +379,50 @@ export function SocialPublishingStudio() {
                     {item.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Apollo Bridge: Ingestão Inteligente Inter-Capitanias */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-zinc-900 to-emerald-500/10 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <div className="text-[11px] font-mono font-bold text-zinc-200">
+                    Apollo Bridge: Ingestão 1-Clique
+                  </div>
+                  <div className="text-[10px] text-zinc-400">
+                    Importe ganchos do Finders, matérias do AutoBlog ou bordões do Avatar
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleImportFindersDeal}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>Oferta Finders</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleImportAutoBlogArticle}
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>AutoBlog SEO</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleImportAvatarCatchphrase}
+                  className="px-2.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Avatar Roxingo</span>
+                </button>
               </div>
             </div>
 
