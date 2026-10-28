@@ -150,7 +150,9 @@ export function calculateHistoryMetrics(
     "Mercado Livre": 0,
     Amazon: 0,
     AliExpress: 0,
-    Magalu: 0
+    Magalu: 0,
+    "PixDrop Store": 0,
+    "V5 Finders": 0
   };
 
   if (!history || history.length === 0) {
