@@ -38,7 +38,7 @@ import {
 import { getSafeStorage } from "@/lib/queue/safeStorage";
 import { notifyCrossTabQueueChange } from "@/lib/queue/crossTabQueueSync";
 
-export type PosterTab = "calendar" | "newsletter" | "comment" | "offers" | "queue" | "logs";
+export type PosterTab = "studio" | "calendar" | "newsletter" | "comment" | "offers" | "queue" | "logs";
 
 interface PosterStoreState {
   // Navegação
@@ -274,7 +274,7 @@ const INITIAL_LOGS: DispatchLogEntry[] = [
 export const usePosterStore = create<PosterStoreState>()(
   persist(
     (set, get) => ({
-      activeTab: "calendar",
+      activeTab: "studio",
       setActiveTab: (tab) => set({ activeTab: tab }),
 
       posts: INITIAL_POSTS,
