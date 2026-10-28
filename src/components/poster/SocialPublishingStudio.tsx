@@ -107,25 +107,78 @@ export function SocialPublishingStudio() {
   const [ctaUrl, setCtaUrl] = useState("https://v5apollo.com/hub");
   const [previewChannel, setPreviewChannel] = useState<"instagram" | "tiktok" | "whatsapp" | "beehiiv">("instagram");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [bridgeSource, setBridgeSource] = useState<{ source: string; title: string; url?: string } | null>(null);
 
-  // Efeito para carregar parâmetros de URL via Apollo Bridge (ex: vindos do V5 Avatar ou AutoBlog)
+  // Efeito para carregar parâmetros de URL via Apollo Bridge (ex: vindos de Finders, AutoBlog, Director, Sound ou Avatar)
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const qSource = params.get("source");
     const qTitle = params.get("title");
     const qContent = params.get("content");
     const qActor = params.get("actor");
-    const qSource = params.get("source");
+    const qUrl = params.get("url");
+    const qPrice = params.get("price");
+    const qExcerpt = params.get("excerpt");
+    const qScript = params.get("script");
+    const qGenre = params.get("genre");
 
-    if (qTitle || qContent) {
-      if (qTitle) setTitle(decodeURIComponent(qTitle));
-      if (qContent) {
-        const actorPrefix = qActor ? `🎙️ [V5 Avatar: ${decodeURIComponent(qActor)}]\n\n` : "";
-        setContent(`${actorPrefix}${decodeURIComponent(qContent)}`);
+    if (qTitle || qContent || qScript || qSource) {
+      const decodedTitle = qTitle ? decodeURIComponent(qTitle) : "";
+      const decodedUrl = qUrl ? decodeURIComponent(qUrl) : "";
+      const decodedExcerpt = qExcerpt ? decodeURIComponent(qExcerpt) : "";
+      const decodedScript = qScript ? decodeURIComponent(qScript) : "";
+      const decodedPrice = qPrice ? decodeURIComponent(qPrice) : "";
+      const decodedContent = qContent ? decodeURIComponent(qContent) : "";
+      const decodedActor = qActor ? decodeURIComponent(qActor) : "";
+
+      if (decodedTitle) setTitle(decodedTitle);
+      if (decodedUrl) setCtaUrl(decodedUrl);
+
+      if (qSource === "finders") {
+        const priceTag = decodedPrice ? `\n\n💰 Preço Especial: R$ ${decodedPrice}` : "";
+        const details = decodedExcerpt ? `\n\n📌 Destaques:\n${decodedExcerpt}` : "";
+        const scriptBody = decodedScript ? `\n\n🎬 Roteiro Sugerido:\n${decodedScript}` : "";
+        setContent(
+          `🔥 OPORTUNIDADE ACHADA NO RADAR VIRAL V5!\n\n${decodedTitle}${priceTag}${details}${scriptBody}\n\n👉 Aproveite pelo link oficial abaixo 👇`
+        );
+        setSelectedPlatforms(["whatsapp", "telegram", "instagram", "tiktok"]);
+        setMediaType("image");
+      } else if (qSource === "autoblog") {
+        const details = decodedExcerpt ? `\n\n${decodedExcerpt}` : "";
+        setContent(
+          `🚀 NOVO ARTIGO NO AUTOBLOG V5:\n\n${decodedTitle}${details}\n\nLeia a análise completa e os benchmarks detalhados no link abaixo 👇`
+        );
+        setSelectedPlatforms(["autoblog", "newsletter", "instagram", "telegram"]);
+        setMediaType("image");
+      } else if (qSource === "director") {
+        const scriptBody = decodedScript ? `\n\n📜 Roteiro da Cena:\n${decodedScript}` : "";
+        setContent(
+          `🎬 CENA PRODUZIDA NO V5 POCKET DIRECTOR:\n\n${decodedTitle}${scriptBody}\n\nAssista à produção completa e making-of!`
+        );
+        setSelectedPlatforms(["tiktok", "youtube", "instagram"]);
+        setMediaType("video");
+      } else if (qSource === "sound") {
+        const genreTag = qGenre ? ` [Estilo: ${decodeURIComponent(qGenre)}]` : "";
+        setContent(
+          `🎵 NOVA FAIXA MASTERIZADA NO V5 SOUND STUDIO${genreTag}:\n\n${decodedTitle}\n\nSintetizada com Suno v4 & Neural DAW. Ouça em alta fidelidade no link abaixo 👇`
+        );
+        setSelectedPlatforms(["tiktok", "instagram", "youtube"]);
+        setMediaType("video");
+      } else if (decodedContent) {
+        const actorPrefix = decodedActor ? `🎙️ [V5 Avatar: ${decodedActor}]\n\n` : "";
+        setContent(`${actorPrefix}${decodedContent}`);
       }
+
+      setBridgeSource({
+        source: qSource || decodedActor || "Capitania Conectada",
+        title: decodedTitle || "Conteúdo Ingerido",
+        url: decodedUrl || undefined,
+      });
+
       toast.success(
         "Ponte Apollo Ativa",
-        `Conteúdo importado com sucesso via ${qSource || qActor || "Capitania Conectada"}`
+        `Conteúdo importado com sucesso via ${(qSource || decodedActor || "Capitania").toUpperCase()}`
       );
     }
   }, []);
@@ -381,6 +434,40 @@ export function SocialPublishingStudio() {
                 ))}
               </div>
             </div>
+
+            {/* Alerta de Ingestão Ativa via Apollo Bridge */}
+            {bridgeSource && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-rose-500/15 to-purple-500/20 border border-amber-500/40 flex items-center justify-between gap-3 text-xs shadow-lg shadow-amber-500/5">
+                <div className="flex items-center gap-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-amber-300 uppercase tracking-wider text-[11px] bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
+                        {bridgeSource.source.toUpperCase()}
+                      </span>
+                      <span className="text-zinc-200 font-semibold truncate max-w-sm sm:max-w-md">
+                        {bridgeSource.title}
+                      </span>
+                    </div>
+                    {bridgeSource.url && (
+                      <p className="text-[11px] text-zinc-400 font-mono mt-0.5 truncate max-w-sm">
+                        URL de Destino: {bridgeSource.url}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBridgeSource(null);
+                    toast.info("Ingestão", "Alerta de ponte limpo.");
+                  }}
+                  className="text-[11px] px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/80 transition-all cursor-pointer shrink-0"
+                >
+                  Fechar Alerta
+                </button>
+              </div>
+            )}
 
             {/* Apollo Bridge: Ingestão Inteligente Inter-Capitanias */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-zinc-900 to-emerald-500/10 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
