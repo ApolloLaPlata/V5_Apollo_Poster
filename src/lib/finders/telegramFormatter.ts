@@ -50,7 +50,8 @@ export function escapeTelegramMarkdownV2(text: string): string {
  * Formata valor monetário no padrão brasileiro R$ 0,00
  */
 export function formatCurrencyBr(value: number): string {
-  return value.toLocaleString("pt-BR", {
+  const safe = Number.isFinite(value) ? Number(value) : 0;
+  return safe.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
@@ -79,11 +80,15 @@ export function compileTelegramHtmlMessage(
     footerTag = "#AchadinhoVIP"
   } = options;
 
-  const storeMeta = SUPPORTED_STORES[deal.store as SupportedStore] || SUPPORTED_STORES.Shopee;
-  const escapedTitle = escapeTelegramHtml(deal.productName.trim());
-  const origPriceFormatted = formatCurrencyBr(deal.originalPrice);
-  const promoPriceFormatted = formatCurrencyBr(deal.promoPrice);
-  const savingsAmount = deal.savingsAmount ?? (deal.originalPrice - deal.promoPrice);
+  const safeDeal = deal || ({} as GroupBroadcastDeal);
+  const storeName = safeDeal.store || "Shopee";
+  const storeMeta = SUPPORTED_STORES[storeName as SupportedStore] || SUPPORTED_STORES.Shopee;
+  const escapedTitle = escapeTelegramHtml((safeDeal.productName || "").trim());
+  const origPrice = Number.isFinite(safeDeal.originalPrice) ? safeDeal.originalPrice : 0;
+  const promoPrice = Number.isFinite(safeDeal.promoPrice) ? safeDeal.promoPrice : 0;
+  const origPriceFormatted = formatCurrencyBr(origPrice);
+  const promoPriceFormatted = formatCurrencyBr(promoPrice);
+  const savingsAmount = safeDeal.savingsAmount ?? Math.max(0, origPrice - promoPrice);
   const savingsFormatted = formatCurrencyBr(savingsAmount);
 
   const lines: string[] = [];
@@ -93,14 +98,15 @@ export function compileTelegramHtmlMessage(
 
   // 2. Loja e Badge Oficial
   if (includeStoreBadge) {
-    lines.push(`🏬 <b>Loja:</b> ${escapeTelegramHtml(deal.store)} <i>(${escapeTelegramHtml(storeMeta.badgeText)})</i>`);
+    lines.push(`🏬 <b>Loja:</b> ${escapeTelegramHtml(storeName)} <i>(${escapeTelegramHtml(storeMeta.badgeText)})</i>`);
   } else {
-    lines.push(`🏬 <b>Loja:</b> ${escapeTelegramHtml(deal.store)}`);
+    lines.push(`🏬 <b>Loja:</b> ${escapeTelegramHtml(storeName)}`);
   }
 
   // 3. Preço Original Tachado e Preço Promocional em Destaque
   lines.push(`❌ <s>De: R$ ${origPriceFormatted}</s>`);
-  lines.push(`💥 <b>Por apenas:</b> <code>R$ ${promoPriceFormatted}</code> (${deal.discountPercentage}% OFF)`);
+  const discountPct = Number.isFinite(safeDeal.discountPercentage) ? safeDeal.discountPercentage : 0;
+  lines.push(`💥 <b>Por apenas:</b> <code>R$ ${promoPriceFormatted}</code> (${discountPct}% OFF)`);
 
   // 4. Economia em Reais
   if (includeSavings && savingsAmount > 0) {
@@ -108,13 +114,13 @@ export function compileTelegramHtmlMessage(
   }
 
   // 5. Cupom com Cópia Rápida em 1 Toque (Tag <code>)
-  if (includeCoupon && deal.couponCode && deal.couponCode.trim()) {
-    const cleanCoupon = escapeTelegramHtml(deal.couponCode.trim().toUpperCase());
+  if (includeCoupon && safeDeal.couponCode && safeDeal.couponCode.trim()) {
+    const cleanCoupon = escapeTelegramHtml(safeDeal.couponCode.trim().toUpperCase());
     lines.push(`\n🏷️ Cupom: <code>${cleanCoupon}</code> <i>(Toque no código para copiar)</i>`);
   }
 
   // 6. Link de Afiliado com Call to Action
-  const targetUrl = options.customAffiliateUrl || deal.trackedTelegramUrl || deal.shortUrl || deal.affiliateUrl;
+  const targetUrl = options.customAffiliateUrl || safeDeal.trackedTelegramUrl || safeDeal.shortUrl || safeDeal.affiliateUrl || "";
   lines.push(`\n🛒 <a href="${escapeTelegramHtml(targetUrl)}"><b>👉 ${escapeTelegramHtml(customCallToAction)}</b></a>`);
 
   // 7. Alerta de Expiração e Tag de Grupo VIP
@@ -145,11 +151,15 @@ export function compileTelegramMarkdownMessage(
     footerTag = "#AchadinhoVIP"
   } = options;
 
-  const storeMeta = SUPPORTED_STORES[deal.store as SupportedStore] || SUPPORTED_STORES.Shopee;
-  const escapedTitle = escapeTelegramMarkdownV2(deal.productName.trim());
-  const origPriceFormatted = escapeTelegramMarkdownV2(formatCurrencyBr(deal.originalPrice));
-  const promoPriceFormatted = escapeTelegramMarkdownV2(formatCurrencyBr(deal.promoPrice));
-  const savingsAmount = deal.savingsAmount ?? (deal.originalPrice - deal.promoPrice);
+  const safeDeal = deal || ({} as GroupBroadcastDeal);
+  const storeName = safeDeal.store || "Shopee";
+  const storeMeta = SUPPORTED_STORES[storeName as SupportedStore] || SUPPORTED_STORES.Shopee;
+  const escapedTitle = escapeTelegramMarkdownV2((safeDeal.productName || "").trim());
+  const origPrice = Number.isFinite(safeDeal.originalPrice) ? safeDeal.originalPrice : 0;
+  const promoPrice = Number.isFinite(safeDeal.promoPrice) ? safeDeal.promoPrice : 0;
+  const origPriceFormatted = escapeTelegramMarkdownV2(formatCurrencyBr(origPrice));
+  const promoPriceFormatted = escapeTelegramMarkdownV2(formatCurrencyBr(promoPrice));
+  const savingsAmount = safeDeal.savingsAmount ?? Math.max(0, origPrice - promoPrice);
   const savingsFormatted = escapeTelegramMarkdownV2(formatCurrencyBr(savingsAmount));
 
   const lines: string[] = [];
@@ -159,27 +169,28 @@ export function compileTelegramMarkdownMessage(
 
   // Loja
   if (includeStoreBadge) {
-    lines.push(`🏬 *Loja:* ${escapeTelegramMarkdownV2(deal.store)} _(${escapeTelegramMarkdownV2(storeMeta.badgeText)})_`);
+    lines.push(`🏬 *Loja:* ${escapeTelegramMarkdownV2(storeName)} _(${escapeTelegramMarkdownV2(storeMeta.badgeText)})_`);
   } else {
-    lines.push(`🏬 *Loja:* ${escapeTelegramMarkdownV2(deal.store)}`);
+    lines.push(`🏬 *Loja:* ${escapeTelegramMarkdownV2(storeName)}`);
   }
 
   // Preços
   lines.push(`❌ ~De: R$ ${origPriceFormatted}~`);
-  lines.push(`💥 *Por apenas:* \`R$ ${promoPriceFormatted}\` \\(${deal.discountPercentage}% OFF\\)`);
+  const discountPct = Number.isFinite(safeDeal.discountPercentage) ? safeDeal.discountPercentage : 0;
+  lines.push(`💥 *Por apenas:* \`R$ ${promoPriceFormatted}\` \\(${discountPct}% OFF\\)`);
 
   if (includeSavings && savingsAmount > 0) {
     lines.push(`📉 _Você economiza: R$ ${savingsFormatted}_`);
   }
 
   // Cupom
-  if (includeCoupon && deal.couponCode && deal.couponCode.trim()) {
-    const cleanCoupon = escapeTelegramMarkdownV2(deal.couponCode.trim().toUpperCase());
+  if (includeCoupon && safeDeal.couponCode && safeDeal.couponCode.trim()) {
+    const cleanCoupon = escapeTelegramMarkdownV2(safeDeal.couponCode.trim().toUpperCase());
     lines.push(`\n🏷️ Cupom: \`${cleanCoupon}\` _\\(Toque no código para copiar\\)_`);
   }
 
   // Link
-  const targetUrl = options.customAffiliateUrl || deal.trackedTelegramUrl || deal.shortUrl || deal.affiliateUrl;
+  const targetUrl = options.customAffiliateUrl || safeDeal.trackedTelegramUrl || safeDeal.shortUrl || safeDeal.affiliateUrl || "";
   lines.push(`\n🛒 [👉 ${escapeTelegramMarkdownV2(customCallToAction)}](${targetUrl})`);
 
   if (includeDisclaimer) {

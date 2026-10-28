@@ -31,7 +31,8 @@ export const WHATSAPP_MAX_MESSAGE_CHARS = 4096;
  * Formata valor monetário no padrão brasileiro R$ 0,00
  */
 export function formatCurrencyBr(value: number): string {
-  return value.toLocaleString("pt-BR", {
+  const safe = Number.isFinite(value) ? Number(value) : 0;
+  return safe.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
@@ -84,11 +85,15 @@ export function compileWhatsAppMessage(
     footerTag = "#AchadinhosVIP"
   } = options;
 
-  const storeMeta = SUPPORTED_STORES[deal.store as SupportedStore] || SUPPORTED_STORES.Shopee;
-  const cleanTitle = sanitizeWhatsAppText(deal.productName);
-  const origPriceFormatted = formatCurrencyBr(deal.originalPrice);
-  const promoPriceFormatted = formatCurrencyBr(deal.promoPrice);
-  const savingsAmount = deal.savingsAmount ?? (deal.originalPrice - deal.promoPrice);
+  const safeDeal = deal || ({} as GroupBroadcastDeal);
+  const storeName = safeDeal.store || "Shopee";
+  const storeMeta = SUPPORTED_STORES[storeName as SupportedStore] || SUPPORTED_STORES.Shopee;
+  const cleanTitle = sanitizeWhatsAppText(safeDeal.productName || "");
+  const origPrice = Number.isFinite(safeDeal.originalPrice) ? safeDeal.originalPrice : 0;
+  const promoPrice = Number.isFinite(safeDeal.promoPrice) ? safeDeal.promoPrice : 0;
+  const origPriceFormatted = formatCurrencyBr(origPrice);
+  const promoPriceFormatted = formatCurrencyBr(promoPrice);
+  const savingsAmount = safeDeal.savingsAmount ?? Math.max(0, origPrice - promoPrice);
   const savingsFormatted = formatCurrencyBr(savingsAmount);
 
   const lines: string[] = [];
@@ -101,14 +106,15 @@ export function compileWhatsAppMessage(
 
   // 3. Loja e Badge Oficial
   if (includeStoreBadge) {
-    lines.push(`🏬 *Loja:* ${deal.store} _(${storeMeta.badgeText})_`);
+    lines.push(`🏬 *Loja:* ${storeName} _(${storeMeta.badgeText})_`);
   } else {
-    lines.push(`🏬 *Loja:* ${deal.store}`);
+    lines.push(`🏬 *Loja:* ${storeName}`);
   }
 
   // 4. Preço Original Tachado com til (~) e Preço Promocional em Negrito
   lines.push(`❌ ~De: R$ ${origPriceFormatted}~`);
-  lines.push(`💥 *Por apenas: R$ ${promoPriceFormatted}* (${deal.discountPercentage}% OFF)`);
+  const discountPct = Number.isFinite(safeDeal.discountPercentage) ? safeDeal.discountPercentage : 0;
+  lines.push(`💥 *Por apenas: R$ ${promoPriceFormatted}* (${discountPct}% OFF)`);
 
   // 5. Economia em Reais em Itálico
   if (includeSavings && savingsAmount > 0) {
@@ -116,8 +122,8 @@ export function compileWhatsAppMessage(
   }
 
   // 6. Cupom com Cópia Rápida em Monospace (```CUPOM```)
-  if (includeCoupon && deal.couponCode && deal.couponCode.trim()) {
-    const cleanCoupon = deal.couponCode.trim().toUpperCase();
+  if (includeCoupon && safeDeal.couponCode && safeDeal.couponCode.trim()) {
+    const cleanCoupon = safeDeal.couponCode.trim().toUpperCase();
     if (useMonospaceCoupon) {
       lines.push(`\n🏷️ *Use o Cupom:* \`\`\`${cleanCoupon}\`\`\``);
     } else {
@@ -126,9 +132,11 @@ export function compileWhatsAppMessage(
   }
 
   // 7. Link Isolado com Call to Action (Garante o preview de cartão no WhatsApp)
-  const targetUrl = options.customAffiliateUrl || deal.trackedWhatsAppUrl || deal.shortUrl || deal.affiliateUrl;
+  const targetUrl = options.customAffiliateUrl || safeDeal.trackedWhatsAppUrl || safeDeal.shortUrl || safeDeal.affiliateUrl || "";
   lines.push(`\n🛒 *${customCallToAction}*`);
-  lines.push(`${targetUrl.trim()}`);
+  if (targetUrl) {
+    lines.push(`${targetUrl.trim()}`);
+  }
 
   // 8. Alerta de Expiração de Estoque
   if (includeDisclaimer) {

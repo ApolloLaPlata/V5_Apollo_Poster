@@ -65,7 +65,12 @@ export class AntiBanThrottler {
   private totalDispatchedAllTime: number = 0;
 
   constructor(customConfig: Partial<ThrottlerConfig> = {}) {
-    this.config = { ...DEFAULT_THROTTLER_CONFIG, ...customConfig };
+    const safeConfig = customConfig || {};
+    this.config = {
+      ...DEFAULT_THROTTLER_CONFIG,
+      ...safeConfig,
+      maxDmsPerMinute: Math.max(1, safeConfig.maxDmsPerMinute || DEFAULT_THROTTLER_CONFIG.maxDmsPerMinute)
+    };
   }
 
   /**
@@ -115,7 +120,7 @@ export class AntiBanThrottler {
     }
 
     // O slot mais antigo da janela de 60s expirará em (oldest + 60s - now)
-    const oldest = this.dispatchTimestamps[0];
+    const oldest = this.dispatchTimestamps.length > 0 ? Math.min(...this.dispatchTimestamps) : now;
     return Math.max(0, oldest + 60000 - now);
   }
 
@@ -125,8 +130,18 @@ export class AntiBanThrottler {
   public enqueue(
     taskData: Omit<ThrottledTask, "id" | "createdAt" | "status" | "retryCount">
   ): ThrottledTask {
+    const safeData = taskData || {
+      ruleId: "rule_default",
+      commentId: "cmt_default",
+      username: "user_default",
+      commentText: "",
+      dmMessage: "",
+      publicReply: "",
+      priority: "normal" as const
+    };
+
     const task: ThrottledTask = {
-      ...taskData,
+      ...safeData,
       id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       createdAt: Date.now(),
       status: "pending",
@@ -177,10 +192,10 @@ export class AntiBanThrottler {
   public getMetrics(now: number = Date.now()): ThrottlerMetrics {
     this.pruneOldTimestamps(now);
     const dmsInLastMinute = this.dispatchTimestamps.length;
-    const max = this.config.maxDmsPerMinute;
+    const max = Math.max(1, this.config.maxDmsPerMinute || 30);
     const utilization = Number(((dmsInLastMinute / max) * 100).toFixed(1));
     const isPausedForBackoff = now < this.backoffUntilTimestamp;
-    const currentBackoffWaitMs = isPausedForBackoff ? this.backoffUntilTimestamp - now : 0;
+    const currentBackoffWaitMs = isPausedForBackoff ? Math.max(0, this.backoffUntilTimestamp - now) : 0;
 
     let safetyStatus: ThrottlerMetrics["safetyStatus"] = "optimal";
     if (isPausedForBackoff) {

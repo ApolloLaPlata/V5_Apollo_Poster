@@ -27,6 +27,16 @@ interface SpamAuditModalProps {
 }
 
 export function SpamAuditModal({ isOpen, onClose, audit, onReaudit }: SpamAuditModalProps) {
+  // Fechamento via tecla ESC
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const isSafe = audit.rating === "safe";
@@ -47,7 +57,13 @@ export function SpamAuditModal({ isOpen, onClose, audit, onReaudit }: SpamAuditM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
+      {/* Backdrop */}
+      <div className="absolute inset-0" onClick={onClose} />
+
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-zinc-900 border border-amber-500/40 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col z-10"
+      >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3 flex-shrink-0">
           <div className="flex items-center gap-3">

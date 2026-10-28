@@ -118,13 +118,37 @@ export async function simulateCommentInteraction(
   const timestamp = new Date().toISOString();
   const steps: SimulationExecutionResult["executionSteps"] = [];
 
-  const { commentText, username, rule, simulatedLatencyMs = 120 } = input;
+  const safeInput = input || ({} as SimulationInput);
+  const { commentText = "", username, simulatedLatencyMs = 120 } = safeInput;
+  const rule = safeInput.rule || ({} as CommentRule);
   const cleanUsername = username ? username.trim() : "@usuario_teste";
   const rawUsernameWithoutAt = cleanUsername.replace("@", "");
 
+  if (!rule.id && !rule.name) {
+    steps.push({
+      step: "Validation",
+      status: "failed",
+      details: "Regra inválida ou não informada para a simulação."
+    });
+    return {
+      success: false,
+      isTriggerMatched: false,
+      matchResult: {
+        isMatch: false,
+        confidence: 0,
+        matchModeUsed: "contains",
+        normalizedComment: commentText
+      },
+      bypass24hVerified: false,
+      latencyMs: 0,
+      timestamp,
+      executionSteps: steps
+    };
+  }
+
   // ETAPA 1: Reconhecimento de Gatilho Cognitivo
   const matchMode = (rule.matchMode as TriggerMatchMode) || "contains";
-  const matchResult = matchCommentTrigger(commentText, rule.keywords, {
+  const matchResult = matchCommentTrigger(commentText, rule.keywords || [], {
     mode: matchMode,
     useSynonyms: true,
     fuzzyMaxDistance: 1
@@ -158,8 +182,8 @@ export async function simulateCommentInteraction(
 
   // ETAPA 2: Seleção de Resposta Pública Rotativa Anti-Spam
   const { reply: publicReplyTemplate, selectedIndex } = getNextPublicReply(
-    rule.publicReplyVariants,
-    rule.id,
+    rule.publicReplyVariants || [],
+    rule.id || "rule_default",
     "random_no_repeat"
   );
 
@@ -176,23 +200,23 @@ export async function simulateCommentInteraction(
 
   // ETAPA 3: Compilação e Validação do Template de Direct Message com UTM Onicanal Dedicado
   const trackedUrlResult = generateTrackedDmUrl({
-    baseUrl: rule.ctaUrl,
-    platform: (input.platform || rule.platform) === "tiktok" ? "tiktok" : "instagram",
-    campaign: rule.name,
+    baseUrl: rule.ctaUrl || "",
+    platform: (safeInput.platform || rule.platform) === "tiktok" ? "tiktok" : "instagram",
+    campaign: rule.name || "comment_to_dm",
     matchedKeyword: matchResult.matchedKeyword,
     couponCode: rule.couponCode
   });
   const effectiveCtaUrl = trackedUrlResult.finalUrl;
 
-  const dmMessageText = compileDmMessage(rule.dmMessageTemplate, {
+  const dmMessageText = compileDmMessage(rule.dmMessageTemplate || "", {
     name: rawUsernameWithoutAt,
     username: cleanUsername,
     ctaUrl: effectiveCtaUrl,
     couponCode: rule.couponCode || "PROMO10",
-    postTitle: rule.name
+    postTitle: rule.name || "Campanha VIP"
   });
 
-  const dmValidation = validateDmTemplate(rule.dmMessageTemplate);
+  const dmValidation = validateDmTemplate(rule.dmMessageTemplate || "");
 
   steps.push({
     step: "DM Template Builder",

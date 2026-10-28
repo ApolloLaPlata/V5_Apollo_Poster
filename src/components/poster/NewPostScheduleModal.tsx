@@ -52,6 +52,16 @@ export function NewPostScheduleModal({
   const [mediaUrl, setMediaUrl] = useState("");
   const [tagsInput, setTagsInput] = useState("IA, Produtividade, Automação");
 
+  // Fechamento via tecla ESC
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const togglePlatform = (id: SocialPlatform) => {
@@ -120,8 +130,14 @@ export function NewPostScheduleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-2xl p-6 shadow-2xl space-y-5 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+      {/* Backdrop com clique para fechar */}
+      <div className="absolute inset-0" onClick={onClose} />
+
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-2xl p-6 shadow-2xl space-y-5 my-8 z-10"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
           <div className="flex items-center gap-3">

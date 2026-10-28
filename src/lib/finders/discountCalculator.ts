@@ -55,7 +55,8 @@ export interface FullSavingsResult {
  * Formata moeda brasileira com 2 casas decimais
  */
 export function formatCurrencyBr(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
+  const safeValue = Number.isFinite(value) ? Number(value) : 0;
+  const rounded = Math.round(safeValue * 100) / 100;
   return rounded.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
@@ -66,7 +67,8 @@ export function formatCurrencyBr(value: number): string {
  * Determina o nível de urgência psicológica e badge da oferta com base no percentual de desconto
  */
 export function getDealUrgency(discountPercentage: number): DealUrgencyInfo {
-  if (discountPercentage >= 60) {
+  const safePercentage = Number.isFinite(discountPercentage) ? discountPercentage : 0;
+  if (safePercentage >= 60) {
     return {
       level: "price_bug",
       badgeLabel: "BUG DE PREÇO HISTÓRICO",
@@ -76,7 +78,7 @@ export function getDealUrgency(discountPercentage: number): DealUrgencyInfo {
     };
   }
 
-  if (discountPercentage >= 40) {
+  if (safePercentage >= 40) {
     return {
       level: "super_deal",
       badgeLabel: "SUPER PECHINCHA VIP",
@@ -86,7 +88,7 @@ export function getDealUrgency(discountPercentage: number): DealUrgencyInfo {
     };
   }
 
-  if (discountPercentage >= 20) {
+  if (safePercentage >= 20) {
     return {
       level: "great_deal",
       badgeLabel: "ÓTIMA OPORTUNIDADE",
@@ -110,10 +112,12 @@ export function getDealUrgency(discountPercentage: number): DealUrgencyInfo {
  */
 export function calculateFullSavings(input: DiscountCalculationInput): FullSavingsResult {
   const warnings: string[] = [];
-  const { originalPrice, promoPrice, additionalCouponDiscount, pixDiscountPercentage } = input;
+  const safeInput = input || ({} as DiscountCalculationInput);
+  const origPrice = Number.isFinite(Number(safeInput.originalPrice)) ? Number(safeInput.originalPrice) : 0;
+  const promPrice = Number.isFinite(Number(safeInput.promoPrice)) ? Number(safeInput.promoPrice) : 0;
 
   // Validação básica de entrada
-  if (originalPrice <= 0 || promoPrice <= 0) {
+  if (origPrice <= 0 || promPrice <= 0) {
     warnings.push("Preço original e preço promocional devem ser maiores que zero.");
     return {
       originalPrice: 0,
@@ -136,45 +140,47 @@ export function calculateFullSavings(input: DiscountCalculationInput): FullSavin
     };
   }
 
-  if (promoPrice >= originalPrice) {
+  if (promPrice >= origPrice) {
     warnings.push("O preço promocional deve ser menor que o preço original.");
   }
 
   // 1. Economia Base da Oferta
-  const rawSavingsAmount = Math.max(0, originalPrice - promoPrice);
+  const rawSavingsAmount = Math.max(0, origPrice - promPrice);
   const savingsAmount = Math.round(rawSavingsAmount * 100) / 100;
-  const rawDiscountPercentage = (rawSavingsAmount / originalPrice) * 100;
+  const rawDiscountPercentage = (rawSavingsAmount / origPrice) * 100;
   const discountPercentage = Math.round(rawDiscountPercentage);
 
   // 2. Aplicação de Desconto Adicional de Cupom (se houver)
-  let priceAfterCoupon = promoPrice;
-  if (additionalCouponDiscount && additionalCouponDiscount.value > 0) {
-    if (additionalCouponDiscount.type === "percentage") {
-      const couponSavings = promoPrice * (additionalCouponDiscount.value / 100);
-      priceAfterCoupon = Math.max(0, promoPrice - couponSavings);
+  let priceAfterCoupon = promPrice;
+  const coupon = safeInput.additionalCouponDiscount;
+  if (coupon && Number.isFinite(coupon.value) && coupon.value > 0) {
+    if (coupon.type === "percentage") {
+      const couponSavings = promPrice * (coupon.value / 100);
+      priceAfterCoupon = Math.max(0, promPrice - couponSavings);
     } else {
-      priceAfterCoupon = Math.max(0, promoPrice - additionalCouponDiscount.value);
+      priceAfterCoupon = Math.max(0, promPrice - coupon.value);
     }
   }
 
   // 3. Aplicação de Desconto Adicional no PIX (se houver)
   let finalPrice = priceAfterCoupon;
-  if (pixDiscountPercentage && pixDiscountPercentage > 0) {
-    const pixSavings = priceAfterCoupon * (pixDiscountPercentage / 100);
+  const pixPct = safeInput.pixDiscountPercentage;
+  if (Number.isFinite(pixPct) && (pixPct ?? 0) > 0) {
+    const pixSavings = priceAfterCoupon * ((pixPct ?? 0) / 100);
     finalPrice = Math.max(0, priceAfterCoupon - pixSavings);
   }
 
   finalPrice = Math.round(finalPrice * 100) / 100;
-  const rawTotalSavings = Math.max(0, originalPrice - finalPrice);
+  const rawTotalSavings = Math.max(0, origPrice - finalPrice);
   const totalSavingsAmount = Math.round(rawTotalSavings * 100) / 100;
-  const effectiveDiscountPercentage = Math.round((totalSavingsAmount / originalPrice) * 100);
+  const effectiveDiscountPercentage = Math.round((totalSavingsAmount / origPrice) * 100);
 
   // 4. Urgência Psicológica
   const urgency = getDealUrgency(effectiveDiscountPercentage);
 
   // 5. Headings e Destaques Prontos para Telegram e WhatsApp
-  const formattedOriginalPrice = formatCurrencyBr(originalPrice);
-  const formattedPromoPrice = formatCurrencyBr(promoPrice);
+  const formattedOriginalPrice = formatCurrencyBr(origPrice);
+  const formattedPromoPrice = formatCurrencyBr(promPrice);
   const formattedFinalPrice = formatCurrencyBr(finalPrice);
   const formattedSavingsAmount = formatCurrencyBr(savingsAmount);
   const formattedTotalSavings = formatCurrencyBr(totalSavingsAmount);
@@ -183,8 +189,8 @@ export function calculateFullSavings(input: DiscountCalculationInput): FullSavin
   const headlineWhatsApp = `📉 _Você economiza: R$ ${formattedSavingsAmount} (${discountPercentage}% OFF)_`;
 
   return {
-    originalPrice,
-    promoPrice,
+    originalPrice: origPrice,
+    promoPrice: promPrice,
     finalPrice,
     discountPercentage,
     savingsAmount,

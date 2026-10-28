@@ -79,12 +79,13 @@ export function formatTimeSlot(hours: number, minutes: number): string {
  */
 export function calculateBatchScheduleSlots(
   deals: GroupBroadcastDeal[],
-  config: BatchScheduleConfig
+  config?: BatchScheduleConfig
 ): ScheduledDealSlot[] {
   if (!deals || deals.length === 0) return [];
 
-  const { hours, minutes } = parseTimeSlot(config.startTime);
-  const interval = Math.max(5, config.intervalMinutes || 30);
+  const safeConfig = config || { startTime: "12:00", intervalMinutes: 30 };
+  const { hours, minutes } = parseTimeSlot(safeConfig.startTime);
+  const interval = Math.max(5, safeConfig.intervalMinutes || 30);
 
   let currentTotalMinutes = hours * 60 + minutes;
 
@@ -96,8 +97,8 @@ export function calculateBatchScheduleSlots(
     currentTotalMinutes += interval;
 
     return {
-      dealId: deal.id,
-      productName: deal.productName,
+      dealId: deal?.id || `deal_${idx + 1}`,
+      productName: deal?.productName || "Achadinho VIP",
       scheduledTime,
       sequenceIndex: idx + 1
     };
@@ -111,8 +112,9 @@ export function getBatchSelectionSummary(
   allDeals: GroupBroadcastDeal[],
   selectedIds: string[]
 ): BatchSelectionSummary {
-  const idSet = new Set(selectedIds);
-  const selectedDeals = allDeals.filter((d) => idSet.has(d.id));
+  const safeDeals = Array.isArray(allDeals) ? allDeals : [];
+  const idSet = new Set(Array.isArray(selectedIds) ? selectedIds : []);
+  const selectedDeals = safeDeals.filter((d) => d && idSet.has(d.id));
 
   let totalReach = 0;
   let pendingCount = 0;
@@ -143,6 +145,7 @@ export function filterEligibleDealsForDispatch(
   allDeals: GroupBroadcastDeal[],
   selectedIds: string[]
 ): GroupBroadcastDeal[] {
-  const idSet = new Set(selectedIds);
-  return allDeals.filter((d) => idSet.has(d.id) && d.status !== "sent");
+  const safeDeals = Array.isArray(allDeals) ? allDeals : [];
+  const idSet = new Set(Array.isArray(selectedIds) ? selectedIds : []);
+  return safeDeals.filter((d) => d && idSet.has(d.id) && d.status !== "sent");
 }

@@ -90,17 +90,20 @@ export function calculateDmEngagementMetrics(
   events: CommentTriggerEvent[],
   options: MetricsFilterOptions = {}
 ): DmEngagementSummary {
-  const timeframe = options.timeframe || "all";
-  const platformFilter = options.platform || "all";
+  const safeRules = Array.isArray(rules) ? rules : [];
+  const safeEvents = Array.isArray(events) ? events : [];
+  const safeOptions = options || {};
+  const timeframe = safeOptions.timeframe || "all";
+  const platformFilter = safeOptions.platform || "all";
 
   // Filtra regras pela plataforma selecionada
-  const filteredRules = rules.filter((r) => {
+  const filteredRules = safeRules.filter((r) => {
     if (platformFilter !== "all" && r.platform !== platformFilter) return false;
     return true;
   });
 
   // Filtra eventos pela plataforma selecionada
-  const filteredEvents = events.filter((e) => {
+  const filteredEvents = safeEvents.filter((e) => {
     if (platformFilter !== "all" && e.platform !== platformFilter) return false;
     return true;
   });
@@ -200,8 +203,9 @@ export function calculateDmEngagementMetrics(
   const keywordMap: Record<string, { count: number; ruleName: string; platform: "instagram" | "tiktok" }> = {};
 
   filteredRules.forEach((rule) => {
-    const sharePerKw = Math.max(1, Math.round((rule.totalTriggered || 1) / Math.max(1, rule.keywords.length)));
-    rule.keywords.forEach((kw) => {
+    const kws = Array.isArray(rule.keywords) ? rule.keywords : [];
+    const sharePerKw = Math.max(1, Math.round((rule.totalTriggered || 1) / Math.max(1, kws.length)));
+    kws.forEach((kw) => {
       const upper = kw.toUpperCase();
       if (!keywordMap[upper]) {
         keywordMap[upper] = { count: 0, ruleName: rule.name, platform: rule.platform };
@@ -241,11 +245,11 @@ export function calculateDmEngagementMetrics(
     .slice(0, 6);
 
   // Separação por Plataforma
-  const igRules = rules.filter((r) => r.platform === "instagram");
-  const ttRules = rules.filter((r) => r.platform === "tiktok");
+  const igRules = safeRules.filter((r) => r.platform === "instagram");
+  const ttRules = safeRules.filter((r) => r.platform === "tiktok");
 
-  const igTriggers = igRules.reduce((acc, r) => acc + (r.totalTriggered || 0), 0) || 142;
-  const ttTriggers = ttRules.reduce((acc, r) => acc + (r.totalTriggered || 0), 0) || 89;
+  const igTriggers = igRules.reduce((acc, r) => acc + (r.totalTriggered || 0), 0) || (safeRules.length > 0 ? 142 : 0);
+  const ttTriggers = ttRules.reduce((acc, r) => acc + (r.totalTriggered || 0), 0) || (safeRules.length > 0 ? 89 : 0);
 
   const igDms = Math.round(igTriggers * 0.98);
   const ttDms = Math.round(ttTriggers * 0.96);

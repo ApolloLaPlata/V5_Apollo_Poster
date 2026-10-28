@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Send, 
   X, 
@@ -30,7 +30,7 @@ export function PreflightDispatchModal({
   onClose,
   onConfirm,
   title,
-  channels,
+  channels = [],
   estimatedReach = 2400,
   isDispatching = false
 }: PreflightDispatchModalProps) {
@@ -41,9 +41,22 @@ export function PreflightDispatchModal({
     mediaRatio: true
   });
 
+  // Fechamento com tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isDispatching) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isDispatching, onClose]);
+
   if (!isOpen) return null;
 
   const allChecked = Object.values(checklist).every(Boolean);
+  const safeChannels = Array.isArray(channels) ? channels : [];
+  const safeReach = Number.isFinite(estimatedReach) ? Math.max(0, estimatedReach) : 0;
 
   const getChannelBadge = (ch: SocialPlatform) => {
     switch (ch) {
@@ -68,7 +81,13 @@ export function PreflightDispatchModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5">
+      {/* Backdrop com clique para fechar */}
+      <div 
+        className="absolute inset-0" 
+        onClick={!isDispatching ? onClose : undefined} 
+      />
+
+      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5 z-10">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 pb-4">
           <div className="flex items-center gap-2.5">
@@ -94,20 +113,24 @@ export function PreflightDispatchModal({
         <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 space-y-3 text-xs">
           <div>
             <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">Título do Post / Edição</span>
-            <p className="font-semibold text-white text-sm line-clamp-2">{title}</p>
+            <p className="font-semibold text-white text-sm line-clamp-2">{title || "Sem título informado"}</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-800/60">
             <div>
               <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">Canais Destino</span>
-              <div className="flex flex-wrap gap-1.5">{channels.map(getChannelBadge)}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {safeChannels.length > 0 ? safeChannels.map(getChannelBadge) : (
+                  <span className="text-zinc-500 italic text-[11px]">Nenhum canal selecionado</span>
+                )}
+              </div>
             </div>
 
             <div className="text-right">
               <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">Alcance Estimado</span>
               <span className="font-mono text-emerald-400 font-bold flex items-center gap-1 justify-end">
                 <Users className="w-3.5 h-3.5" />
-                ~{estimatedReach.toLocaleString("pt-BR")} pessoas
+                ~{safeReach.toLocaleString("pt-BR")} pessoas
               </span>
             </div>
           </div>
