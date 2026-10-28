@@ -22,7 +22,7 @@ export type {
   DealUrgencyLevel 
 } from "./discountCalculator";
 
-export type SupportedStore = "Shopee" | "Mercado Livre" | "Amazon" | "AliExpress" | "Magalu";
+export type SupportedStore = "Shopee" | "Mercado Livre" | "Amazon" | "AliExpress" | "Magalu" | "PixDrop Store" | "V5 Finders";
 
 export interface StoreMetadata {
   name: SupportedStore;
@@ -85,6 +85,26 @@ export const SUPPORTED_STORES: Record<SupportedStore, StoreMetadata> = {
     borderColor: "border-blue-500/30",
     domainKeywords: ["magazineluiza.com.br", "magalu.com", "parceiromagalu.com.br"],
     defaultAffiliateTagParam: "utm_source"
+  },
+  "PixDrop Store": {
+    name: "PixDrop Store",
+    slug: "pixdrop",
+    brandColor: "#10B981",
+    badgeText: "Licença Digital Vitalícia",
+    textColor: "text-emerald-400",
+    borderColor: "border-emerald-500/30",
+    domainKeywords: ["pixdrop.com.br", "pixdrop", "localhost:3000"],
+    defaultAffiliateTagParam: "ref"
+  },
+  "V5 Finders": {
+    name: "V5 Finders",
+    slug: "finders",
+    brandColor: "#F43F5E",
+    badgeText: "Radar V5 Achadinhos",
+    textColor: "text-rose-400",
+    borderColor: "border-rose-500/30",
+    domainKeywords: ["finders.v5apollo.com", "finders", "localhost:3001"],
+    defaultAffiliateTagParam: "ref"
   }
 };
 

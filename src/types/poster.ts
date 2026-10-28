@@ -128,10 +128,12 @@ export interface CommentTriggerEvent {
   status: 'success' | 'throttled' | 'failed';
 }
 
+export type SupportedStore = 'Shopee' | 'Mercado Livre' | 'Amazon' | 'AliExpress' | 'Magalu' | 'PixDrop Store' | 'V5 Finders';
+
 export interface GroupBroadcastDeal {
   id: string;
   productName: string;
-  store: 'Shopee' | 'Mercado Livre' | 'Amazon' | 'AliExpress' | 'Magalu';
+  store: SupportedStore;
   originalPrice: number;
   promoPrice: number;
   discountPercentage: number;
