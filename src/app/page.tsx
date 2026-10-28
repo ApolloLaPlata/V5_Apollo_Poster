@@ -29,7 +29,8 @@ import {
   ShoppingBag,
   DollarSign,
   Clapperboard,
-  Bot
+  Bot,
+  Gamepad2
 } from "lucide-react";
 
 const APOLLO_BRIDGE_LINKS = [
@@ -41,6 +42,7 @@ const APOLLO_BRIDGE_LINKS = [
   { name: "Broadcaster", port: ":3008", url: "http://localhost:3008", icon: Radio, color: "text-sky-400 border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20" },
   { name: "Finance", port: ":3009", url: "http://localhost:3009", icon: DollarSign, color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20" },
   { name: "Tools", port: ":3014", url: "http://localhost:3014", icon: Layers, color: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20" },
+  { name: "Games 9:16", port: ":3012", url: "http://localhost:3012", icon: Gamepad2, color: "text-pink-400 border-pink-500/30 bg-pink-500/10 hover:bg-pink-500/20" },
 ];
 
 export default function PosterPage() {
@@ -89,7 +91,7 @@ export default function PosterPage() {
           <div className="flex items-center gap-3">
             <Apollo5RocketLogo size={34} />
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">
-              Capitania #13 · :3011
+              Capitania #11 · :3011
             </span>
           </div>
 
@@ -265,7 +267,7 @@ export default function PosterPage() {
       {/* Footer */}
       <footer className="border-t border-zinc-900 bg-zinc-950 py-6 text-center text-xs text-zinc-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 V5 Apollo Holding • Capitania #13 • V5 Apollo Poster (Porta :3011)</p>
+          <p>© 2026 V5 Apollo Holding • Capitania #11 • V5 Apollo Poster (Porta :3011)</p>
           <p className="font-mono text-[11px] text-zinc-600">Zero Extension Dependency • 100% Native Cloud APIs</p>
         </div>
       </footer>
