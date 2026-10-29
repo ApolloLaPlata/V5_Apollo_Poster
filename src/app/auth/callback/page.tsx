@@ -5,6 +5,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { V5SsoClient } from "@/lib/v5_sso_client";
 import { Shield, AlertCircle } from "lucide-react";
 
+function sanitizeRedirect(target: string | null, fallback: string = "/"): string {
+  if (!target || typeof target !== "string") return fallback;
+  const trimmed = target.trim();
+  if (
+    trimmed.startsWith("/") &&
+    !trimmed.startsWith("//") &&
+    !trimmed.includes("\\") &&
+    !trimmed.includes(":")
+  ) {
+    return trimmed;
+  }
+  return fallback;
+}
+
 const THIRTY_DAYS_SEC = 30 * 24 * 60 * 60;
 const TRUSTED_DEVICE_TOKEN = "v5_trusted_device_live_verified";
 
@@ -17,7 +31,7 @@ function SsoCallbackInner() {
   useEffect(() => {
     const code = searchParams.get("code") || searchParams.get("grant_code");
     const rawSsoToken = searchParams.get("v5_sso_token");
-    const redirectTarget = searchParams.get("redirect") || "/";
+    const redirectTarget = sanitizeRedirect(searchParams.get("redirect"), "/");
 
     if (rawSsoToken) {
       try {
