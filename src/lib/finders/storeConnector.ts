@@ -93,7 +93,7 @@ export const SUPPORTED_STORES: Record<SupportedStore, StoreMetadata> = {
     badgeText: "Licença Digital Vitalícia",
     textColor: "text-emerald-400",
     borderColor: "border-emerald-500/30",
-    domainKeywords: ["pixdrop.com.br", "pixdrop", "localhost:3000"],
+    domainKeywords: ["pixdrop.com.br", "pixdrop", "localhost:3008", "localhost:3000"],
     defaultAffiliateTagParam: "ref"
   },
   "V5 Finders": {
