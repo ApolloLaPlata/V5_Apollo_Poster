@@ -37,7 +37,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="bg-[#030712] text-zinc-100 min-h-screen selection:bg-amber-500 selection:text-black">
+            <head>
+        <link rel="preconnect" href="https://v5apollo.com" />
+        <link rel="dns-prefetch" href="https://v5apollo.com" />
+        <link rel="preconnect" href="https://hmiynglcsvpzhqbnnqzj.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://hmiynglcsvpzhqbnnqzj.supabase.co" />
+      </head>
+<body className="bg-[#030712] text-zinc-100 min-h-screen selection:bg-amber-500 selection:text-black">
         {children}
       </body>
     </html>
