@@ -34,7 +34,7 @@ export interface WordPressConnectorConfig {
 export const DEFAULT_WP_CONFIG: WordPressConnectorConfig = {
   siteUrl: DEFAULT_WP_SITE_URL,
   username: "apollo_admin",
-  applicationPassword: "v5ap 3011 post live pass",
+  applicationPassword: process.env.WORDPRESS_APPLICATION_PASSWORD || "",
   endpointPath: DEFAULT_WP_ENDPOINT,
   defaultStatus: "publish",
   timeoutMs: 8000,

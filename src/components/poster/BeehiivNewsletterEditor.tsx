@@ -251,7 +251,7 @@ Nos vemos na próxima transmissão!`,
     wordpressConfig: {
       siteUrl: DEFAULT_WP_SITE_URL,
       username: "apollo_admin",
-      applicationPassword: "v5ap 3011 post live pass",
+      applicationPassword: "",
       status: "publish"
     }
   },
@@ -2746,7 +2746,7 @@ export function BeehiivNewsletterEditor() {
                                   compiled_wordpress_payload: wpPayload,
                                   request_headers: buildWordPressHeaders(
                                     payload.blogOptions.wordpressConfig?.username || "apollo_admin",
-                                    payload.blogOptions.wordpressConfig?.applicationPassword || "v5ap 3011 post live pass"
+                                    payload.blogOptions.wordpressConfig?.applicationPassword || ""
                                   )
                                 }, null, 2);
                               }
