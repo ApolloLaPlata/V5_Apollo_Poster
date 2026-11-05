@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { 
-  Calendar as CalendarIcon, 
+  Calendar as CalendarIcon,
+  Sparkles, 
   Plus, 
   Clock, 
   CheckCircle2, 
@@ -137,6 +138,115 @@ export function MasterCalendar() {
 
     return true;
   });
+
+  const handleGenerateWeeklyMatrix = () => {
+    const baseDate = new Date();
+    const daysOffset = [0, 1, 2, 3, 4, 5, 6];
+    
+    const weeklyBlueprint = [
+      {
+        dayDelta: 0,
+        hour: 11,
+        minute: 30,
+        title: "🎠 Carrossel: 5 Erros Fatais ao Construir Automações em 2026",
+        content: "Arrasta para o lado e descubra os erros que 95% das operações cometem ao tentar escalar sem agentes autônomos.\n\n💬 Comente LINK para receber o guia completo na sua DM!",
+        platforms: ["instagram", "autoblog"] as SocialPlatform[],
+        mediaType: "image" as const,
+        tags: ["Grade7D", "Carrossel", "Pico-Almoço"]
+      },
+      {
+        dayDelta: 1,
+        hour: 18,
+        minute: 0,
+        title: "⚡ 3 Ferramentas Secretas de IA que Parecem Ilegais de Tão Boas",
+        content: "Testamos mais de 40 novas soluções de inteligência artificial esta semana. Veja as 3 vencedoras.\n\nQual dessas você mais precisa hoje? 👇",
+        platforms: ["tiktok", "instagram"] as SocialPlatform[],
+        mediaType: "video" as const,
+        tags: ["Grade7D", "Reels", "Pico-Retorno"]
+      },
+      {
+        dayDelta: 2,
+        hour: 12,
+        minute: 30,
+        title: "🔥 ACHADINHO VIP: Teclado Mecânico Wireless RGB Hot-Swap (52% OFF)",
+        content: "Oportunidade relâmpago encontrada no radar V5 Finders!\n\n❌ De R$ 389,00\n💥 Por apenas R$ 186,72\n\nCupom exclusivo: VIPAPOLLO",
+        platforms: ["whatsapp", "telegram"] as SocialPlatform[],
+        mediaType: "image" as const,
+        tags: ["Grade7D", "Finders", "Oferta-Relâmpago"]
+      },
+      {
+        dayDelta: 3,
+        hour: 20,
+        minute: 30,
+        title: "🛠️ BASTIDORES: Como Rodamos 7 Redes Simultâneas Sem Equipe Humana",
+        content: "Um estudo de caso aprofundado sobre a arquitetura da Holding V5 Apollo e o barramento do V5 Poster.\n\nArtigo completo disponível com código aberto.",
+        platforms: ["autoblog", "newsletter"] as SocialPlatform[],
+        mediaType: "image" as const,
+        tags: ["Grade7D", "Bastidores", "Pico-Noturno"]
+      },
+      {
+        dayDelta: 4,
+        hour: 18,
+        minute: 30,
+        title: "🎰 Trocaram o seu Social Media por 9 Robôs Gratuitos",
+        content: "9 skills de código aberto que viram sua equipe inteira de conteúdo sem cobrar mensalidade.\n\nComente INSTA que eu te mando o passo a passo na DM! 👇",
+        platforms: ["instagram", "tiktok"] as SocialPlatform[],
+        mediaType: "video" as const,
+        tags: ["Grade7D", "Reels", "Comment-to-DM"]
+      },
+      {
+        dayDelta: 5,
+        hour: 14,
+        minute: 0,
+        title: "🚨 BUG DE PREÇO: Cadeira Gamer Ergonômica com 60% OFF no PIX",
+        content: "Preço histórico detectado pelo bot de monitoramento! Estoque limitado aos primeiros 20 cupons.\n\nLink direto na mensagem!",
+        platforms: ["whatsapp", "telegram"] as SocialPlatform[],
+        mediaType: "image" as const,
+        tags: ["Grade7D", "VIP-Weekend", "Bug-Preço"]
+      },
+      {
+        dayDelta: 6,
+        hour: 19,
+        minute: 0,
+        title: "📬 EDIÇÃO #42: O Guia Definitivo dos Agentes Autônomos na Prática",
+        content: "A síntese da semana para fundadores de tecnologia, automações e operadores de holding.\n\nConfira o resumo executivo com todos os links úteis.",
+        platforms: ["newsletter", "autoblog"] as SocialPlatform[],
+        mediaType: "image" as const,
+        tags: ["Grade7D", "Beehiiv", "Newsletter-Domingo"]
+      }
+    ];
+
+    let countAdded = 0;
+    weeklyBlueprint.forEach(item => {
+      const targetDate = new Date(baseDate);
+      targetDate.setDate(targetDate.getDate() + item.dayDelta);
+      targetDate.setHours(item.hour, item.minute, 0, 0);
+      const isoSchedule = targetDate.toISOString();
+
+      addPost({
+        title: item.title,
+        content: item.content,
+        platforms: item.platforms,
+        scheduledAt: isoSchedule,
+        status: "scheduled",
+        mediaType: item.mediaType,
+        tags: item.tags
+      });
+
+      dispatchEventBus.emit("POST_SCHEDULED", {
+        postId: `post-grade7d-${Date.now()}-${item.dayDelta}`,
+        title: item.title,
+        platforms: item.platforms,
+        scheduledAt: isoSchedule
+      });
+      countAdded++;
+    });
+
+    toast.success(
+      "Grade Semanal 7D Injetada!",
+      `${countAdded} publicações programadas nos horários nobres de audiência (11h30, 18h e 20h30).`
+    );
+  };
 
   const handleAddPost = (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,6 +555,16 @@ export function MasterCalendar() {
           >
             <Plus className="w-4 h-4" />
             <span>Agendar Post</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGenerateWeeklyMatrix}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-md border border-purple-400/30"
+            title="Injeta automaticamente uma matriz editorial de 7 dias com formatos e horários nobres (Método Marcondes)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>🚂 Grade 7D (IA)</span>
           </button>
         </div>
       </div>

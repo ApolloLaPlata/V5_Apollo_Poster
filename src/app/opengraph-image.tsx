@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+export const dynamic = "force-dynamic";
+
 export const alt = "Automação Gráfica & Despacho de Conteúdo • Holding V5 Apollo";
 export const size = {
   width: 1200,

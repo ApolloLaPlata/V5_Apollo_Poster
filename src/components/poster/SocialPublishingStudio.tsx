@@ -25,7 +25,8 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  RefreshCw
+  RefreshCw,
+  Layers
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { SocialPlatform, MediaType, ScheduledPost } from "@/types/poster";
@@ -34,6 +35,7 @@ import { toast } from "@/lib/toast/useToast";
 import { dispatchEventBus } from "@/lib/events/dispatchEvents";
 import { VIRAL_HOOK_FORMULAS, humanizeCopyAntiAi, buildSurgicalHashtags } from "@/lib/social/hookFormulas";
 import { ViralRadarModal } from "@/components/poster/ViralRadarModal";
+import { CarouselSlideDeckModal } from "@/components/poster/CarouselSlideDeckModal";
 
 const AVAILABLE_PLATFORMS: Array<{
   id: SocialPlatform;
@@ -111,6 +113,7 @@ export function SocialPublishingStudio() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [bridgeSource, setBridgeSource] = useState<{ source: string; title: string; url?: string } | null>(null);
   const [showViralRadar, setShowViralRadar] = useState(false);
+  const [showCarouselModal, setShowCarouselModal] = useState(false);
   const [showHookSelector, setShowHookSelector] = useState(false);
 
   const handleApplyHook = (formulaId: string) => {
@@ -552,6 +555,15 @@ export function SocialPublishingStudio() {
                 >
                   <Flame className="w-3.5 h-3.5 text-rose-400" />
                   <span>🔥 Radar Viral (Apify)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCarouselModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                >
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <span>🎠 Roteiro Carrossel (5L)</span>
                 </button>
               </div>
             </div>
