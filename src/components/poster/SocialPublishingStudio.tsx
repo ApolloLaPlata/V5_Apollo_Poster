@@ -26,7 +26,9 @@ import {
   AlertCircle,
   HelpCircle,
   RefreshCw,
-  Layers
+  Layers,
+  Music,
+  Radio
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { SocialPlatform, MediaType, ScheduledPost } from "@/types/poster";
@@ -36,6 +38,8 @@ import { dispatchEventBus } from "@/lib/events/dispatchEvents";
 import { VIRAL_HOOK_FORMULAS, humanizeCopyAntiAi, buildSurgicalHashtags } from "@/lib/social/hookFormulas";
 import { ViralRadarModal } from "@/components/poster/ViralRadarModal";
 import { CarouselSlideDeckModal } from "@/components/poster/CarouselSlideDeckModal";
+import { TrendingAudioModal } from "@/components/poster/TrendingAudioModal";
+import { TrendingAudioTrack } from "@/lib/social/trendingAudioEngine";
 
 const AVAILABLE_PLATFORMS: Array<{
   id: SocialPlatform;
@@ -114,6 +118,8 @@ export function SocialPublishingStudio() {
   const [bridgeSource, setBridgeSource] = useState<{ source: string; title: string; url?: string } | null>(null);
   const [showViralRadar, setShowViralRadar] = useState(false);
   const [showCarouselModal, setShowCarouselModal] = useState(false);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<TrendingAudioTrack | null>(null);
   const [showHookSelector, setShowHookSelector] = useState(false);
 
   const handleApplyHook = (formulaId: string) => {
@@ -565,6 +571,20 @@ export function SocialPublishingStudio() {
                   <Layers className="w-3.5 h-3.5 text-amber-400" />
                   <span>🎠 Roteiro Carrossel (5L)</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAudioModal(true)}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm ${
+                    selectedAudioTrack
+                      ? "bg-rose-500/20 text-rose-300 border-rose-500/50"
+                      : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-800"
+                  }`}
+                  title="Pareie com trilhas de alta tração algorítmica para Reels e TikTok"
+                >
+                  <Music className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{selectedAudioTrack ? selectedAudioTrack.title.slice(0, 16) + "..." : "🎵 Áudio Viral"}</span>
+                </button>
               </div>
             </div>
 
@@ -848,7 +868,10 @@ export function SocialPublishingStudio() {
                             v5apollo_studios
                             <span className="w-3 h-3 rounded-full bg-blue-500 text-[8px] flex items-center justify-center text-white">✓</span>
                           </p>
-                          <p className="text-[10px] text-zinc-500 leading-tight">Áudio Original • V5 Sound</p>
+                          <p className="text-[10px] text-zinc-400 leading-tight flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            <span>{selectedAudioTrack ? selectedAudioTrack.title : "Áudio Original • V5 Sound"}</span>
+                          </p>
                         </div>
                       </div>
                       <span className="text-zinc-400 text-xs">•••</span>
@@ -935,7 +958,7 @@ export function SocialPublishingStudio() {
                       <p className="text-xs font-bold text-white">@v5apollo.tech</p>
                       <p className="text-[11px] text-zinc-200 line-clamp-2">{title}</p>
                       <p className="text-[10px] text-zinc-400 font-mono flex items-center gap-1 pt-1">
-                        <span>♫ Som Original - V5 Sound (Clonagem Qwen)</span>
+                        <span>♫ {selectedAudioTrack ? `${selectedAudioTrack.title} (${selectedAudioTrack.bpm} BPM)` : "Som Original - V5 Sound (Clonagem Qwen)"}</span>
                       </p>
                     </div>
                   </div>
@@ -1086,6 +1109,14 @@ export function SocialPublishingStudio() {
             );
           })}
         </div>
+        {/* Modal de Áudios Virais (Reels & TikTok) */}
+        <TrendingAudioModal
+          isOpen={showAudioModal}
+          onClose={() => setShowAudioModal(false)}
+          selectedTrackId={selectedAudioTrack?.id}
+          onSelectTrack={setSelectedAudioTrack}
+        />
+
         {/* Modal do Radar de Viralização (Apify) */}
         <ViralRadarModal
           isOpen={showViralRadar}
