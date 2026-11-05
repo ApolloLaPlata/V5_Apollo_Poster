@@ -29,7 +29,8 @@ import {
   Layers,
   Music,
   Radio,
-  Cpu
+  Cpu,
+  Clapperboard
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { SocialPlatform, MediaType, ScheduledPost } from "@/types/poster";
@@ -41,6 +42,7 @@ import { ViralRadarModal } from "@/components/poster/ViralRadarModal";
 import { CarouselSlideDeckModal } from "@/components/poster/CarouselSlideDeckModal";
 import { TrendingAudioModal } from "@/components/poster/TrendingAudioModal";
 import { InterCapitaniaBroadcastModal } from "@/components/poster/InterCapitaniaBroadcastModal";
+import { VideoStoryboardModal } from "@/components/poster/VideoStoryboardModal";
 import { TrendingAudioTrack } from "@/lib/social/trendingAudioEngine";
 
 const AVAILABLE_PLATFORMS: Array<{
@@ -122,6 +124,7 @@ export function SocialPublishingStudio() {
   const [showCarouselModal, setShowCarouselModal] = useState(false);
   const [showAudioModal, setShowAudioModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [showStoryboardModal, setShowStoryboardModal] = useState(false);
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<TrendingAudioTrack | null>(null);
   const [showHookSelector, setShowHookSelector] = useState(false);
 
@@ -597,6 +600,16 @@ export function SocialPublishingStudio() {
                 >
                   <Cpu className="w-3.5 h-3.5 text-blue-400" />
                   <span>🚀 Transmissão Inter-Capitanias</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowStoryboardModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Gerar roteiro de alta retenção em 3 Atos para Reels e TikTok"
+                >
+                  <Clapperboard className="w-3.5 h-3.5 text-purple-400" />
+                  <span>🎬 Roteiro Reels (3 Atos)</span>
                 </button>
               </div>
             </div>
@@ -1142,6 +1155,18 @@ export function SocialPublishingStudio() {
             mediaType,
             hashtags: POPULAR_HASHTAGS.slice(0, 5),
             audioTrackId: selectedAudioTrack?.id
+          }}
+        />
+
+        {/* Modal de Roteiro e Storyboard em 3 Atos */}
+        <VideoStoryboardModal
+          isOpen={showStoryboardModal}
+          onClose={() => setShowStoryboardModal(false)}
+          topicTitle={title}
+          audioTrackId={selectedAudioTrack?.id}
+          onApplyToStudio={(scriptText, hookTitle) => {
+            setContent(scriptText);
+            setTitle(hookTitle);
           }}
         />
 
