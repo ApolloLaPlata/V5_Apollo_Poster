@@ -45,15 +45,15 @@ async function runTests() {
   const sanitizedPwd = sanitizeApplicationPassword("abcd efgh ijkl mnop");
   assert(sanitizedPwd === "abcdefghijklmnop", "sanitizeApplicationPassword remove espaços em branco da senha");
 
-  const basicAuthHeader = buildWordPressBasicAuth("apollo_admin", "v5ap 3011 post live pass");
+  const basicAuthHeader = buildWordPressBasicAuth("apollo_admin", process.env.WP_APP_PASSWORD || "mock_wp_app_key_test");
   assert(basicAuthHeader.startsWith("Basic "), "buildWordPressBasicAuth gera prefixo 'Basic '");
 
   const decodedCredentials = Buffer.from(basicAuthHeader.replace("Basic ", ""), "base64").toString("utf-8");
-  assert(decodedCredentials === "apollo_admin:v5ap3011postlivepass", "Credenciais decodificadas correspondem a username:password sem espaços");
+  assert(decodedCredentials === "apollo_admin:" + (process.env.WP_APP_PASSWORD?.replace(/\s+/g, "") || "mock_wp_app_key_test"), "Credenciais decodificadas correspondem a username:password sem espaços");
 
   // 2. Headers HTTP Oficiais do WordPress REST
   console.log("\n2. Validando Cabeçalhos HTTP Oficiais WordPress REST");
-  const headers = buildWordPressHeaders("apollo_admin", "v5ap 3011 post live pass");
+  const headers = buildWordPressHeaders("apollo_admin", process.env.WP_APP_PASSWORD || "mock_wp_app_key_test");
   assert(headers["Authorization"] === basicAuthHeader, "Header Authorization com Basic Auth");
   assert(headers["Content-Type"] === "application/json", "Header Content-Type é application/json");
   assert(headers["Accept"] === "application/json", "Header Accept é application/json");
@@ -90,7 +90,7 @@ async function runTests() {
       wordpressConfig: {
         siteUrl: DEFAULT_WP_SITE_URL,
         username: "apollo_admin",
-        applicationPassword: "v5ap 3011 post live pass",
+        applicationPassword: process.env.WP_APP_PASSWORD || "mock_wp_app_key_test",
         status: "publish"
       }
     },
@@ -142,7 +142,7 @@ async function runTests() {
   const handshake = await testWordPressHandshake({
     siteUrl: DEFAULT_WP_SITE_URL,
     username: "apollo_admin",
-    applicationPassword: "v5ap 3011 post live pass",
+    applicationPassword: process.env.WP_APP_PASSWORD || "mock_wp_app_key_test",
     allowMockFallback: true
   });
   assert(handshake.success === true, "Handshake WordPress retorna success === true");
@@ -156,7 +156,7 @@ async function runTests() {
   const dispatchResult = await publishToWordPress(wpCompiled, {
     siteUrl: DEFAULT_WP_SITE_URL,
     username: "apollo_admin",
-    applicationPassword: "v5ap 3011 post live pass",
+    applicationPassword: process.env.WP_APP_PASSWORD || "mock_wp_app_key_test",
     allowMockFallback: true
   });
   assert(dispatchResult.success === true, "Publicação no WordPress retorna success === true");

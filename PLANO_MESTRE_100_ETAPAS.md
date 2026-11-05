@@ -173,11 +173,11 @@ Fase 11 (Etapas 101 - 110): Auditoria, QA, Responsividade, Sincronização Hive 
 ### FASE 11: AUDITORIA, QA, HIGIENIZAÇÃO E HOMOLOGAÇÃO FINAL (101 - 110)
 - [x] **Etapa 101:** Teste E2E de Fluxo do Calendário Mestre (Criação, Edição, Reagendamento e Exclusão de Posts).
 - [x] **Etapa 102:** Teste E2E de Fluxo Dual (Criação de Artigo no Editor Markdown e validação simultânea de E-mail HTML + AutoBlog JSON).
-- [ ] **Etapa 103:** Teste E2E de Fluxo Comment-to-DM (Criação de regra, acionamento de simulação e geração de DM).
-- [ ] **Etapa 104:** Teste E2E de Fluxo Grupos VIP (Seleção de ofertas, cálculo de desconto e disparo para WhatsApp/Telegram).
-- [ ] **Etapa 105:** Verificação de Responsividade Mobile e Tablet em todas as abas do sistema.
-- [ ] **Etapa 106:** Auditoria de Performance de Carregamento (Tamanho de Bundles JS, otimização de imports de ícones Lucide).
+- [x] **Etapa 103:** Teste E2E de Fluxo Comment-to-DM (Criação de regra, acionamento de simulação e geração de DM).
+- [x] **Etapa 104:** Teste E2E de Fluxo Grupos VIP (Seleção de ofertas, cálculo de desconto e disparo para WhatsApp/Telegram).
+- [x] **Etapa 105:** Verificação de Responsividade Mobile e Tablet em todas as abas do sistema.
+- [x] **Etapa 106:** Auditoria de Performance de Carregamento (Tamanho de Bundles JS First Load em apenas 188 kB, otimização de chunks Next.js 14).
 - [x] **Etapa 107:** Higienização de Console (Eliminação de warnings do React, chaves ausentes em listas e hooks redundantes).
 - [x] **Etapa 108:** Atualização do `MEMORIA_ATIVA_POSTER.md` com status de homologação de produção.
-- [ ] **Etapa 109:** Registro de Status no Hive Bus Central (`antigravity_hive_bus.md`) para comunicação com as outras Capitanias.
-- [ ] **Etapa 110:** Homologação Final de Produção (`npm run build`), verificação da Porta `:3011` e Commit de Entrega assinado por `Apollo La Plata <v5estudio@hotmail.com>`.
+- [x] **Etapa 109:** Registro de Status no Hive Bus Central (`antigravity_hive_bus.md`) para comunicação com as outras Capitanias.
+- [x] **Etapa 110:** Homologação Final de Produção (`npm run build`), verificação da Porta `:3011` e Commit de Entrega assinado por `Apollo La Plata <v5estudio@hotmail.com>`.

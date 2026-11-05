@@ -32,6 +32,8 @@ import { SocialPlatform, MediaType, ScheduledPost } from "@/types/poster";
 import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { toast } from "@/lib/toast/useToast";
 import { dispatchEventBus } from "@/lib/events/dispatchEvents";
+import { VIRAL_HOOK_FORMULAS, humanizeCopyAntiAi, buildSurgicalHashtags } from "@/lib/social/hookFormulas";
+import { ViralRadarModal } from "@/components/poster/ViralRadarModal";
 
 const AVAILABLE_PLATFORMS: Array<{
   id: SocialPlatform;
@@ -108,6 +110,38 @@ export function SocialPublishingStudio() {
   const [previewChannel, setPreviewChannel] = useState<"instagram" | "tiktok" | "whatsapp" | "beehiiv">("instagram");
   const [isPublishing, setIsPublishing] = useState(false);
   const [bridgeSource, setBridgeSource] = useState<{ source: string; title: string; url?: string } | null>(null);
+  const [showViralRadar, setShowViralRadar] = useState(false);
+  const [showHookSelector, setShowHookSelector] = useState(false);
+
+  const handleApplyHook = (formulaId: string) => {
+    const formula = VIRAL_HOOK_FORMULAS.find((f) => f.id === formulaId);
+    if (!formula) return;
+    const baseTopic = title.replace(/^(Trocaram o seu|Pare de fazer|Se você ainda|5 ferramentas|O playbook|O erro invisível|Por que as maiores|Como saímos|Faça o teste|O método de).+?:/i, "").trim() || "Inteligência Artificial e Automação";
+    const newHook = formula.buildHook(baseTopic);
+    setTitle(newHook);
+    setShowHookSelector(false);
+    toast.success(`Gancho Aplicado: ${formula.name}`, newHook);
+  };
+
+  const handleHumanizeText = () => {
+    const result = humanizeCopyAntiAi(content);
+    if (result.replacedCount > 0) {
+      setContent(result.cleanedText);
+      toast.success(
+        "Texto Humanizado (Anti-IA)!",
+        `${result.replacedCount} clichês robóticos substituídos: ${result.replacedItems.slice(0, 3).join(", ")}...`
+      );
+    } else {
+      toast.info("Texto Já Natural!", "Nenhum clichê robótico óbvio foi detectado.");
+    }
+  };
+
+  const handleInjectSurgicalHashtags = () => {
+    const { tags } = buildSurgicalHashtags(["InteligenciaArtificial", "Automacao"], "Tech2026");
+    const tagString = tags.join(" ");
+    setContent((prev) => `${prev.trim()}\n\n${tagString}`);
+    toast.success("Hashtags Cirúrgicas Injetadas", `Top 5 tags estratégicas: ${tagString}`);
+  };
 
   // Efeito para carregar parâmetros de URL via Apollo Bridge (ex: vindos de Finders, AutoBlog, Director, Sound ou Avatar)
   React.useEffect(() => {
@@ -510,15 +544,67 @@ export function SocialPublishingStudio() {
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Avatar Roxingo</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowViralRadar(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                >
+                  <Flame className="w-3.5 h-3.5 text-rose-400" />
+                  <span>🔥 Radar Viral (Apify)</span>
+                </button>
               </div>
             </div>
 
             {/* Passo 1: Título / Gancho Viral */}
             <div className="space-y-2">
-              <label className="text-xs font-mono font-bold text-zinc-300 flex items-center justify-between">
-                <span>1. Título & Gancho Principal (Headline)</span>
-                <span className="text-zinc-500 font-normal">{title.length} caracteres</span>
-              </label>
+              <div className="flex items-center justify-between text-xs font-mono">
+                <label className="font-bold text-zinc-300 flex items-center gap-1.5">
+                  <span>1. Título & Gancho Principal (Headline)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowHookSelector(!showHookSelector)}
+                    className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-mono font-bold flex items-center gap-1 transition-all"
+                  >
+                    <span>🎰 10 Ganchos Virais</span>
+                  </button>
+                  <span className="text-zinc-500 font-normal">{title.length} caracteres</span>
+                </div>
+              </div>
+
+              {showHookSelector && (
+                <div className="p-3 bg-zinc-950 border border-amber-500/40 rounded-2xl space-y-2 animate-in fade-in">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-amber-400 font-bold border-b border-zinc-800 pb-1.5">
+                    <span>Fórmulas Comprovadas de Retenção (Método Marcondes / Top Copy):</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowHookSelector(false)}
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto">
+                    {VIRAL_HOOK_FORMULAS.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => handleApplyHook(f.id)}
+                        className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-left transition group"
+                      >
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-200 group-hover:text-amber-300">
+                          <span>{f.emoji}</span>
+                          <span>{f.name}</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5">{f.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <input
                 type="text"
                 value={title}
@@ -532,10 +618,20 @@ export function SocialPublishingStudio() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-mono">
                 <label className="font-bold text-zinc-300">2. Legenda & Copy da Postagem</label>
-                <div className="flex items-center gap-3 text-zinc-500">
-                  <span>{content.length} caracteres</span>
-                  <span>•</span>
-                  <span>{content.split(/\s+/).filter(Boolean).length} palavras</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleHumanizeText}
+                    className="px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono font-bold flex items-center gap-1 transition-all"
+                    title="Remove clichês robóticos típicos de IA"
+                  >
+                    <span>🧹 Humanizar Texto (Anti-IA)</span>
+                  </button>
+                  <div className="flex items-center gap-3 text-zinc-500">
+                    <span>{content.length} caracteres</span>
+                    <span>•</span>
+                    <span>{content.split(/\s+/).filter(Boolean).length} palavras</span>
+                  </div>
                 </div>
               </div>
 
@@ -549,6 +645,14 @@ export function SocialPublishingStudio() {
 
               {/* Barra de Hashtags Rápidas */}
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleInjectSurgicalHashtags}
+                  className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition-all flex items-center gap-1 mr-1"
+                  title="Injeta apenas as 5 melhores tags estratégicas"
+                >
+                  <span>#️⃣ 5 Tags Cirúrgicas</span>
+                </button>
                 <span className="text-[11px] font-mono text-zinc-500 flex items-center gap-1 mr-1">
                   <Tag className="w-3 h-3" />
                   Hashtags:
@@ -970,6 +1074,14 @@ export function SocialPublishingStudio() {
             );
           })}
         </div>
+        {/* Modal do Radar de Viralização (Apify) */}
+        <ViralRadarModal
+          isOpen={showViralRadar}
+          onClose={() => setShowViralRadar(false)}
+          onApplyHook={(snippet) => {
+            setTitle(snippet);
+          }}
+        />
       </div>
     </div>
   );

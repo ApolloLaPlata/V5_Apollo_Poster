@@ -106,7 +106,7 @@ export default function PosterPage() {
         promoPrice: promoPrice,
         discountPercentage: discount,
         savingsAmount: Number((origPrice - promoPrice).toFixed(2)),
-        affiliateUrl: incoming.url || "http://localhost:3008",
+        affiliateUrl: incoming.url || "https://huntera.com.br",
         targetChannels: ["whatsapp", "telegram"],
         scheduledTime: new Date().toISOString(),
         status: "pending"

@@ -13,6 +13,7 @@
 import { MultimodalDispatchPayload } from "@/types/poster";
 import { slugify } from "@/lib/dispatch/multimodalEngine";
 import { formatHashtags, extractBulletPoints, buildSocialUtmUrl } from "./socialTeaserEngine";
+import { buildSurgicalHashtags, humanizeCopyAntiAi } from "./hookFormulas";
 
 export type InstagramPostFormat = "carousel" | "reels" | "case_study";
 
@@ -81,8 +82,20 @@ export const COMMENT_KEYWORDS = ["LINK", "QUERO", "GUIA", "POSTER", "AUTONOMO", 
  */
 export function buildInstagramHashtagCluster(
   tags: string[] = [],
-  category = "Tecnologia"
+  category = "Tecnologia",
+  mode: "cluster15" | "surgical5" = "cluster15"
 ): InstagramHashtagCluster {
+  if (mode === "surgical5") {
+    const surgical = buildSurgicalHashtags(tags, category);
+    return {
+      nicheTags: surgical.tags.slice(1, 3),
+      industryTags: surgical.tags.slice(3, 5),
+      brandTags: [surgical.tags[0]],
+      allTags: surgical.tags,
+      formattedString: surgical.formattedString,
+      count: surgical.tags.length
+    };
+  }
   // 1. Tags de Marca / Holding
   const brandTags = ["#V5Apollo", "#V5Poster", "#Capitania13"];
 
@@ -115,7 +128,11 @@ export function buildInstagramHashtagCluster(
 export function generateInstagramCaptionFormatted(
   payload: MultimodalDispatchPayload,
   format: InstagramPostFormat = "carousel",
-  commentKeyword = "LINK"
+  commentKeyword = "LINK",
+  options?: {
+    hashtagMode?: "cluster15" | "surgical5";
+    humanizeAntiAi?: boolean;
+  }
 ): InstagramCaptionResult {
   const limit = 2200;
   const slug = payload.slug || slugify(payload.title);
@@ -124,11 +141,18 @@ export function generateInstagramCaptionFormatted(
   const template = INSTAGRAM_FORMAT_TEMPLATES.find(t => t.format === format) || INSTAGRAM_FORMAT_TEMPLATES[0];
 
   const firstLineHook = template.hookPrefix(payload.title);
-  const summaryText = payload.summary || payload.emailOptions.previewText || "";
+  let summaryText = payload.summary || payload.emailOptions.previewText || "";
+  if (options?.humanizeAntiAi) {
+    summaryText = humanizeCopyAntiAi(summaryText).cleanedText;
+  }
   const bullets = extractBulletPoints(payload.contentMarkdown, 4);
 
   const bulletSection = bullets.map(b => `✓ ${b}`).join("\n");
-  const hashtagCluster = buildInstagramHashtagCluster(payload.blogOptions.tags, payload.blogOptions.category);
+  const hashtagCluster = buildInstagramHashtagCluster(
+    payload.blogOptions.tags,
+    payload.blogOptions.category,
+    options?.hashtagMode || "cluster15"
+  );
 
   // Montagem com separadores limpos de linha (.) para impedir que o Instagram colapse o espaçamento
   const paragraphs = [

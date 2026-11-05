@@ -10,7 +10,7 @@ export const EMAIL_PROVIDER_PRESETS: EmailProviderProfile[] = [
     quotaDaily: "50.000 / mês",
     isReady: true,
     resend: {
-      apiKey: "re_apollo_v5_live_key_99x",
+      apiKey: process.env.RESEND_API_KEY || "",
       domain: "newsletter.v5apollo.com",
       replyTo: "suporte@v5apollo.com"
     }

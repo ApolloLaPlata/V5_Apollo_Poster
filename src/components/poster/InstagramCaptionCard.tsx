@@ -45,10 +45,15 @@ export function InstagramCaptionCard({ payload }: InstagramCaptionCardProps) {
   const [selectedFormat, setSelectedFormat] = useState<InstagramPostFormat>("carousel");
   const [keyword, setKeyword] = useState<string>("LINK");
   const [copiedType, setCopiedType] = useState<"caption" | "tags" | null>(null);
+  const [hashtagMode, setHashtagMode] = useState<"cluster15" | "surgical5">("surgical5");
+  const [humanizeAntiAi, setHumanizeAntiAi] = useState<boolean>(true);
 
   const captionResult = useMemo(() => {
-    return generateInstagramCaptionFormatted(payload, selectedFormat, keyword);
-  }, [payload, selectedFormat, keyword]);
+    return generateInstagramCaptionFormatted(payload, selectedFormat, keyword, {
+      hashtagMode,
+      humanizeAntiAi
+    });
+  }, [payload, selectedFormat, keyword, hashtagMode, humanizeAntiAi]);
 
   const handleCopyCaption = () => {
     navigator.clipboard.writeText(captionResult.captionText);
@@ -118,6 +123,48 @@ export function InstagramCaptionCard({ payload }: InstagramCaptionCardProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Modos de Otimização Anti-IA e Hashtags Cirúrgicas */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-900 text-xs font-mono">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-zinc-400">Hashtags:</span>
+            <button
+              type="button"
+              onClick={() => setHashtagMode("surgical5")}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition border ${
+                hashtagMode === "surgical5"
+                  ? "bg-amber-500 text-black border-amber-400"
+                  : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white"
+              }`}
+            >
+              #️⃣ 5 Cirúrgicas (Top Retenção)
+            </button>
+            <button
+              type="button"
+              onClick={() => setHashtagMode("cluster15")}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition border ${
+                hashtagMode === "cluster15"
+                  ? "bg-amber-500 text-black border-amber-400"
+                  : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white"
+              }`}
+            >
+              #️⃣ 15 Amplo
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setHumanizeAntiAi(!humanizeAntiAi)}
+            className={`px-2 py-0.5 rounded text-[11px] font-bold transition border flex items-center gap-1 ${
+              humanizeAntiAi
+                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                : "bg-zinc-900 text-zinc-500 border-zinc-800"
+            }`}
+          >
+            <span>🧹 Filtro Anti-IA:</span>
+            <span>{humanizeAntiAi ? "Ativo" : "Desligado"}</span>
+          </button>
         </div>
       </div>
 
