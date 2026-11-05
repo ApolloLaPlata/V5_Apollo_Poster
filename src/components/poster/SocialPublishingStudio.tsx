@@ -28,7 +28,8 @@ import {
   RefreshCw,
   Layers,
   Music,
-  Radio
+  Radio,
+  Cpu
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { SocialPlatform, MediaType, ScheduledPost } from "@/types/poster";
@@ -39,6 +40,7 @@ import { VIRAL_HOOK_FORMULAS, humanizeCopyAntiAi, buildSurgicalHashtags } from "
 import { ViralRadarModal } from "@/components/poster/ViralRadarModal";
 import { CarouselSlideDeckModal } from "@/components/poster/CarouselSlideDeckModal";
 import { TrendingAudioModal } from "@/components/poster/TrendingAudioModal";
+import { InterCapitaniaBroadcastModal } from "@/components/poster/InterCapitaniaBroadcastModal";
 import { TrendingAudioTrack } from "@/lib/social/trendingAudioEngine";
 
 const AVAILABLE_PLATFORMS: Array<{
@@ -119,6 +121,7 @@ export function SocialPublishingStudio() {
   const [showViralRadar, setShowViralRadar] = useState(false);
   const [showCarouselModal, setShowCarouselModal] = useState(false);
   const [showAudioModal, setShowAudioModal] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<TrendingAudioTrack | null>(null);
   const [showHookSelector, setShowHookSelector] = useState(false);
 
@@ -584,6 +587,16 @@ export function SocialPublishingStudio() {
                 >
                   <Music className="w-3.5 h-3.5 text-rose-400" />
                   <span>{selectedAudioTrack ? selectedAudioTrack.title.slice(0, 16) + "..." : "🎵 Áudio Viral"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBroadcastModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Transmitir para as demais Capitanias da Holding (AutoBlog, Studio, Finders, Sound)"
+                >
+                  <Cpu className="w-3.5 h-3.5 text-blue-400" />
+                  <span>🚀 Transmissão Inter-Capitanias</span>
                 </button>
               </div>
             </div>
@@ -1115,6 +1128,21 @@ export function SocialPublishingStudio() {
           onClose={() => setShowAudioModal(false)}
           selectedTrackId={selectedAudioTrack?.id}
           onSelectTrack={setSelectedAudioTrack}
+        />
+
+        {/* Modal de Transmissão Inter-Capitanias */}
+        <InterCapitaniaBroadcastModal
+          isOpen={showBroadcastModal}
+          onClose={() => setShowBroadcastModal(false)}
+          payload={{
+            title,
+            content,
+            ctaUrl,
+            mediaUrl,
+            mediaType,
+            hashtags: POPULAR_HASHTAGS.slice(0, 5),
+            audioTrackId: selectedAudioTrack?.id
+          }}
         />
 
         {/* Modal do Radar de Viralização (Apify) */}
