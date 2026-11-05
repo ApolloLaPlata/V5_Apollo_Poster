@@ -1,7 +1,7 @@
 # MEMORIA ATIVA - V5 APOLLO POSTER (CAPITANIA #13)
 
 ## Status Atual
-- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API,  Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 3 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`) 100% OPERACIONAIS E HOMOLOGADAS.
+- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Repurposador Onicanal 1-para-5, Testador A/B de Ganchos com Preditor de Retenção 3s,  Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API,  Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 3 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`) 100% OPERACIONAIS E HOMOLOGADAS.
 - **Porta:** `:3011` fixa (`next dev -p 3011`).
 - **Assinatura Git Oficial:** `Apollo La Plata <v5estudio@hotmail.com>`
 - **Zero Extensão para Usuário:** 100% Native Cloud APIs (Meta Graph, TikTok Content, YouTube Data v3, Resend, WordPress REST API, Telegram Bot API, WhatsApp Cloud API).
@@ -46,9 +46,24 @@
     - *Instalação Instantânea:* 1 clique injeta a regra completa no Zustand store, valida diversidade anti-spam e prepara o simulador.
 18. **🎵 Sintetizador de Áudio Procedural Web Audio API:** Motor de áudio nativo (`webAudioSynthesizer.ts` / `TrendingAudioModal.tsx`) que sintetiza batidas rítmicas e linhas de baixo sintetizadas (kicks, hi-hats, sub-bass) em tempo real no navegador sem dependência de arquivos MP3 pesados ou banda de rede. Sincronizado ao vivo no BPM da trilha e integrado com as diretrizes do V5 Apollo Sound Studio (:3003).
 
-## Suíte de Testes Automatizados E2E (78/78 Aprovados)
+19. **⚡ Repurposador Mestre Onicanal 1-para-Muitos (Omnichannel Repurposer):** Motor (`omnichannelRepurposer.ts` / `OmnichannelRepurposerModal.tsx`) que transforma um único briefing, matéria de blog ou tópico bruto em 5 variações customizadas para as principais redes em 1 clique:
+    - *Instagram:* Carrossel/legenda com 5 passos numerados, gatilho Comment-to-DM e hashtags estratégicas.
+    - *TikTok & Reels:* Roteiro completo em 3 Atos (Gancho 0-3s, Quebra 3-12s, CTA 12-15s) com direções visuais de cena e B-roll.
+    - *LinkedIn:* Artigo de liderança de pensamento com 3 lições de negócios, parágrafos curtos e pergunta aberta para debate.
+    - *Twitter / X:* Thread estruturada em 4 tweets com limite estrito de 280 caracteres por tweet.
+    - *WhatsApp & Telegram VIP:* Mensagem escaneável com negrito de mensageria (*título*) e links UTM curtos.
+    - *Disparo em Lote:* Botão `⚡ Agendar os 5 Formatos em Lote` que distribui as 5 publicações no Calendário Mestre escalonadas a cada 3 horas.
+20. **🧪 Motor de Teste A/B de Ganchos e Preditor de Retenção de 3s:** Sistema analítico (`abTestingEngine.ts` / `AbHookTestingModal.tsx`) que compara dois ganchos lado a lado avaliando:
+    - Quebra de Padrão (Pattern Interrupt)
+    - Gap de Curiosidade Dopaminérgica (Curiosity Gap)
+    - Brevidade e Densidade Visual (ideal 45-85 caracteres)
+    - Viés de Perda / Urgência (Loss Aversion)
+    - Predição Algorítmica de Retenção nos Primeiros 3 Segundos (ex: 79% vs 46%, com cálculo de delta percentual e justificativa analítica).
+
+## Suíte de Testes Automatizados E2E (107/107 Aprovados)
 - `scripts/test-etapa103.ts`: 21/21 testes aprovados (Comment-to-DM Engine).
 - `scripts/test-etapa104.ts`: 29/29 testes aprovados (VIP Group Dispatcher).
 - `scripts/test-api-routes.ts`: 4/4 testes aprovados (Cloud Webhooks & Cockpit Telemetry).
 - `scripts/test-etapa105.ts`: 24/24 testes aprovados (PDF LinkedIn Builder, Niche Campaign Blueprints & Web Audio Engine).
-- **Total do Ecossistema:** 78/78 testes green (100% de cobertura e estabilidade absoluta).
+- `scripts/test-etapa106.ts`: 29/29 testes aprovados (Omnichannel Repurposer 1-to-5 & Hook A/B Split-Tester).
+- **Total do Ecossistema:** 107/107 testes green (100% de cobertura e estabilidade absoluta).
