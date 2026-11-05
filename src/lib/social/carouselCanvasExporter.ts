@@ -1,14 +1,16 @@
 /**
- * carouselCanvasExporter.ts - Renderizador de Imagens 4:5 para Carrossel Instagram
+ * carouselCanvasExporter.ts - Renderizador de Imagens para Carrossel Instagram & Stories
  * Capitania #13: V5 Apollo Poster (:3011)
  *
- * Renderiza lâminas de carrossel de alta resolução (1080x1350 - proporção 4:5)
- * diretamente no navegador usando HTML5 Canvas nativo, sem dependências externas.
+ * Renderiza lâminas de alta resolução diretamente no navegador usando HTML5 Canvas nativo:
+ * - 4:5 Feed (1080x1350)
+ * - 9:16 Story/Reels/TikTok (1080x1920)
  */
 
 import { CarouselSlide, CarouselDeck } from "./carouselDeckGenerator";
 
 export type CarouselThemeId = "obsidian" | "cyber" | "emerald" | "sunset" | "editorial";
+export type CarouselAspectRatio = "4:5" | "9:16";
 
 export interface CarouselThemeConfig {
   id: CarouselThemeId;
@@ -115,16 +117,18 @@ function wrapText(
 }
 
 /**
- * Renderiza um slide de carrossel em um elemento HTMLCanvasElement 1080x1350
+ * Renderiza um slide de carrossel em um elemento HTMLCanvasElement (4:5 ou 9:16)
  */
 export function renderSlideToCanvas(
   slide: CarouselSlide,
   deck: CarouselDeck,
   themeId: CarouselThemeId = "obsidian",
-  customHandle = "@v5apollo"
+  customHandle = "@v5apollo",
+  aspectRatio: CarouselAspectRatio = "4:5"
 ): HTMLCanvasElement {
   const width = 1080;
-  const height = 1350;
+  const isStory = aspectRatio === "9:16";
+  const height = isStory ? 1920 : 1350;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -142,7 +146,7 @@ export function renderSlideToCanvas(
   ctx.fillRect(0, 0, width, height);
 
   // 2. Efeito de Iluminação Sutil no Topo (Glow)
-  const glowGrad = ctx.createRadialGradient(width / 2, 0, 50, width / 2, 0, 700);
+  const glowGrad = ctx.createRadialGradient(width / 2, 0, 50, width / 2, 0, isStory ? 900 : 700);
   glowGrad.addColorStop(0, `${theme.accentColor}25`);
   glowGrad.addColorStop(1, "transparent");
   ctx.fillStyle = glowGrad;
@@ -152,8 +156,8 @@ export function renderSlideToCanvas(
   const paddingX = 90;
   const contentWidth = width - paddingX * 2;
 
-  // 4. Cabeçalho: Badge da Lâmina + Handle da Marca
-  const headerY = 110;
+  // 4. Cabeçalho: Badge da Lâmina + Handle da Marca (Safe zone para Stories se 9:16)
+  const headerY = isStory ? 180 : 110;
 
   // Badge Pill
   ctx.font = "bold 26px sans-serif";
@@ -187,7 +191,7 @@ export function renderSlideToCanvas(
   ctx.stroke();
 
   // 5. Título / Headline Principal
-  let currentY = 280;
+  let currentY = isStory ? 380 : 280;
   ctx.font = "bold 58px sans-serif";
   ctx.fillStyle = theme.textColor;
 
@@ -199,12 +203,12 @@ export function renderSlideToCanvas(
     currentY += headlineLineHeight;
   }
 
-  currentY += 40;
+  currentY += isStory ? 60 : 40;
 
   // 6. Corpo de Texto / Parágrafos
   ctx.font = "normal 34px sans-serif";
   ctx.fillStyle = theme.mutedTextColor;
-  const bodyLineHeight = 52;
+  const bodyLineHeight = isStory ? 58 : 52;
 
   for (const paragraph of slide.body) {
     const isBullet = paragraph.startsWith("•") || /^[0-9]\./.test(paragraph);
@@ -221,12 +225,12 @@ export function renderSlideToCanvas(
       ctx.fillText(pLine, paddingX, currentY);
       currentY += bodyLineHeight;
     }
-    currentY += 20; // Espaçamento entre parágrafos
+    currentY += isStory ? 30 : 20; // Espaçamento entre parágrafos
   }
 
   // 7. Callout Box de Destaque (se presente)
   if (slide.callout) {
-    currentY += 25;
+    currentY += isStory ? 40 : 25;
     ctx.font = "600 32px sans-serif";
     const calloutLines = wrapText(ctx, slide.callout, contentWidth - 60);
     const boxHeight = calloutLines.length * 48 + 44;
@@ -248,7 +252,7 @@ export function renderSlideToCanvas(
   }
 
   // 8. Rodapé (Footer)
-  const footerY = height - 100;
+  const footerY = isStory ? height - 160 : height - 100;
 
   // Linha Divisória Inferior
   ctx.strokeStyle = `${theme.mutedTextColor}25`;
@@ -261,7 +265,8 @@ export function renderSlideToCanvas(
   // Ações de Engajamento
   ctx.font = "bold 26px sans-serif";
   ctx.fillStyle = theme.mutedTextColor;
-  ctx.fillText("💾 Salvar Post   •   ✈️ Compartilhar", paddingX, footerY);
+  const actionText = isStory ? "👆 Arraste / Responda ao Story" : "💾 Salvar Post   •   ✈️ Compartilhar";
+  ctx.fillText(actionText, paddingX, footerY);
 
   // Paginação da Lâmina
   const pageText = `Lâmina ${slide.slideNumber} de ${deck.totalSlides}`;
@@ -279,13 +284,15 @@ export function downloadSlideAsPng(
   slide: CarouselSlide,
   deck: CarouselDeck,
   themeId: CarouselThemeId = "obsidian",
-  customHandle = "@v5apollo"
+  customHandle = "@v5apollo",
+  aspectRatio: CarouselAspectRatio = "4:5"
 ): void {
-  const canvas = renderSlideToCanvas(slide, deck, themeId, customHandle);
+  const canvas = renderSlideToCanvas(slide, deck, themeId, customHandle, aspectRatio);
   const dataUrl = canvas.toDataURL("image/png");
   const link = document.createElement("a");
   const sanitizedTopic = deck.topic.toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
-  link.download = `carrossel-${sanitizedTopic}-slide-${slide.slideNumber}.png`;
+  const formatTag = aspectRatio === "9:16" ? "story" : "feed";
+  link.download = `carrossel-${sanitizedTopic}-${formatTag}-slide-${slide.slideNumber}.png`;
   link.href = dataUrl;
   document.body.appendChild(link);
   link.click();
@@ -299,12 +306,13 @@ export async function downloadAllSlidesBatch(
   deck: CarouselDeck,
   themeId: CarouselThemeId = "obsidian",
   customHandle = "@v5apollo",
+  aspectRatio: CarouselAspectRatio = "4:5",
   onProgress?: (current: number, total: number) => void
 ): Promise<void> {
   const total = deck.slides.length;
   for (let i = 0; i < total; i++) {
     const slide = deck.slides[i];
-    downloadSlideAsPng(slide, deck, themeId, customHandle);
+    downloadSlideAsPng(slide, deck, themeId, customHandle, aspectRatio);
     if (onProgress) {
       onProgress(i + 1, total);
     }

@@ -15,7 +15,9 @@ import {
   Download,
   Palette,
   AtSign,
-  Edit3
+  Edit3,
+  Smartphone,
+  Maximize2
 } from "lucide-react";
 import { 
   generateCarouselSlideDeck, 
@@ -25,6 +27,7 @@ import {
 import { 
   CAROUSEL_THEMES, 
   CarouselThemeId, 
+  CarouselAspectRatio,
   downloadSlideAsPng, 
   downloadAllSlidesBatch 
 } from "@/lib/social/carouselCanvasExporter";
@@ -47,6 +50,7 @@ export function CarouselSlideDeckModal({
   const [keyword, setKeyword] = useState<string>("LINK");
   const [copied, setCopied] = useState<boolean>(false);
   const [selectedTheme, setSelectedTheme] = useState<CarouselThemeId>("obsidian");
+  const [aspectRatio, setAspectRatio] = useState<CarouselAspectRatio>("4:5");
   const [customHandle, setCustomHandle] = useState<string>("@v5apollo");
   const [isDownloadingBatch, setIsDownloadingBatch] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
@@ -102,8 +106,9 @@ export function CarouselSlideDeckModal({
 
   const handleDownloadCurrentSlide = () => {
     if (!currentSlide) return;
-    downloadSlideAsPng(currentSlide, deck, selectedTheme, customHandle);
-    toast.success(`Slide ${currentSlide.slideNumber} Baixado!`, "Imagem PNG 1080x1350 gerada com sucesso.");
+    downloadSlideAsPng(currentSlide, deck, selectedTheme, customHandle, aspectRatio);
+    const dim = aspectRatio === "9:16" ? "1080x1920 (Story)" : "1080x1350 (4:5 Feed)";
+    toast.success(`Slide ${currentSlide.slideNumber} Baixado!`, `Imagem PNG ${dim} gerada com sucesso.`);
   };
 
   const handleDownloadAllSlides = async () => {
@@ -114,11 +119,13 @@ export function CarouselSlideDeckModal({
         deck,
         selectedTheme,
         customHandle,
+        aspectRatio,
         (current, total) => {
           setDownloadProgress({ current, total });
         }
       );
-      toast.success("Todos os 5 Slides Baixados!", "Lote completo pronto para o Instagram.");
+      const dim = aspectRatio === "9:16" ? "1080x1920 (Story)" : "1080x1350 (4:5 Feed)";
+      toast.success("Todos os 5 Slides Baixados!", `Lote completo em PNG ${dim} pronto para publicação.`);
     } catch {
       toast.error("Erro ao baixar lote", "Ocorreu uma falha no processamento do canvas.");
     } finally {
@@ -159,11 +166,11 @@ export function CarouselSlideDeckModal({
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">Roteirizador de Carrossel Slide a Slide</h3>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">
-                  Pilar 2 · 5 Lâminas (4:5)
+                  {aspectRatio === "9:16" ? "9:16 Vertical Story" : "4:5 Feed Retrato"}
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Estrutura de alta retenção visual com gerador nativo de PNG 1080x1350 direto no seu navegador.
+                Estrutura de alta retenção visual com exportador de PNG {aspectRatio === "9:16" ? "1080x1920" : "1080x1350"} nativo no seu navegador.
               </p>
             </div>
           </div>
@@ -177,7 +184,7 @@ export function CarouselSlideDeckModal({
           </button>
         </div>
 
-        {/* Toolbar Superior: Tema, Handle e Gatilho */}
+        {/* Toolbar Superior: Tema, Proporção, Handle e Gatilho */}
         <div className="px-6 py-3 bg-zinc-900/40 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
           {/* Seletor de Tema */}
           <div className="flex items-center gap-2">
@@ -209,27 +216,55 @@ export function CarouselSlideDeckModal({
             </div>
           </div>
 
-          {/* Custom Handle + Keyword */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
+          {/* Seletor de Formato / Proporção + Custom Handle + Keyword */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Toggle de Proporção (4:5 vs 9:16) */}
+            <div className="flex items-center bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setAspectRatio("4:5")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] transition flex items-center gap-1 ${
+                  aspectRatio === "4:5"
+                    ? "bg-amber-500 text-black font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>4:5 Feed</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAspectRatio("9:16")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] transition flex items-center gap-1 ${
+                  aspectRatio === "9:16"
+                    ? "bg-amber-500 text-black font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Smartphone className="w-3 h-3" />
+                <span>9:16 Story</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-xl border border-zinc-800">
               <AtSign className="w-3.5 h-3.5 text-zinc-400" />
               <input
                 type="text"
                 value={customHandle}
                 onChange={(e) => setCustomHandle(e.target.value)}
                 placeholder="@seuperfil"
-                className="bg-transparent text-zinc-200 text-xs focus:outline-none w-24"
+                className="bg-transparent text-zinc-200 text-xs focus:outline-none w-20"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
-              <span className="text-zinc-400 text-[11px]">Palavra-Chave:</span>
+            <div className="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-xl border border-zinc-800">
+              <span className="text-zinc-400 text-[11px]">Gatilho:</span>
               <input
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value.toUpperCase())}
                 placeholder="LINK"
-                className="bg-transparent text-amber-400 font-bold text-xs focus:outline-none w-16 uppercase"
+                className="bg-transparent text-amber-400 font-bold text-xs focus:outline-none w-14 uppercase"
               />
             </div>
           </div>
@@ -281,9 +316,11 @@ export function CarouselSlideDeckModal({
             </div>
           </div>
 
-          {/* Cartão de Visualização do Slide (Simulador 4:5 Instagram com cores dinâmicas) */}
+          {/* Cartão de Visualização do Slide (Simulador Dinâmico 4:5 ou 9:16) */}
           <div
-            className="p-8 rounded-3xl border min-h-[360px] flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-300"
+            className={`p-8 rounded-3xl border flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-300 ${
+              aspectRatio === "9:16" ? "max-w-md mx-auto min-h-[460px]" : "min-h-[360px]"
+            }`}
             style={{
               background: `linear-gradient(180deg, ${currentThemeConfig.bgGradient[0]} 0%, ${currentThemeConfig.bgGradient[1]} 100%)`,
               borderColor: currentThemeConfig.cardBorder
@@ -362,7 +399,8 @@ export function CarouselSlideDeckModal({
             >
               <div className="flex items-center gap-3" style={{ color: currentThemeConfig.mutedTextColor }}>
                 <span className="flex items-center gap-1">
-                  <Bookmark className="w-3.5 h-3.5" /> Salvar Post
+                  {aspectRatio === "9:16" ? <Smartphone className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+                  <span>{aspectRatio === "9:16" ? "Arraste para Cima" : "Salvar Post"}</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Share2 className="w-3.5 h-3.5" /> Compartilhar
@@ -391,10 +429,10 @@ export function CarouselSlideDeckModal({
               type="button"
               onClick={handleDownloadCurrentSlide}
               className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold flex items-center gap-1.5 transition border border-zinc-700"
-              title="Baixar a lâmina atual como PNG 1080x1350"
+              title={`Baixar lâmina atual como PNG ${aspectRatio === "9:16" ? "1080x1920 (Story)" : "1080x1350 (4:5 Feed)"}`}
             >
               <Download className="w-4 h-4 text-amber-400" />
-              <span>Baixar Slide (PNG)</span>
+              <span>Baixar Slide ({aspectRatio})</span>
             </button>
 
             <button
@@ -402,13 +440,13 @@ export function CarouselSlideDeckModal({
               disabled={isDownloadingBatch}
               onClick={handleDownloadAllSlides}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1.5 transition disabled:opacity-50"
-              title="Baixar todas as 5 lâminas sequencialmente em PNG 1080x1350"
+              title={`Baixar todas as 5 lâminas sequencialmente em PNG ${aspectRatio}`}
             >
               <Download className="w-4 h-4 text-amber-400" />
               <span>
                 {downloadProgress
                   ? `Baixando ${downloadProgress.current}/${downloadProgress.total}...`
-                  : "Baixar Todos (5 PNGs)"}
+                  : `Baixar Todos (5 PNGs ${aspectRatio})`}
               </span>
             </button>
           </div>

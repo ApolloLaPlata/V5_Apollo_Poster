@@ -11,7 +11,7 @@
  * - Zero extensões de navegador: arquitetura desenhada para Meta Graph API em nuvem
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { 
   Bot, 
   MessageSquare, 
@@ -35,7 +35,9 @@ import {
   Video,
   CheckCircle2,
   AlertCircle,
-  BarChart3
+  BarChart3,
+  Download,
+  Upload
 } from "lucide-react";
 import { DmEngagementMetricsPanel } from "./DmEngagementMetricsPanel";
 import { usePosterStore } from "@/store/usePosterStore";
@@ -162,6 +164,63 @@ export function CommentToDmManager() {
   const selectedRule = useMemo(() => {
     return commentRules.find((r) => r.id === selectedRuleId) || commentRules[0] || null;
   }, [commentRules, selectedRuleId]);
+
+  // Referência para input de importação de JSON
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Exportação das regras para JSON
+  const handleExportRulesJson = () => {
+    const jsonStr = JSON.stringify(commentRules, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `regras-comment-to-dm-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Regras Exportadas!", `${commentRules.length} automações salvas em JSON.`);
+  };
+
+  // Importação das regras a partir de JSON
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (Array.isArray(parsed)) {
+          let count = 0;
+          for (const item of parsed) {
+            if (item.name && item.keywords && item.dmMessageTemplate) {
+              addCommentRule({
+                name: item.name,
+                platform: item.platform || "instagram",
+                targetPostId: item.targetPostId || "all_posts",
+                matchMode: item.matchMode || "contains",
+                keywords: item.keywords || ["LINK"],
+                publicReplyVariants: item.publicReplyVariants || ["Enviado no direct!"],
+                dmMessageTemplate: item.dmMessageTemplate,
+                ctaUrl: item.ctaUrl || "",
+                couponCode: item.couponCode || "",
+                isActive: item.isActive !== undefined ? item.isActive : true
+              });
+              count++;
+            }
+          }
+          toast.success("Importação Concluída!", `${count} regras importadas com sucesso.`);
+        } else {
+          toast.error("Formato Inválido", "O arquivo JSON deve conter uma lista de regras.");
+        }
+      } catch {
+        toast.error("Erro ao ler JSON", "Arquivo corrompido ou formato incompatível.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   // Telemetria global calculada
   const activeRulesCount = useMemo(() => {
@@ -604,9 +663,40 @@ export function CommentToDmManager() {
           <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
             <span className="flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-amber-400" />
-              Regras no Zustand Store:
+              Regras no Zustand:
             </span>
-            <span className="text-zinc-500 font-mono text-[11px]">{commentRules.length} regras</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileImport}
+                accept=".json"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono flex items-center gap-1 transition"
+                title="Importar regras de arquivo JSON"
+              >
+                <Upload className="w-3 h-3 text-cyan-400" />
+                <span>Importar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportRulesJson}
+                className="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono flex items-center gap-1 transition"
+                title="Exportar todas as regras para backup em JSON"
+              >
+                <Download className="w-3 h-3 text-amber-400" />
+                <span>Exportar</span>
+              </button>
+
+              <span className="text-zinc-500 font-mono text-[10px] bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                {commentRules.length}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2 max-h-[620px] overflow-y-auto pr-1">
