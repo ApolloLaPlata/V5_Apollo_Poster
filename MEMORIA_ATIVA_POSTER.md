@@ -1,7 +1,7 @@
 # MEMORIA ATIVA - V5 APOLLO POSTER (CAPITANIA #13)
 
 ## Status Atual
-- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 3 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`) 100% OPERACIONAIS E HOMOLOGADAS.
+- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API,  Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 3 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`) 100% OPERACIONAIS E HOMOLOGADAS.
 - **Porta:** `:3011` fixa (`next dev -p 3011`).
 - **Assinatura Git Oficial:** `Apollo La Plata <v5estudio@hotmail.com>`
 - **Zero Extensão para Usuário:** 100% Native Cloud APIs (Meta Graph, TikTok Content, YouTube Data v3, Resend, WordPress REST API, Telegram Bot API, WhatsApp Cloud API).
@@ -37,7 +37,18 @@
 14. **Motor Dual Beehiiv (Blog + Newsletter):** Redação unificada em Markdown rico com conversão simultânea para E-mail HTML responsivo (CAN-SPAM/GDPR opt-out, preheader invisível, UTMs) e JSON estruturado com metadados de SEO (OpenGraph, Twitter Cards, Schema.org BlogPosting, Taxonomia AEO e Auditor Heurístico Anti-Spam).
 15. **Despachador de Grupos VIP (Finders Hub):** Seleção de achadinhos Shopee/Mercado Livre/Amazon/AliExpress/Magalu, cálculo de descontos sem erros de float, categorização psicológica de pechinchas e transmissão para WhatsApp e Telegram VIP.
 
-## Suíte de Testes Automatizados E2E
+16. **📄 Exportador Nativo de PDF Multi-Páginas para LinkedIn (Document Posts):** Gerador de alta performance (`pdfDocumentBuilder.ts` / `CarouselSlideDeckModal.tsx`) que compila as lâminas 4:5 e 9:16 do carrossel em um único arquivo PDF 1.4 binário estruturado com streams DCTDecode de altíssima definição (1080x1350) e tabela XRef com precisão matemática absoluta. Permite que qualquer carrossel seja postado no LinkedIn como Document Post, o formato de maior alcance orgânico da rede profissional.
+17. **⚡ Campanhas de 1-Clique por Nicho (Comment-to-DM Turnkey):** Sistema de blueprints prontos (`nicheCampaignPresets.ts` / `NicheCampaignPresetsModal.tsx`) com 4 receitas calibradas:
+    - *Achadinhos & Shopee Viral (Finders Hub):* 7 gatilhos de compra, 5 variações anti-spam com emojis e cupom direto via UTM.
+    - *Infoproduto & VSL Secreta (Lead Hunter):* Gatilhos de aula/método, entrega de aula secreta e e-book complementar.
+    - *SaaS Onboarding & Trial VIP (V5 Poster):* Teste grátis de 7 dias sem cartão, tour da ferramenta e suporte direto.
+    - *Beehiiv Newsletter & Relatório Executivo:* Captura de assinantes de alto valor e entrega do resumo executivo.
+    - *Instalação Instantânea:* 1 clique injeta a regra completa no Zustand store, valida diversidade anti-spam e prepara o simulador.
+18. **🎵 Sintetizador de Áudio Procedural Web Audio API:** Motor de áudio nativo (`webAudioSynthesizer.ts` / `TrendingAudioModal.tsx`) que sintetiza batidas rítmicas e linhas de baixo sintetizadas (kicks, hi-hats, sub-bass) em tempo real no navegador sem dependência de arquivos MP3 pesados ou banda de rede. Sincronizado ao vivo no BPM da trilha e integrado com as diretrizes do V5 Apollo Sound Studio (:3003).
+
+## Suíte de Testes Automatizados E2E (78/78 Aprovados)
 - `scripts/test-etapa103.ts`: 21/21 testes aprovados (Comment-to-DM Engine).
 - `scripts/test-etapa104.ts`: 29/29 testes aprovados (VIP Group Dispatcher).
 - `scripts/test-api-routes.ts`: 4/4 testes aprovados (Cloud Webhooks & Cockpit Telemetry).
+- `scripts/test-etapa105.ts`: 24/24 testes aprovados (PDF LinkedIn Builder, Niche Campaign Blueprints & Web Audio Engine).
+- **Total do Ecossistema:** 78/78 testes green (100% de cobertura e estabilidade absoluta).
