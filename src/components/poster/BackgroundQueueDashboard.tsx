@@ -77,6 +77,20 @@ export function BackgroundQueueDashboard() {
   const [newPriority, setNewPriority] = useState<QueueItemPriority>("normal");
   const [newScheduledMinutes, setNewScheduledMinutes] = useState(15);
   const [selectedDiagnosticItem, setSelectedDiagnosticItem] = useState<QueueItem | null>(null);
+  // Trava de Governança Human-in-the-Loop (Princípio Marcondes: nada sai postado sem seu OK)
+  const [humanApprovalMode, setHumanApprovalMode] = useState<boolean>(true);
+  const [approvedItemIds, setApprovedItemIds] = useState<Set<string>>(new Set());
+
+  const handleApproveItem = (id: string, title: string) => {
+    setApprovedItemIds((prev) => new Set(prev).add(id));
+    toast.success("Post Aprovado!", `"${title}" liberado para disparo pelo motor autônomo.`);
+  };
+
+  const handleApproveAll = () => {
+    const allIds = new Set(scheduledOrQueuedItems.map((i) => i.id));
+    setApprovedItemIds(allIds);
+    toast.success("Lote Aprovado com Sucesso!", `${allIds.size} tarefas liberadas pelo operador humano.`);
+  };
 
   // Hook do scanner contínuo de 60s
   const {
@@ -476,6 +490,75 @@ export function BackgroundQueueDashboard() {
             </div>
           )}
 
+      {/* 🛡️ Portão de Governança e Aprovação Humana (Human-in-the-Loop Gate) */}
+      <div
+        className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          humanApprovalMode
+            ? "bg-gradient-to-r from-emerald-500/10 via-zinc-900 to-amber-500/10 border-emerald-500/30 shadow-md"
+            : "bg-zinc-900/40 border-zinc-800 text-zinc-400"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`p-2.5 rounded-xl border ${
+              humanApprovalMode
+                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                : "bg-zinc-800 text-zinc-500 border-zinc-700"
+            }`}
+          >
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                <span>Portão de Aprovação Humana (Human-in-the-Loop)</span>
+              </h4>
+              <span
+                className={`px-2 py-0.2 rounded-full text-[10px] font-mono font-bold uppercase ${
+                  humanApprovalMode
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                    : "bg-zinc-800 text-zinc-500"
+                }`}
+              >
+                {humanApprovalMode ? "Ativo (Soberano)" : "Desativado"}
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              {humanApprovalMode
+                ? "Princípio Marcondes: A esteira de robôs pode preparar os posts, mas nada é despachado sem o seu 'OK'."
+                : "Modo Autônomo Livre: Publicações e retentativas disparam automaticamente sem confirmação prévia."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-end sm:self-center">
+          {humanApprovalMode && scheduledOrQueuedItems.length > 0 && (
+            <button
+              type="button"
+              onClick={handleApproveAll}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-mono font-bold text-xs border border-emerald-500/40 transition flex items-center gap-1 shadow-sm"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Aprovar Todos ({scheduledOrQueuedItems.length})</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setHumanApprovalMode(!humanApprovalMode);
+              toast.info(
+                humanApprovalMode ? "Aprovação Humana Desativada" : "Aprovação Humana Ativada",
+                humanApprovalMode ? "Disparos automáticos livres." : "Nenhum post sairá sem o seu OK."
+              );
+            }}
+            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs border border-zinc-700 transition"
+          >
+            {humanApprovalMode ? "Desativar Trava" : "Ativar Trava"}
+          </button>
+        </div>
+      </div>
+
           {/* Seção 2: Próximos Itens da Fila FIFO */}
           <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -544,6 +627,19 @@ export function BackgroundQueueDashboard() {
                               {item.priority}
                             </span>
 
+                            {/* Badge de Aprovação Humana */}
+                            {humanApprovalMode && (
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+                                  approvedItemIds.has(item.id)
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                }`}
+                              >
+                                {approvedItemIds.has(item.id) ? "✓ Aprovado" : "⏳ Pendente de OK"}
+                              </span>
+                            )}
+
                             {/* Badge de Retry */}
                             {isAwaitingRetry && (
                               <span className="px-1.5 py-0.2 rounded text-[10px] bg-orange-500/20 text-orange-400 font-mono flex items-center gap-1">
@@ -595,6 +691,17 @@ export function BackgroundQueueDashboard() {
 
                       {/* Ações do Item */}
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-800/60">
+                        {humanApprovalMode && !approvedItemIds.has(item.id) && (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveItem(item.id, item.title)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold transition"
+                            title="Dar o OK humano para autorizar o disparo"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>Aprovar</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => handleForceDispatchItem(item.id, item.title)}
                           disabled={dispatchingIds.has(item.id)}
