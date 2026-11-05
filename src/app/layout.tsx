@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import V5EcosystemHeader from '@/components/layout/V5EcosystemHeader';
 
+import V5EcosystemFooter from '@/components/layout/V5EcosystemFooter';
+import V5FloatingConcierge from '@/components/layout/V5FloatingConcierge';
+import V5ClientErrorSentinel from '@/components/layout/V5ClientErrorSentinel';
 export const metadata: Metadata = {
   metadataBase: new URL("https://poster.v5apollo.com"),
-  title: "V5 Apollo Poster • Central Onicanal de Despacho & Engajamento",
+  title: "V5 Apollo Poster — Central Onicanal de Despacho & Engajamento",
   description: "Central onicanal de despacho, agendamento de 30 dias, blog + newsletter dual publisher e comment-to-dm automatizado.",
   authors: [{ name: "Holding V5 Apollo", url: "https://v5apollo.com" }],
   creator: "Apollo La Plata",
@@ -12,7 +16,7 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "V5 Apollo Poster • Central Onicanal de Despacho & Engajamento",
+    title: "V5 Apollo Poster — Central Onicanal de Despacho & Engajamento",
     description: "Central onicanal de despacho, agendamento de 30 dias, blog + newsletter dual publisher e comment-to-dm automatizado.",
     url: "https://poster.v5apollo.com",
     siteName: "V5 Apollo Poster",
@@ -21,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "V5 Apollo Poster • Central Onicanal de Despacho & Engajamento",
+    title: "V5 Apollo Poster — Central Onicanal de Despacho & Engajamento",
     description: "Central onicanal de despacho, agendamento de 30 dias, blog + newsletter dual publisher e comment-to-dm automatizado.",
   },
   robots: {
@@ -44,7 +48,11 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://hmiynglcsvpzhqbnnqzj.supabase.co" />
       </head>
 <body className="bg-[#030712] text-zinc-100 min-h-screen selection:bg-amber-500 selection:text-black">
+        <V5EcosystemHeader currentSite="poster" />
         {children}
+              <V5EcosystemFooter currentSite="poster" />
+        <V5FloatingConcierge currentSite="poster" />
+        <V5ClientErrorSentinel siteId="poster" />
       </body>
     </html>
   );
