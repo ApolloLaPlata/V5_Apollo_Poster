@@ -1,3 +1,4 @@
+import { downloadCanvasesAsPdf } from "./pdfDocumentBuilder";
 /**
  * carouselCanvasExporter.ts - Renderizador de Imagens para Carrossel Instagram & Stories
  * Capitania #13: V5 Apollo Poster (:3011)
@@ -320,3 +321,22 @@ export async function downloadAllSlidesBatch(
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
 }
+
+/**
+ * Dispara o download de todas as lâminas unificadas em um único arquivo PDF
+ * otimizado para o formato 'Document Post' (Carrossel Interativo) do LinkedIn
+ */
+export function downloadDeckAsLinkedInPdf(
+  deck: CarouselDeck,
+  themeId: CarouselThemeId = "obsidian",
+  customHandle = "@v5apollo",
+  aspectRatio: CarouselAspectRatio = "4:5"
+): void {
+  const canvases = deck.slides.map((slide) =>
+    renderSlideToCanvas(slide, deck, themeId, customHandle, aspectRatio)
+  );
+  const sanitizedTopic = deck.topic.toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
+  const filename = `carrossel-linkedin-${sanitizedTopic}-${aspectRatio.replace(":", "x")}.pdf`;
+  downloadCanvasesAsPdf(canvases, filename);
+}
+

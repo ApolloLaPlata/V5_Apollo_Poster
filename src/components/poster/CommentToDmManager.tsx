@@ -1,3 +1,5 @@
+import { NicheCampaignPresetsModal } from "./NicheCampaignPresetsModal";
+import { NicheCampaignBlueprint } from "@/lib/comments/nicheCampaignPresets";
 /**
  * CommentToDmManager.tsx - Gerenciador Central de Regras Comment-to-DM
  * Capitania #13: V5 Apollo Poster (:3011)
@@ -104,6 +106,7 @@ export function CommentToDmManager() {
 
   // Estado do Modal de Nova Regra
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isPresetsModalOpen, setIsPresetsModalOpen] = useState<boolean>(false);
   const [newKeywordInput, setNewKeywordInput] = useState<string>("");
   const [newPublicReplyInput, setNewPublicReplyInput] = useState<string>("");
 
@@ -486,6 +489,25 @@ export function CommentToDmManager() {
     }
   };
 
+  // Aplica blueprint de campanha de 1-clique
+  const handleApplyNicheBlueprint = (bp: NicheCampaignBlueprint) => {
+    addCommentRule({
+      name: bp.name,
+      platform: bp.recommendedPlatform,
+      targetPostId: posts[0]?.id || "global_all_posts",
+      targetPostTitle: posts[0]?.title || "Todos os Posts",
+      matchMode: bp.matchMode,
+      keywords: bp.keywords,
+      publicReplyVariants: bp.publicReplyVariants,
+      dmMessageTemplate: bp.dmMessageTemplate,
+      ctaUrl: bp.ctaUrl,
+      couponCode: bp.couponCode,
+      isActive: true
+    });
+    setSimCommentText(bp.sampleComment);
+    setSimUsername(bp.sampleUsername);
+  };
+
   // Criação de Nova Regra
   const handleCreateRule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -605,6 +627,15 @@ export function CommentToDmManager() {
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setIsPresetsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs transition active:scale-95 shadow-md shadow-amber-950/20"
+            title="Escolha um modelo de campanha pré-configurado por nicho (Shopee, VSL, SaaS, Beehiiv)"
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Campanhas 1-Clique</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
@@ -1615,6 +1646,13 @@ export function CommentToDmManager() {
           </div>
         </div>
       )}
+
+      {/* Modal de Campanhas 1-Clique por Nicho */}
+      <NicheCampaignPresetsModal
+        isOpen={isPresetsModalOpen}
+        onClose={() => setIsPresetsModalOpen(false)}
+        onSelectBlueprint={handleApplyNicheBlueprint}
+      />
     </div>
   );
 }

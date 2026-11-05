@@ -17,7 +17,8 @@ import {
   AtSign,
   Edit3,
   Smartphone,
-  Maximize2
+  Maximize2,
+  FileText
 } from "lucide-react";
 import { 
   generateCarouselSlideDeck, 
@@ -29,7 +30,8 @@ import {
   CarouselThemeId, 
   CarouselAspectRatio,
   downloadSlideAsPng, 
-  downloadAllSlidesBatch 
+  downloadAllSlidesBatch,
+  downloadDeckAsLinkedInPdf
 } from "@/lib/social/carouselCanvasExporter";
 import { toast } from "@/lib/toast/useToast";
 
@@ -54,6 +56,7 @@ export function CarouselSlideDeckModal({
   const [customHandle, setCustomHandle] = useState<string>("@v5apollo");
   const [isDownloadingBatch, setIsDownloadingBatch] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Geração da base do deck
   const baseDeck = useMemo(() => {
@@ -131,6 +134,19 @@ export function CarouselSlideDeckModal({
     } finally {
       setIsDownloadingBatch(false);
       setDownloadProgress(null);
+    }
+  };
+
+
+  const handleDownloadLinkedInPdf = () => {
+    try {
+      setIsExportingPdf(true);
+      downloadDeckAsLinkedInPdf(deck, selectedTheme, customHandle, aspectRatio);
+      toast.success("Documento PDF gerado com sucesso!", "Pronto para publicar no LinkedIn como Carrossel.");
+    } catch {
+      toast.error("Erro ao gerar PDF", "Ocorreu uma falha ao compilar as lâminas.");
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -448,6 +464,17 @@ export function CarouselSlideDeckModal({
                   ? `Baixando ${downloadProgress.current}/${downloadProgress.total}...`
                   : `Baixar Todos (5 PNGs ${aspectRatio})`}
               </span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isExportingPdf}
+              onClick={handleDownloadLinkedInPdf}
+              className="px-3.5 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-bold flex items-center gap-1.5 transition disabled:opacity-50"
+              title="Baixar carrossel em PDF multi-páginas de alta resolução para publicar como Document Post no LinkedIn"
+            >
+              <FileText className="w-4 h-4 text-blue-400" />
+              <span>{isExportingPdf ? "Gerando PDF..." : "Carrossel LinkedIn (PDF)"}</span>
             </button>
           </div>
 

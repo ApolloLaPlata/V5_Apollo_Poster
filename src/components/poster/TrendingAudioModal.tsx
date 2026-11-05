@@ -19,6 +19,8 @@ import {
   TrendingAudioTrack 
 } from "@/lib/social/trendingAudioEngine";
 import { toast } from "@/lib/toast/useToast";
+import { globalAudioSynthesizer } from "@/lib/social/webAudioSynthesizer";
+
 
 interface TrendingAudioModalProps {
   isOpen: boolean;
@@ -42,16 +44,25 @@ export function TrendingAudioModal({
     ? TRENDING_AUDIO_CATALOG
     : TRENDING_AUDIO_CATALOG.filter((t) => t.category === activeCategory);
 
-  const handleTogglePlaySim = (id: string, title: string) => {
-    if (previewPlayingId === id) {
+  React.useEffect(() => {
+    return () => {
+      globalAudioSynthesizer.stopPreview();
+    };
+  }, []);
+
+  const handleTogglePlaySim = (track: TrendingAudioTrack) => {
+    if (previewPlayingId === track.id) {
+      globalAudioSynthesizer.stopPreview();
       setPreviewPlayingId(null);
     } else {
-      setPreviewPlayingId(id);
-      toast.info("Tocando Amostra Sonora", `Simulando reprodução: ${title}`);
+      globalAudioSynthesizer.playTrackPreview(track.id, track.bpm, track.category);
+      setPreviewPlayingId(track.id);
+      toast.info("Tocando Amostra Procedural", `${track.title} (${track.bpm} BPM)`);
     }
   };
 
   const handleSelect = (track: TrendingAudioTrack) => {
+    globalAudioSynthesizer.stopPreview();
     onSelectTrack(track);
     toast.success("Áudio Vinculado com Sucesso!", `${track.title} sincronizado com Reels/TikTok.`);
     onClose();
@@ -165,7 +176,7 @@ export function TrendingAudioModal({
                   {/* Botão de Tocar / Amostra */}
                   <button
                     type="button"
-                    onClick={() => handleTogglePlaySim(track.id, track.title)}
+                    onClick={() => handleTogglePlaySim(track)}
                     className={`p-3 rounded-2xl border transition flex items-center justify-center shrink-0 ${
                       isPlaying
                         ? "bg-rose-500 text-black border-rose-400 animate-pulse shadow-md"
