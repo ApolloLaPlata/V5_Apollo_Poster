@@ -30,7 +30,9 @@ import {
   Music,
   Radio,
   Cpu,
-  Clapperboard
+  Clapperboard,
+  Repeat,
+  Scale
 } from "lucide-react";
 import { usePosterStore } from "@/store/usePosterStore";
 import { SocialPlatform, MediaType, ScheduledPost } from "@/types/poster";
@@ -43,6 +45,9 @@ import { CarouselSlideDeckModal } from "@/components/poster/CarouselSlideDeckMod
 import { TrendingAudioModal } from "@/components/poster/TrendingAudioModal";
 import { InterCapitaniaBroadcastModal } from "@/components/poster/InterCapitaniaBroadcastModal";
 import { VideoStoryboardModal } from "@/components/poster/VideoStoryboardModal";
+import { OmnichannelRepurposerModal } from "@/components/poster/OmnichannelRepurposerModal";
+import { AbHookTestingModal } from "@/components/poster/AbHookTestingModal";
+
 import { TrendingAudioTrack } from "@/lib/social/trendingAudioEngine";
 
 const AVAILABLE_PLATFORMS: Array<{
@@ -125,6 +130,9 @@ export function SocialPublishingStudio() {
   const [showAudioModal, setShowAudioModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showStoryboardModal, setShowStoryboardModal] = useState(false);
+  const [showRepurposerModal, setShowRepurposerModal] = useState(false);
+  const [showAbHookModal, setShowAbHookModal] = useState(false);
+
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<TrendingAudioTrack | null>(null);
   const [showHookSelector, setShowHookSelector] = useState(false);
 
@@ -611,6 +619,27 @@ export function SocialPublishingStudio() {
                   <Clapperboard className="w-3.5 h-3.5 text-purple-400" />
                   <span>🎬 Roteiro Reels (3 Atos)</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowRepurposerModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Transformar este conteúdo em 5 formatos otimizados para Instagram, TikTok, LinkedIn, Twitter e WhatsApp"
+                >
+                  <Repeat className="w-3.5 h-3.5 text-amber-400" />
+                  <span>⚡ Repurposador (1-para-5)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAbHookModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Comparar dois ganchos lado a lado com algoritmo de retenção nos primeiros 3 segundos"
+                >
+                  <Scale className="w-3.5 h-3.5 text-rose-400" />
+                  <span>🧪 Teste A/B</span>
+                </button>
+
               </div>
             </div>
 
@@ -1167,6 +1196,29 @@ export function SocialPublishingStudio() {
           onApplyToStudio={(scriptText, hookTitle) => {
             setContent(scriptText);
             setTitle(hookTitle);
+          }}
+        />
+
+        {/* Modal de Repurposing Onicanal (1-para-5) */}
+        <OmnichannelRepurposerModal
+          isOpen={showRepurposerModal}
+          onClose={() => setShowRepurposerModal(false)}
+          initialTopic={title}
+          initialBody={content}
+          onApplyToStudio={(newTitle, newContent, platform) => {
+            setTitle(newTitle);
+            setContent(newContent);
+            setSelectedPlatforms([platform]);
+          }}
+        />
+
+        {/* Modal de Teste A/B de Ganchos */}
+        <AbHookTestingModal
+          isOpen={showAbHookModal}
+          onClose={() => setShowAbHookModal(false)}
+          currentHook={title}
+          onSelectWinningHook={(winningHook) => {
+            setTitle(winningHook);
           }}
         />
 
