@@ -14,7 +14,8 @@ import {
   FileText, 
   Send,
   Zap,
-  Play
+  Play,
+  Cpu
 } from "lucide-react";
 import { 
   generateVideoStoryboard, 
@@ -23,6 +24,8 @@ import {
 } from "@/lib/social/videoStoryboardEngine";
 import { toast } from "@/lib/toast/useToast";
 import { executeCrossCapitaniaBroadcast } from "@/lib/dispatch/crossCapitaniaEngine";
+import { dispatchGpuRenderJob } from "@/lib/api/v5GpuClusterClient";
+
 
 interface VideoStoryboardModalProps {
   isOpen: boolean;
@@ -43,6 +46,7 @@ export function VideoStoryboardModal({
   const [duration, setDuration] = useState<VideoDurationPreset>(15);
   const [copied, setCopied] = useState<boolean>(false);
   const [isTransmittingToStudio, setIsTransmittingToStudio] = useState<boolean>(false);
+  const [isDispatchingGpu, setIsDispatchingGpu] = useState<boolean>(false);
 
   const storyboard: VideoStoryboard = useMemo(() => {
     return generateVideoStoryboard(topicTitle, keyword, duration, audioTrackId);
@@ -93,6 +97,37 @@ export function VideoStoryboardModal({
       toast.error("Falha na transmissão", "Não foi possível conectar ao Studio.");
     } finally {
       setIsTransmittingToStudio(false);
+    }
+  };
+
+  const handleDispatchToGpuFleet = async () => {
+    setIsDispatchingGpu(true);
+    try {
+      const res = await dispatchGpuRenderJob({
+        jobType: "video_storyboard",
+        priority: "high",
+        payload: {
+          storyboard,
+          topic: storyboard.topic,
+          durationSec: duration,
+          audioTrackId: audioTrackId || "tech-cyber-808",
+          targetPlatform: "instagram_reels"
+        },
+        metadata: {
+          capitania: "V5 Apollo Poster (:3011)",
+          port: 3011,
+          requestedSlot: "Slot 04 (descarganews - T4 16GB)"
+        }
+      });
+
+      toast.success(
+        "Job Alocado na Frota Colab T4!",
+        `${res.assignedSlot} assumiu a renderização NVENC (${res.estimatedLatencyMs}ms). Custo: R$ 0,00.`
+      );
+    } catch {
+      toast.error("Falha no cluster", "Erro ao conectar com api.v5apollo.com.");
+    } finally {
+      setIsDispatchingGpu(false);
     }
   };
 
@@ -243,6 +278,16 @@ export function VideoStoryboardModal({
               <span>{copied ? "Roteiro Copiado!" : "Copiar Roteiro"}</span>
             </button>
 
+            <button
+              type="button"
+              disabled={isDispatchingGpu}
+              onClick={handleDispatchToGpuFleet}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-bold flex items-center gap-1.5 transition border border-amber-500/40"
+              title="Despacha renderização 9:16 diretamente para o warm tier da Frota de GPUs Colab T4 via V5 Apollo API"
+            >
+              <Cpu className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isDispatchingGpu ? "Enviando ao Cluster..." : "Renderizar na Frota T4 (api.v5apollo.com)"}</span>
+            </button>
             <button
               type="button"
               disabled={isTransmittingToStudio}

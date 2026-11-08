@@ -11,7 +11,7 @@
 
 import { MediaType } from "@/types/poster";
 
-export type CapitaniaTargetId = "autoblog" | "sound" | "studio" | "finders";
+export type CapitaniaTargetId = "autoblog" | "sound" | "studio" | "finders" | "apolloApi";
 
 export interface CapitaniaDefinition {
   id: CapitaniaTargetId;
@@ -64,6 +64,16 @@ export const CAPITANIAS_REGISTRY: Record<CapitaniaTargetId, CapitaniaDefinition>
     endpoint: "http://localhost:3009/api/deals/import",
     color: "#10b981",
     icon: "Flame"
+  },
+  apolloApi: {
+    id: "apolloApi",
+    name: "V5 Apollo API Gateway",
+    capitaniaNumber: 2,
+    port: 3000,
+    role: "Roteador Central da Frota Colab T4 (105h/dia), LLM Fallback & ComfyUI",
+    endpoint: "https://api.v5apollo.com/v1/gpu/dispatch",
+    color: "#f59e0b",
+    icon: "Cpu"
   }
 };
 
@@ -157,6 +167,14 @@ export async function executeCrossCapitaniaBroadcast(
         themeName: payload.title,
         genre: "tech_drill_ai",
         bpmTarget: 140
+      };
+    } else if (target.id === "apolloApi") {
+      customizedSent = {
+        action: "ROUTER_DISPATCH_GPU",
+        title: payload.title,
+        cluster: "Colab_T4_WarmTier",
+        serviceRequested: payload.mediaType === "video" ? "NVENC_STORYBOARD_RENDER" : "COMFYUI_CAROUSEL_UPSCALE",
+        auth: "MASTER_BEARER_TOKEN"
       };
     }
 

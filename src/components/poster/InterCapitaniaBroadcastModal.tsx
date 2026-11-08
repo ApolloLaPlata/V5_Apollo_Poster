@@ -113,6 +113,8 @@ export function InterCapitaniaBroadcastModal({
         return <Video className="w-4 h-4 text-purple-400" />;
       case "finders":
         return <Flame className="w-4 h-4 text-emerald-400" />;
+      case "apolloApi":
+        return <Cpu className="w-4 h-4 text-amber-400" />;
     }
   };
 
@@ -160,7 +162,7 @@ export function InterCapitaniaBroadcastModal({
           {/* Seletor de Capitanias Alvo */}
           <div className="space-y-2.5">
             <label className="text-xs font-mono font-bold text-zinc-300 flex items-center justify-between">
-              <span>Selecione as Capitanias de Destino ({selectedTargets.length}/4):</span>
+              <span>Selecione as Capitanias de Destino ({selectedTargets.length}/5):</span>
               <span className="text-zinc-500 font-normal">HTTP REST / Chave Mestra</span>
             </label>
 
