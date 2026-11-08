@@ -1,7 +1,7 @@
 # MEMORIA ATIVA - V5 APOLLO POSTER (CAPITANIA #13)
 
 ## Status Atual
-- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Repurposador Onicanal 1-para-5, Testador A/B de Ganchos com Preditor de Retenção 3s,  Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API,  Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 3 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`) 100% OPERACIONAIS E HOMOLOGADAS.
+- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Assimilada a Diretriz Geral da Colmeia (Pulse #229) para a Frota de GPUs Colab T4 (110h/dia), Integração via V5 Apollo API Gateway (:3000 / api.v5apollo.com),  Assimilada a Diretriz Geral da Colmeia (Pulse #229) para a Frota de GPUs Colab T4 (110h/dia), Integração com a V5 Apollo API Gateway (:3000 / api.v5apollo.com) para Despacho de Renderização NVENC, Repurposador Onicanal 1-para-5, Testador A/B de Ganchos com Preditor de Retenção 3s, Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API, Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 3 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`) 100% OPERACIONAIS E HOMOLOGADAS.
 - **Porta:** `:3011` fixa (`next dev -p 3011`).
 - **Assinatura Git Oficial:** `Apollo La Plata <v5estudio@hotmail.com>`
 - **Zero Extensão para Usuário:** 100% Native Cloud APIs (Meta Graph, TikTok Content, YouTube Data v3, Resend, WordPress REST API, Telegram Bot API, WhatsApp Cloud API).
@@ -60,10 +60,17 @@
     - Viés de Perda / Urgência (Loss Aversion)
     - Predição Algorítmica de Retenção nos Primeiros 3 Segundos (ex: 79% vs 46%, com cálculo de delta percentual e justificativa analítica).
 
-## Suíte de Testes Automatizados E2E (107/107 Aprovados)
+21. **👑 Integração com a Frota Soberana de GPUs Colab T4 (110h/dia) via V5 Apollo API Gateway:** Em estrito cumprimento à Diretriz Geral da Colmeia (Pulse #229), o Poster passa a direcionar requisições pesadas de IA e renderização gráfica diretamente para a **V5 Apollo API (`https://api.v5apollo.com`)**:
+    - *Cliente de Cluster (`v5GpuClusterClient.ts`):* Despacha jobs de renderização de Storyboards 3 Atos, composição de vídeos verticais 9:16 com legendas Hormozi e upscaling de carrosséis no ComfyUI.
+    - *Warm Tier Gratuito:* Consome o pool das 21 contas Colab Pro/Convidado (NVIDIA Tesla T4 16GB GDDR6 + TPU v5e-1) operando em turnos contínuos de 4h30 com handoff preventivo T-15m e custo zero de faturamento.
+    - *Botão Direto no Storyboard (`VideoStoryboardModal.tsx`):* Permite disparar a renderização do roteiro de vídeo diretamente para o cluster de GPUs via API, com feedback de slot alocado (ex: `Slot 04 - descarganews`) e aceleração por hardware NVENC 60fps.
+    - *Capitania #2 no Broadcast (`crossCapitaniaEngine.ts`):* Inclui a `V5 Apollo API Gateway (:3000)` como nó prioritário na transmissão inter-capitanias.
+
+## Suíte de Testes Automatizados E2E (121/121 Aprovados)
 - `scripts/test-etapa103.ts`: 21/21 testes aprovados (Comment-to-DM Engine).
 - `scripts/test-etapa104.ts`: 29/29 testes aprovados (VIP Group Dispatcher).
 - `scripts/test-api-routes.ts`: 4/4 testes aprovados (Cloud Webhooks & Cockpit Telemetry).
 - `scripts/test-etapa105.ts`: 24/24 testes aprovados (PDF LinkedIn Builder, Niche Campaign Blueprints & Web Audio Engine).
 - `scripts/test-etapa106.ts`: 29/29 testes aprovados (Omnichannel Repurposer 1-to-5 & Hook A/B Split-Tester).
-- **Total do Ecossistema:** 107/107 testes green (100% de cobertura e estabilidade absoluta).
+- `scripts/test-etapa107.ts`: 14/14 testes aprovados (V5 Apollo API Gateway & Colab GPU T4 Cluster Client).
+- **Total do Ecossistema:** 121/121 testes green (100% de cobertura e estabilidade absoluta).
