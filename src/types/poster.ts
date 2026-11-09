@@ -9,7 +9,8 @@ export type SocialPlatform =
   | 'whatsapp'
   | 'telegram'
   | 'x_twitter'
-  | 'threads';
+  | 'threads'
+  | 'linkedin';
 
 export type PostStatus = 'draft' | 'scheduled' | 'processing' | 'published' | 'failed';
 

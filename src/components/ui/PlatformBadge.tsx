@@ -13,7 +13,8 @@ import {
   Sparkles,
   FileCode,
   Flame,
-  AtSign
+  AtSign,
+  Linkedin
 } from "lucide-react";
 
 interface PlatformBadgeProps {
@@ -116,6 +117,14 @@ export function PlatformBadge({
           bg: "bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-500",
           icon: AtSign,
           category: "Social"
+        };
+      case "linkedin":
+        return {
+          name: "LinkedIn",
+          shortName: "IN",
+          bg: "bg-blue-600/15 border-blue-500/30 text-blue-400 hover:border-blue-400",
+          icon: Linkedin,
+          category: "B2B"
         };
       default:
         return {

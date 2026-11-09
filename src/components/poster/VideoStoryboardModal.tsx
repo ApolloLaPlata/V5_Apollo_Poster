@@ -25,6 +25,7 @@ import {
 import { toast } from "@/lib/toast/useToast";
 import { executeCrossCapitaniaBroadcast } from "@/lib/dispatch/crossCapitaniaEngine";
 import { dispatchGpuRenderJob } from "@/lib/api/v5GpuClusterClient";
+import { RemotionVideoPreviewModal } from "@/components/poster/RemotionVideoPreviewModal";
 
 
 interface VideoStoryboardModalProps {
@@ -47,6 +48,7 @@ export function VideoStoryboardModal({
   const [copied, setCopied] = useState<boolean>(false);
   const [isTransmittingToStudio, setIsTransmittingToStudio] = useState<boolean>(false);
   const [isDispatchingGpu, setIsDispatchingGpu] = useState<boolean>(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
 
   const storyboard: VideoStoryboard = useMemo(() => {
     return generateVideoStoryboard(topicTitle, keyword, duration, audioTrackId);
@@ -280,6 +282,16 @@ export function VideoStoryboardModal({
 
             <button
               type="button"
+              onClick={() => setIsPreviewModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center gap-1.5 transition shadow-sm"
+              title="Abre o player interativo Remotion / MiniMax H3 com legendas cinéticas em 9:16"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>Assistir Prévia (Remotion/MiniMax)</span>
+            </button>
+
+            <button
+              type="button"
               disabled={isDispatchingGpu}
               onClick={handleDispatchToGpuFleet}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-bold flex items-center gap-1.5 transition border border-amber-500/40"
@@ -321,6 +333,17 @@ export function VideoStoryboardModal({
           </div>
         </div>
       </div>
+
+      <RemotionVideoPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        storyboard={storyboard}
+        onSchedulePost={(title, content, platform) => {
+          if (onApplyToStudio) {
+            onApplyToStudio(content, title);
+          }
+        }}
+      />
     </div>
   );
 }

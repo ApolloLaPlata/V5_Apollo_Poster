@@ -38,6 +38,10 @@ import { dispatchEventBus } from "@/lib/events/dispatchEvents";
 import { formatRelativeDate, formatLocalDateTimeInput } from "@/lib/utils/formatters";
 import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { NewPostScheduleModal } from "@/components/poster/NewPostScheduleModal";
+import { PostDetailPreviewModal } from "@/components/poster/PostDetailPreviewModal";
+import { OmnichannelRepurposerModal } from "@/components/poster/OmnichannelRepurposerModal";
+import { VideoStoryboardModal } from "@/components/poster/VideoStoryboardModal";
+import { AbHookTestingModal } from "@/components/poster/AbHookTestingModal";
 
 export function isPrimeTimeSlot(isoDate: string): boolean {
   try {
@@ -63,6 +67,10 @@ export function MasterCalendar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [inlineReschedulePostId, setInlineReschedulePostId] = useState<string | null>(null);
   const [inlineDateValue, setInlineDateValue] = useState<string>("");
+  const [previewPost, setPreviewPost] = useState<ScheduledPost | null>(null);
+  const [repurposerTopic, setRepurposerTopic] = useState<string | null>(null);
+  const [storyboardTopic, setStoryboardTopic] = useState<string | null>(null);
+  const [abTesterTopic, setAbTesterTopic] = useState<string | null>(null);
   
   // Form State
   const [newTitle, setNewTitle] = useState("");
@@ -87,7 +95,9 @@ export function MasterCalendar() {
     { id: "wordpress", label: "WordPress", activeStyle: "bg-blue-500 text-white font-bold shadow-sm" },
     { id: "newsletter", label: "Newsletter E-mail", activeStyle: "bg-purple-500 text-white font-bold shadow-sm" },
     { id: "whatsapp", label: "WhatsApp VIP", activeStyle: "bg-emerald-500 text-black font-bold shadow-sm" },
-    { id: "telegram", label: "Telegram VIP", activeStyle: "bg-sky-500 text-white font-bold shadow-sm" }
+    { id: "telegram", label: "Telegram VIP", activeStyle: "bg-sky-500 text-white font-bold shadow-sm" },
+    { id: "linkedin", label: "LinkedIn B2B", activeStyle: "bg-blue-600 text-white font-bold shadow-sm" },
+    { id: "x_twitter", label: "X / Twitter", activeStyle: "bg-zinc-700 text-white font-bold shadow-sm" }
   ];
 
   const STATUS_FILTERS: Array<{ id: PostStatus | "all"; label: string; activeStyle: string }> = [
@@ -450,6 +460,11 @@ export function MasterCalendar() {
       case "whatsapp":
       case "telegram":
         return <Send className="w-3 h-3 text-emerald-400" />;
+      case "linkedin":
+        return <Share2 className="w-3 h-3 text-blue-400" />;
+      case "x_twitter":
+      case "threads":
+        return <Sparkles className="w-3 h-3 text-zinc-300" />;
       default:
         return <FileText className="w-3 h-3 text-zinc-400" />;
     }
@@ -743,7 +758,12 @@ export function MasterCalendar() {
                     {dayPosts.slice(0, 2).map((dp) => (
                       <div
                         key={dp.id}
-                        className="flex items-center gap-1 bg-zinc-950/80 px-1.5 py-0.5 rounded border border-zinc-800 text-[10px] truncate"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewPost(dp);
+                        }}
+                        className="flex items-center gap-1 bg-zinc-950/80 px-1.5 py-0.5 rounded border border-zinc-800 text-[10px] truncate cursor-pointer hover:border-amber-500/50 hover:bg-zinc-900 transition"
+                        title="Clique para abrir o simulador e detalhes do post"
                       >
                         {getPlatformIcon(dp.platforms[0])}
                         <span className="truncate text-zinc-300">{dp.title}</span>
@@ -847,7 +867,7 @@ export function MasterCalendar() {
                               {new Date(dp.scheduledAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                             </button>
                           </div>
-                          <p className="text-zinc-200 font-semibold line-clamp-2 leading-tight">{dp.title}</p>
+                          <p onClick={() => setPreviewPost(dp)} className="text-zinc-200 font-semibold line-clamp-2 leading-tight cursor-pointer hover:text-amber-400 transition" title="Clique para abrir o simulador e detalhes">{dp.title}</p>
                           {renderInlineRescheduleBox(dp)}
                         </div>
                       ))
@@ -1004,7 +1024,7 @@ export function MasterCalendar() {
                     </span>
                   </div>
 
-                  <h4 className="text-sm font-bold text-white mb-1.5 line-clamp-1">{post.title}</h4>
+                  <h4 onClick={() => setPreviewPost(post)} className="text-sm font-bold text-white mb-1.5 line-clamp-1 cursor-pointer hover:text-amber-400 transition" title="Clique para abrir o simulador e detalhes">{post.title}</h4>
                   <p className="text-xs text-zinc-400 line-clamp-2 mb-3 leading-relaxed">{post.content}</p>
                 </div>
 
@@ -1068,6 +1088,47 @@ export function MasterCalendar() {
         onClose={() => setIsModalOpen(false)} 
         defaultDate={newDate} 
       />
+
+      {/* Post Detail Preview Modal */}
+      <PostDetailPreviewModal
+        isOpen={previewPost !== null}
+        onClose={() => setPreviewPost(null)}
+        post={previewPost}
+        onDelete={(id) => deletePost(id)}
+        onOpenRepurposer={(t) => setRepurposerTopic(t)}
+        onOpenStoryboard={(t) => setStoryboardTopic(t)}
+        onOpenAbTester={(t) => setAbTesterTopic(t)}
+      />
+
+      {/* Triggered Modals from Preview */}
+      {repurposerTopic && (
+        <OmnichannelRepurposerModal
+          isOpen={true}
+          onClose={() => setRepurposerTopic(null)}
+          initialTopic={repurposerTopic}
+          initialBody={previewPost?.content || ""}
+        />
+      )}
+
+      {storyboardTopic && (
+        <VideoStoryboardModal
+          isOpen={true}
+          onClose={() => setStoryboardTopic(null)}
+          topicTitle={storyboardTopic}
+        />
+      )}
+
+      {abTesterTopic && (
+        <AbHookTestingModal
+          isOpen={true}
+          onClose={() => setAbTesterTopic(null)}
+          currentHook={abTesterTopic}
+          onSelectWinningHook={(w) => {
+            toast.success("Gancho vencedor selecionado: " + w);
+            setAbTesterTopic(null);
+          }}
+        />
+      )}
     </div>
   );
 }
