@@ -1,13 +1,13 @@
 # MEMORIA ATIVA - V5 APOLLO POSTER (CAPITANIA #13)
 
 ## Status Atual
-- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Assimilada a Diretriz Geral da Colmeia (Pulse #229) para a Frota de GPUs Colab T4 (110h/dia), Integração via V5 Apollo API Gateway (:3000 / api.v5apollo.com) para Despacho de Renderização NVENC, Player Remotion & MiniMax H3 (9:16) com Legendas Cinéticas Hormozi (Pulso #245 e #237), Modal de Pré-Visualização e Simulador Onicanal no Calendário Mestre (LinkedIn, X/Twitter, WhatsApp, TikTok, Instagram), Repurposador Onicanal 1-para-5, Testador A/B de Ganchos com Preditor de Retenção 3s, Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API, Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 4 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`, `/api/health`) 100% OPERACIONAIS E HOMOLOGADAS.
+- **Status:** Ecossistema Mestre 100% Homologado e Hardened. Assimilada a Diretriz Geral da Colmeia (Pulse #229) para a Frota de GPUs Colab T4 (110h/dia), Integração via V5 Apollo API Gateway (:3000 / api.v5apollo.com) para Despacho de Renderização NVENC, Motor Editorial Autopilot 30 Dias Onicanal (30 publicações estratégicas sequenciadas em 4 pilares), Bancada de Teste do Webhook Nuvem (Meta Graph API & TikTok), Player Remotion & MiniMax H3 (9:16) com Legendas Cinéticas Hormozi (Pulso #245 e #237), Modal de Pré-Visualização e Simulador Onicanal no Calendário Mestre (LinkedIn, X/Twitter, WhatsApp, TikTok, Instagram), Repurposador Onicanal 1-para-5, Testador A/B de Ganchos com Preditor de Retenção 3s, Exportador Nativo de PDF Multi-Páginas para Carrosséis do LinkedIn, Pacotes de Campanhas de 1-Clique por Nicho para Comment-to-DM, Sintetizador de Áudio Procedural Web Audio API, Roteirizador e Storyboard em 3 Atos para Reels/TikTok com Injeção no Apollo Studio (:3004), Transmissor Onicanal Inter-Capitanias, Roteirizador de Carrossel com Formato Dual 4:5 Feed e 9:16 Story Nativo, Exportador/Importador de Regras JSON no Chatbot DM, Catálogo de Áudios Virais, Governança Human-in-the-Loop na Fila, Grade Semanal 7D, Varredor Ativo de Concorrentes no Radar Viral e 4 Rotas Oficiais de Cloud API em Nuvem (`/api/dispatch/webhook`, `/api/comments/webhook`, `/api/cockpit/stats`, `/api/health`) 100% OPERACIONAIS E HOMOLOGADAS.
 - **Porta:** `:3011` fixa (`next dev -p 3011`).
 - **Assinatura Git Oficial:** `Apollo La Plata <v5estudio@hotmail.com>`
 - **Zero Extensão para Usuário:** 100% Native Cloud APIs (Meta Graph, TikTok Content, YouTube Data v3, Resend, WordPress REST API, Telegram Bot API, WhatsApp Cloud API).
 - **Chave de API Homologada:** `v5_live_v5_master_key_all_access_holding_apollo_2026_unlimited` (Gateway V5 Apollo API)
 - **Token de Verificação Meta Webhook:** `v5_meta_webhook_verify_token_apollo_2026`
-- **Frameworks e Princípios Incorporados:** `ChatbotX` + `Marcondes AI / Claude Skills MIT` + `Remotion / HyperFrames` + `MiniMax H3 Cloud GPU`.
+- **Frameworks e Princípios Incorporados:** `ChatbotX` + `Marcondes AI / Claude Skills MIT` + `Remotion / HyperFrames` + `MiniMax H3 Cloud GPU` + `Autopilot 30D`.
 
 ## Os Pilares Centrais Homologados
 1. **Estúdio de Criação Onicanal (SocialPublishingStudio):** Compositor unificado para 7 redes simultâneas com seletor interativo, Live Smartphone Simulator em tempo real (Instagram, TikTok, WhatsApp, AutoBlog), injetor de UTM, cálculo de caracteres e botões de disparo de horários nobres (12h, 18h30, 20h30).
@@ -44,17 +44,22 @@
 19. **⚡ Repurposador Mestre Onicanal 1-para-Muitos (Omnichannel Repurposer):** Motor (`omnichannelRepurposer.ts` / `OmnichannelRepurposerModal.tsx`) que transforma um único briefing em 5 formatos nativos sincronizados (Instagram, TikTok, LinkedIn, Twitter/X e WhatsApp VIP).
 20. **🧪 Motor de Teste A/B de Ganchos e Preditor de Retenção de 3s:** Sistema analítico (`abTestingEngine.ts` / `AbHookTestingModal.tsx`) com 4 heurísticas de conversão e predição algorítmica de retenção nos primeiros 3 segundos.
 21. **👑 Integração com a Frota Soberana de GPUs Colab T4 via V5 Apollo API:** Roteamento de renderização e inteligência gráfica pesada para `https://api.v5apollo.com` no warm tier gratuito das 21 contas Colab (NVIDIA Tesla T4 16GB).
-22. **🎥 Player Remotion & MiniMax H3 (9:16) com Legendas Cinéticas Hormozi:** Motor (`remotionPreviewEngine.ts` / `RemotionVideoPreviewModal.tsx`) com:
-    - Smartphone mockup vertical 9:16 realista.
-    - Modo Simulador Remotion procedural com decomposição de palavras cinéticas em tempo real, destaque em amarelo Hormozi, progress bar e alerta sonoro/visual da Zona de Gancho 3s.
-    - Modo MiniMax H3 Cloud reproduzindo o vídeo gerado na Tesla T4 em 10.09s (Pulso #237) via Supabase Storage oficial.
-    - Botão de exportação direta para a Frota de GPUs Colab T4 via API.
-23. **📱 Simulador e Detalhamento Onicanal no Calendário Mestre:** Componente (`PostDetailPreviewModal.tsx` / `MasterCalendar.tsx`) permitindo clicar em qualquer post agendado para:
-    - Alternar entre abas de canais e visualizar a formatação nativa (Instagram, TikTok, LinkedIn B2B, Twitter/X Thread, WhatsApp VIP).
-    - Disparar em 1 clique o Repurposador, Storyboard ou Teste A/B de Gancho.
-    - Badges de status, slot nobre (Prime-Time) e tags de campanha.
+22. **🎥 Player Remotion & MiniMax H3 (9:16) com Legendas Cinéticas Hormozi:** Motor (`remotionPreviewEngine.ts` / `RemotionVideoPreviewModal.tsx`) com mockup smartphone vertical, modo procedural Hormozi e modo MiniMax H3 Cloud na Tesla T4 (Pulso #237).
+23. **📱 Simulador e Detalhamento Onicanal no Calendário Mestre:** Componente (`PostDetailPreviewModal.tsx` / `MasterCalendar.tsx`) permitindo clicar em qualquer post agendado para ver simulador por canal, atalhos rápidos de repurposing e badges.
+24. **⚡ Motor Editorial Autopilot 30 Dias Onicanal (`autopilot30dEngine.ts` / `MasterCalendar.tsx`):**
+    - Matriz com 30 publicações estratégicas divididas equilibradamente nos 4 pilares:
+      * 6+ Carrosséis e Artigos de Liderança (LinkedIn B2B + Instagram Feed)
+      * 6+ Vídeos Virais Curtos 3 Atos (TikTok, Reels, Shorts)
+      * 6+ Ofertas Relâmpago VIP (WhatsApp & Telegram com Radar Finders)
+      * 4+ Edições Executivas de Newsletter (Beehiiv + AutoBlog SEO)
+      * 3+ Threads Virais no X / Twitter (< 280 caracteres)
+    - Botão `⚡ Autopilot 30D (IA)` que injeta o mês inteiro em 1 clique respeitando a grade de horários nobres de audiência (11h30, 18h00, 20h30, 21h00).
+25. **🌐 Bancada de Teste do Webhook Nuvem (`CommentWebhookSimulatorModal.tsx`):**
+    - Simulador interativo em tempo real para os endpoints `GET` (Handshake Meta Graph API com verificação de challenge) e `POST` (Ingestão de comentários com extração de gatilho cognitivo, seleção anti-spam rotativa e UTM tracking).
+    - Presets com 4 cenários prontos (Lead Quente, Typo Levenshtein, Preço, Neutro), telemetria de latência em milissegundos e injeção automática no histórico local.
+26. **🛡️ Segregação Absoluta & Compliance Estrito:** Total eliminação de menções a marcas não autorizadas (PixDrop segregado), unificação do conector sob o `V5 Deals Hub`, alinhamento do crachá do topo para `Capitania #13 · :3011`.
 
-## Suíte de Testes Automatizados E2E (143/143 Aprovados)
+## Suíte de Testes Automatizados E2E (165/165 Aprovados)
 - `scripts/test-api-routes.ts`: 4/4 testes aprovados (Cloud Webhooks & Cockpit Telemetry).
 - `scripts/test-etapa103.ts`: 21/21 testes aprovados (Comment-to-DM Engine).
 - `scripts/test-etapa104.ts`: 29/29 testes aprovados (VIP Group Dispatcher).
@@ -62,4 +67,5 @@
 - `scripts/test-etapa106.ts`: 29/29 testes aprovados (Omnichannel Repurposer 1-to-5 & Hook A/B Split-Tester).
 - `scripts/test-etapa107.ts`: 14/14 testes aprovados (V5 Apollo API Gateway & Colab GPU T4 Cluster Client).
 - `scripts/test-etapa108.ts`: 22/22 testes aprovados (Player Remotion, MiniMax H3 Cloud & Badges Onicanal).
-- **Total do Ecossistema:** 143/143 testes green (100% de cobertura e estabilidade absoluta).
+- `scripts/test-etapa109.ts`: 22/22 testes aprovados (Autopilot 30D, Bancada de Webhooks & Segregação Total).
+- **Total do Ecossistema:** 165/165 testes green (100% de cobertura e estabilidade absoluta).

@@ -48,7 +48,7 @@ export function V5EcosystemFooter({ currentSite, currentSiteId, className = '' }
   ];
 
   const business = [
-    { name: 'Loja PixDrop Store', href: 'https://pixdrop.com.br', tag: 'E-commerce & Atacado', icon: ShoppingCart },
+    { name: 'V5 Deals Hub', href: 'https://deals.v5apollo.com', tag: 'Ofertas & Afiliados', icon: ShoppingCart },
     { name: 'V5 Apollo Finders', href: 'https://finders.v5apollo.com', tag: 'Radar Notícias & Virais', icon: Globe },
     { name: 'V5 Apollo RMT Games', href: 'https://rmt.v5apollo.com', tag: 'Arbitragem de Games', icon: Coins },
   ];
@@ -334,8 +334,8 @@ export function V5EcosystemFooter({ currentSite, currentSiteId, className = '' }
               Tabela de Planos
             </Link>
             <span>•</span>
-            <a href="https://pixdrop.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-slate-200">
-              PixDrop Store
+            <a href="https://deals.v5apollo.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-200">
+              V5 Deals Hub
             </a>
             <span>•</span>
             <span className="text-emerald-400 font-mono">

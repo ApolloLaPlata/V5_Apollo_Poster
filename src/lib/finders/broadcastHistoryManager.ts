@@ -151,7 +151,7 @@ export function calculateHistoryMetrics(
     Amazon: 0,
     AliExpress: 0,
     Magalu: 0,
-    "PixDrop Store": 0,
+    "V5 Deals Hub": 0,
     "V5 Finders": 0
   };
 

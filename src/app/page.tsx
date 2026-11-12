@@ -95,7 +95,7 @@ export default function PosterPage() {
     }
 
     const discount = Math.max(10, Math.round(((origPrice - promoPrice) / origPrice) * 100));
-    const storeName = incoming.source === "pixdrop" ? "PixDrop Store" : "V5 Finders";
+    const storeName = incoming.source === "deals_hub" ? "V5 Deals Hub" : "V5 Finders";
 
     const exists = deals.some((d) => d.productName === incoming.title);
     if (!exists) {
@@ -146,7 +146,7 @@ export default function PosterPage() {
           <div className="flex items-center gap-3">
             <Apollo5RocketLogo size={34} />
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">
-              Capitania #06 · :3011
+              Capitania #13 · :3011
             </span>
           </div>
 
@@ -280,7 +280,7 @@ export default function PosterPage() {
             <div className="flex items-center gap-2 text-emerald-300 font-medium">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>
-                <strong>Oferta Integrada com Sucesso ({incomingAlert.source === "pixdrop" ? "PixDrop Store" : "V5 Finders"}):</strong>{" "}
+                <strong>Oferta Integrada com Sucesso ({incomingAlert.source === "deals_hub" ? "V5 Deals Hub" : "V5 Finders"}):</strong>{" "}
                 {incomingAlert.title} {incomingAlert.priceStr ? `— ${incomingAlert.priceStr}` : ""}
               </span>
               <span className="hidden sm:inline-block text-[10px] font-mono bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-full ml-1">

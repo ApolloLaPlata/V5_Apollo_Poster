@@ -1,4 +1,5 @@
 import { NicheCampaignPresetsModal } from "./NicheCampaignPresetsModal";
+import { CommentWebhookSimulatorModal } from "./CommentWebhookSimulatorModal";
 import { NicheCampaignBlueprint } from "@/lib/comments/nicheCampaignPresets";
 /**
  * CommentToDmManager.tsx - Gerenciador Central de Regras Comment-to-DM
@@ -39,7 +40,8 @@ import {
   AlertCircle,
   BarChart3,
   Download,
-  Upload
+  Upload,
+  Terminal
 } from "lucide-react";
 import { DmEngagementMetricsPanel } from "./DmEngagementMetricsPanel";
 import { usePosterStore } from "@/store/usePosterStore";
@@ -107,6 +109,7 @@ export function CommentToDmManager() {
   // Estado do Modal de Nova Regra
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isPresetsModalOpen, setIsPresetsModalOpen] = useState<boolean>(false);
+  const [isWebhookSimulatorOpen, setIsWebhookSimulatorOpen] = useState<boolean>(false);
   const [newKeywordInput, setNewKeywordInput] = useState<string>("");
   const [newPublicReplyInput, setNewPublicReplyInput] = useState<string>("");
 
@@ -627,6 +630,15 @@ export function CommentToDmManager() {
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setIsWebhookSimulatorOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-semibold text-xs transition active:scale-95 shadow-md shadow-cyan-950/20"
+            title="Abre a bancada de testes ao vivo do endpoint /api/comments/webhook (Meta Graph API e TikTok)"
+          >
+            <Terminal className="w-4 h-4 text-cyan-400" />
+            <span>Testador de Webhook Nuvem</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsPresetsModalOpen(true)}
@@ -1652,6 +1664,12 @@ export function CommentToDmManager() {
         isOpen={isPresetsModalOpen}
         onClose={() => setIsPresetsModalOpen(false)}
         onSelectBlueprint={handleApplyNicheBlueprint}
+      />
+
+      {/* Modal Testador de Webhook Nuvem */}
+      <CommentWebhookSimulatorModal
+        isOpen={isWebhookSimulatorOpen}
+        onClose={() => setIsWebhookSimulatorOpen(false)}
       />
     </div>
   );

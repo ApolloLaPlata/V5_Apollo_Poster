@@ -79,9 +79,9 @@ const siteContextMessages: Record<string, { label: string; text: string }> = {
     label: 'V5 Sovereign Payment',
     text: 'Olá! Estou no V5 Sovereign Payment e gostaria de falar sobre o checkout D+0 e blindagem de recebíveis.'
   },
-  pixdrop: {
-    label: 'PixDrop Store Oficial',
-    text: 'Olá! Vim pela PixDrop Store e gostaria de tirar dúvidas sobre produtos, entregas imediatas e cupons.'
+  deals_hub: {
+    label: 'V5 Deals Hub Oficial',
+    text: 'Olá! Vim pelo V5 Deals Hub e gostaria de tirar dúvidas sobre produtos, ofertas e cupons VIP.'
   },
   master: {
     label: 'Holding V5 Apollo Master',
@@ -177,7 +177,7 @@ export function V5FloatingConcierge({ currentSite, currentSiteId }: V5FloatingCo
 
             {/* 2. Telegram Bot */}
             <a
-              href="https://t.me/PixDropOficialBot"
+              href="https://t.me/V5ApolloBot"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-between p-3 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-700 transition-all group"
@@ -188,7 +188,7 @@ export function V5FloatingConcierge({ currentSite, currentSiteId }: V5FloatingCo
                 </div>
                 <div>
                   <div className="font-bold text-white group-hover:text-cyan-300">
-                    Telegram @PixDropOficialBot
+                    Telegram @V5ApolloBot
                   </div>
                   <div className="text-[10px] text-slate-400">
                     Ofertas, cupons e reposições

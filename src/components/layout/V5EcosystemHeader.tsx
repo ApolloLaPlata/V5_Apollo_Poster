@@ -156,7 +156,7 @@ export function V5EcosystemHeader({ currentSite = 'master' }: V5EcosystemHeaderP
 
   const ecosystemLinks = [
     { name: 'Portal Master', href: 'https://v5apollo.com', icon: Globe, tag: 'Holding', active: currentSite === 'master' },
-    { name: 'Loja PixDrop', href: 'https://pixdrop.com.br', icon: ShoppingCart, tag: 'E-commerce' },
+    { name: 'V5 Deals Hub', href: 'https://deals.v5apollo.com', icon: ShoppingCart, tag: 'Ofertas' },
     { name: 'Sound Studio', href: 'https://sound.v5apollo.com', icon: Music, tag: 'Áudio & Suno', active: currentSite === 'sound' },
     { name: 'Avatar 360 & Swap', href: 'https://avatar.v5apollo.com', icon: Video, tag: 'OpenJutsu', active: currentSite === 'avatar' },
     { name: 'Rádio 24h Broadcaster', href: 'https://broadcaster.v5apollo.com', icon: Radio, tag: 'Live Host', active: currentSite === 'broadcaster' },

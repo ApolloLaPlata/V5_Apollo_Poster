@@ -42,6 +42,7 @@ import { PostDetailPreviewModal } from "@/components/poster/PostDetailPreviewMod
 import { OmnichannelRepurposerModal } from "@/components/poster/OmnichannelRepurposerModal";
 import { VideoStoryboardModal } from "@/components/poster/VideoStoryboardModal";
 import { AbHookTestingModal } from "@/components/poster/AbHookTestingModal";
+import { build30DayAutopilotPosts } from "@/lib/social/autopilot30dEngine";
 
 export function isPrimeTimeSlot(isoDate: string): boolean {
   try {
@@ -255,6 +256,37 @@ export function MasterCalendar() {
     toast.success(
       "Grade Semanal 7D Injetada!",
       `${countAdded} publicações programadas nos horários nobres de audiência (11h30, 18h e 20h30).`
+    );
+  };
+
+  const handleGenerate30DayAutopilot = () => {
+    const baseDate = new Date(year, month, 1);
+    const autopilotPosts = build30DayAutopilotPosts(baseDate);
+
+    let countAdded = 0;
+    autopilotPosts.forEach((p) => {
+      addPost({
+        title: p.title,
+        content: p.content,
+        platforms: p.platforms,
+        scheduledAt: p.scheduledAt,
+        status: "scheduled",
+        mediaType: p.mediaType,
+        tags: p.tags
+      });
+
+      dispatchEventBus.emit("POST_SCHEDULED", {
+        postId: p.id,
+        title: p.title,
+        platforms: p.platforms,
+        scheduledAt: p.scheduledAt
+      });
+      countAdded++;
+    });
+
+    toast.success(
+      "⚡ Autopilot 30D Ativado!",
+      `${countAdded} publicações distribuídas ao longo de todo o mês com 4 pilares de conteúdo e horários nobres.`
     );
   };
 
@@ -575,11 +607,21 @@ export function MasterCalendar() {
           <button
             type="button"
             onClick={handleGenerateWeeklyMatrix}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-md border border-purple-400/30"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-md border border-purple-400/30"
             title="Injeta automaticamente uma matriz editorial de 7 dias com formatos e horários nobres (Método Marcondes)"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>🚂 Grade 7D (IA)</span>
+            <span>🚂 Grade 7D</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGenerate30DayAutopilot}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-black font-extrabold px-3.5 py-2 rounded-xl text-xs transition shadow-md border border-amber-400/40"
+            title="Gera e agenda o mês inteiro com 30 publicações estratégicas divididas nos 4 pilares algorítmicos"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-black" />
+            <span>⚡ Autopilot 30D (IA)</span>
           </button>
         </div>
       </div>
