@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -85,15 +85,7 @@ export function V5SovereignCheckoutModal({ isOpen, onClose, selectedPlan: propSe
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const handleSimulatePayment = () => {
-    setTxStatus('confirmed');
-    setTimeout(() => {
-      onClose();
-    }, 2400);
-  };
-
-  const installmentValue = (selectedPlan.priceBrl / installments).toFixed(2);
+const installmentValue = (selectedPlan.priceBrl / installments).toFixed(2);
   const usdtAmount = (selectedPlan.priceBrl / 5.5).toFixed(2);
 
   return (
@@ -359,16 +351,14 @@ export function V5SovereignCheckoutModal({ isOpen, onClose, selectedPlan: propSe
             </>
           )}
 
-          {/* Botão de Simulação / Homologação */}
-          {txStatus !== 'confirmed' && (
-            <div className="pt-2 flex items-center justify-between border-t border-zinc-800/60">
-              <span className="text-[10px] text-zinc-500 font-mono">Modo Soberano Homologado</span>
-              <button
-                onClick={handleSimulatePayment}
-                className="text-[11px] text-zinc-400 hover:text-emerald-400 font-medium underline transition-colors"
-              >
-                [Simular Pagamento Confirmado]
-              </button>
+                    {/* Status Real de Aguardo do Pagamento */}
+          {txStatus === 'waiting' && (
+            <div className="pt-2 flex items-center justify-between border-t border-zinc-800/60 text-[11px]">
+              <span className="flex items-center gap-1.5 text-zinc-400">
+                <Clock className="h-3.5 w-3.5 text-amber-400" />
+                Aguardando pagamento no app do banco...
+              </span>
+              <span className="text-[10px] text-zinc-500 font-mono">Bacen EMV-Co</span>
             </div>
           )}
         </div>
@@ -388,3 +378,4 @@ export function V5SovereignCheckoutModal({ isOpen, onClose, selectedPlan: propSe
 
 
 export default V5SovereignCheckoutModal;
+
