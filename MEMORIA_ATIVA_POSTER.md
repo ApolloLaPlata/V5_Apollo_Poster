@@ -1,3 +1,9 @@
+# ⚠️ DIRETRIZ ESTRATÉGICA ATUAL DO COMANDANTE SUPREMO (2026-11-15)
+- **Status dos Servidores Oracle VPS:** PAUSADOS ESTRATEGICAMENTE pelo Comandante Supremo. Os servidores não estão mortos, mas estão desligados temporariamente para sanear o ecossistema e evitar simulações. No futuro, quando tudo estiver consolidado, o Comandante religará o servidor.
+- **Regra Absoluta:** Nenhuma simulação ou mock permitido. Se um serviço externo dependente da Oracle estiver offline, deve reportar 'offline_paused' ou HTTP 503 transparente.
+
+---
+
 # MEMORIA ATIVA - V5 APOLLO POSTER (CAPITANIA #13)
 
 ## Status Atual
@@ -43,7 +49,7 @@
 18. **🎵 Sintetizador de Áudio Procedural Web Audio API:** Motor de áudio nativo (`webAudioSynthesizer.ts` / `TrendingAudioModal.tsx`) que sintetiza batidas rítmicas e linhas de baixo sintetizadas (kicks, hi-hats, sub-bass) em tempo real no navegador sem arquivos MP3 externos.
 19. **⚡ Repurposador Mestre Onicanal 1-para-Muitos (Omnichannel Repurposer):** Motor (`omnichannelRepurposer.ts` / `OmnichannelRepurposerModal.tsx`) que transforma um único briefing em 5 formatos nativos sincronizados (Instagram, TikTok, LinkedIn, Twitter/X e WhatsApp VIP).
 20. **🧪 Motor de Teste A/B de Ganchos e Preditor de Retenção de 3s:** Sistema analítico (`abTestingEngine.ts` / `AbHookTestingModal.tsx`) com 4 heurísticas de conversão e predição algorítmica de retenção nos primeiros 3 segundos.
-21. **👑 Integração com a Frota Soberana de GPUs Colab T4 via V5 Apollo API:** Roteamento de renderização e inteligência gráfica pesada para `https://api.v5apollo.com` no warm tier gratuito das 21 contas Colab (NVIDIA Tesla T4 16GB).
+21. **👑 Integração com a Frota Soberana de GPUs Colab T4 via V5 Apollo API:** Roteamento de renderização e inteligência gráfica pesada para `https://api.v5apollo.com` no warm tier gratuito das Frota de Servidores (NVIDIA Tesla T4 16GB).
 22. **🎥 Player Remotion & MiniMax H3 (9:16) com Legendas Cinéticas Hormozi:** Motor (`remotionPreviewEngine.ts` / `RemotionVideoPreviewModal.tsx`) com mockup smartphone vertical, modo procedural Hormozi e modo MiniMax H3 Cloud na Tesla T4 (Pulso #237).
 23. **📱 Simulador e Detalhamento Onicanal no Calendário Mestre:** Componente (`PostDetailPreviewModal.tsx` / `MasterCalendar.tsx`) permitindo clicar em qualquer post agendado para ver simulador por canal, atalhos rápidos de repurposing e badges.
 24. **⚡ Motor Editorial Autopilot 30 Dias Onicanal (`autopilot30dEngine.ts` / `MasterCalendar.tsx`):**
